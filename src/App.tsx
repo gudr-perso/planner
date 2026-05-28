@@ -206,7 +206,7 @@ function PlannerApp() {
       accessToken: gcalToken,
       loading: gcalLoading,
       error: gcalError,
-      connect: () => !GOOGLE_CLIENT_ID ? setGcalError('Ajoutez VITE_GOOGLE_CLIENT_ID dans .env') : login(),
+      connect: () => !GOOGLE_CLIENT_ID ? setGcalError('Google Client ID non configuré (VITE_GOOGLE_CLIENT_ID)') : login(),
       disconnect: () => { setGcalToken(null); save('gcalToken', null); setGcalError(null); },
     },
     planTask, unplanTask, updateTaskDates,
