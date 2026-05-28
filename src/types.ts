@@ -107,3 +107,40 @@ export type NotionConfig = {
   personColors?: Record<string, string>; // person name → hex color
   extraFields?: NotionExtraField[];
 };
+
+// ── Briefing ───────────────────────────────────────────────────────────────────
+
+export type BriefingConfig = {
+  databaseId: string;
+  titleField: string;
+  dateField: string;
+  summaryField: string;
+};
+
+export type BriefingEntry = {
+  id: string;
+  title: string;
+  date: string | null;
+  summary: string;
+  createdTime?: string;
+};
+
+export type NotionRichText = {
+  plain_text: string;
+  href?: string | null;
+  annotations?: {
+    bold?: boolean;
+    italic?: boolean;
+    strikethrough?: boolean;
+    underline?: boolean;
+    code?: boolean;
+    color?: string;
+  };
+};
+
+export type NotionBlock = {
+  id: string;
+  type: string;
+  has_children: boolean;
+  [key: string]: unknown;
+};

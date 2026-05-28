@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 
-export type ViewKey = 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings';
+export type ViewKey = 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing';
 
 function SubprojectDropdown({
   subprojects,

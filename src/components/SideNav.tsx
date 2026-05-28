@@ -7,6 +7,7 @@ type NavItemDef = { key: string; icon: string; label: string };
 
 const MAIN_ITEMS: NavItemDef[] = [
   { key: 'planning', icon: '📅', label: 'Planning' },
+  { key: 'briefing', icon: '☀️', label: 'Briefing' },
 ];
 
 const BOTTOM_ITEMS: NavItemDef[] = [
@@ -106,15 +107,21 @@ export function SideNav({
     >
       {/* Main sections */}
       <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
-        {MAIN_ITEMS.map((item) => (
-          <NavItem
-            key={item.key}
-            item={item}
-            isActive={isPlanningActive}
-            collapsed={collapsed}
-            onClick={() => onView(lastPlanningView.current)}
-          />
-        ))}
+        {MAIN_ITEMS.map((item) => {
+          const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
+          const handleClick = item.key === 'planning'
+            ? () => onView(lastPlanningView.current)
+            : () => onView(item.key as ViewKey);
+          return (
+            <NavItem
+              key={item.key}
+              item={item}
+              isActive={isActive}
+              collapsed={collapsed}
+              onClick={handleClick}
+            />
+          );
+        })}
       </div>
 
       {/* Bottom: Settings + toggle */}

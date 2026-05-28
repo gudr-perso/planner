@@ -17,6 +17,7 @@ import { SideNav } from './components/SideNav';
 import { SettingsView } from './components/SettingsView';
 import { TaskModal } from './components/TaskModal';
 import { GcalModal } from './components/GcalModal';
+import { BriefingView } from './components/BriefingView';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
@@ -260,8 +261,8 @@ function PlannerApp() {
           <div className="flex-1 flex flex-col min-w-0">
             <Toolbar view={view} onView={setView} dataSource={dataSource} onToggleDataSource={toggleDataSource} theme={theme} onToggleTheme={toggleTheme} />
             <div className="flex-1 flex min-h-0 relative">
-              {view !== 'settings' && <UnplannedPanel width={panelWidth} />}
-              {view !== 'settings' && (
+              {view !== 'settings' && view !== 'briefing' && <UnplannedPanel width={panelWidth} />}
+              {view !== 'settings' && view !== 'briefing' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
                   style={{ background: 'var(--border)' }}
@@ -276,6 +277,7 @@ function PlannerApp() {
                   : view === 'rolling'  ? <RollingWeeksView />
                   : view === 'rolling2' ? <RollingWeeksView2 />
                   : view === 'settings' ? <SettingsView onSync={handleNotionSync} />
+                  : view === 'briefing' ? <BriefingView />
                   : <GanttView />}
               </main>
             </div>

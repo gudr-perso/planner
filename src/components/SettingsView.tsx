@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { fetchDatabaseSchema, syncFromNotion } from '../notionService';
 import { save, load } from '../persistence';
 import type {
+  BriefingConfig,
   DataBundle,
   NotionConfig,
   NotionExtraField,
@@ -135,9 +136,39 @@ export function SettingsView({
   const [error, setError] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
+  const DEFAULT_BRIEFING: BriefingConfig = { databaseId: '', titleField: '', dateField: '', summaryField: '' };
+  const [briefingConfig, setBriefingConfig] = useState<BriefingConfig>(() =>
+    load<BriefingConfig>('briefingConfig', DEFAULT_BRIEFING)
+  );
+  const [briefingSchema, setBriefingSchema] = useState<NotionPropertySchema[]>([]);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+
   const flash = (msg: string) => {
     setStatusMsg(msg);
     setTimeout(() => setStatusMsg(null), 3000);
+  };
+
+  const handleLoadBriefingSchema = async () => {
+    if (!config.integrationToken || !briefingConfig.databaseId) {
+      setError('Token d\'intégration et ID base Briefing requis');
+      return;
+    }
+    setBriefingLoading(true);
+    setError(null);
+    try {
+      const props = await fetchDatabaseSchema(config.integrationToken, briefingConfig.databaseId);
+      setBriefingSchema(props);
+      flash(`${props.length} propriétés chargées (Briefing)`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBriefingLoading(false);
+    }
+  };
+
+  const handleSaveBriefing = () => {
+    save('briefingConfig', briefingConfig);
+    flash('Configuration Briefing sauvegardée');
   };
 
   const handleLoadSchema = async () => {
@@ -404,6 +435,59 @@ export function SettingsView({
               </button>
             </section>
           )}
+
+          {/* ── Base Briefing ── */}
+          <section>
+            <SectionTitle>Briefing du matin</SectionTitle>
+            <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+              Base Notion séparée pour les briefings. Réutilise le token d'intégration ci-dessus.
+            </p>
+            <FieldRow label="ID base Briefing">
+              <input
+                type="text"
+                value={briefingConfig.databaseId}
+                onChange={e => setBriefingConfig(prev => ({ ...prev, databaseId: e.target.value }))}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </FieldRow>
+            <div className="flex items-center gap-3 mt-3 mb-4 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleLoadBriefingSchema}
+                disabled={briefingLoading}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
+                {briefingLoading ? '…' : 'Charger le schéma'}
+              </button>
+              {briefingSchema.length > 0 && (
+                <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ {briefingSchema.length} propriétés</span>
+              )}
+            </div>
+            {(briefingSchema.length > 0 || briefingConfig.titleField || briefingConfig.dateField || briefingConfig.summaryField) && (
+              <>
+                <FieldRow label="Champ Nom">
+                  <PropCombo value={briefingConfig.titleField} onChange={v => setBriefingConfig(prev => ({ ...prev, titleField: v }))} schema={briefingSchema} />
+                </FieldRow>
+                <FieldRow label="Champ Date">
+                  <PropCombo value={briefingConfig.dateField} onChange={v => setBriefingConfig(prev => ({ ...prev, dateField: v }))} schema={briefingSchema} />
+                </FieldRow>
+                <FieldRow label="Champ En bref">
+                  <PropCombo value={briefingConfig.summaryField} onChange={v => setBriefingConfig(prev => ({ ...prev, summaryField: v }))} schema={briefingSchema} />
+                </FieldRow>
+              </>
+            )}
+            <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleSaveBriefing}
+                className="text-xs px-4 py-2 rounded font-medium transition"
+                style={{ background: 'var(--border)', color: 'var(--text)' }}
+              >
+                Sauvegarder
+              </button>
+            </div>
+          </section>
 
           {/* ── Couleurs des personnes ── */}
           {knownPeople.length > 0 && (

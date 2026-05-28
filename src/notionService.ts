@@ -1,5 +1,8 @@
 import type {
+  BriefingConfig,
+  BriefingEntry,
   DataBundle,
+  NotionBlock,
   NotionConfig,
   NotionPropertySchema,
   Person,
@@ -425,4 +428,51 @@ export async function syncFromNotion(config: NotionConfig): Promise<DataBundle> 
     people: Array.from(peopleMap.values()),
     googleEvents: [],
   };
+}
+
+// ── Briefing ───────────────────────────────────────────────────────────────────
+
+export async function fetchBriefings(token: string, config: BriefingConfig): Promise<BriefingEntry[]> {
+  const entries: BriefingEntry[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    if (config.dateField) {
+      body.sorts = [{ property: config.dateField, direction: 'descending' }];
+    }
+
+    const res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    const pages = (res.results ?? []) as Array<{ id: string; created_time?: string; properties: Record<string, PropVal> }>;
+
+    for (const page of pages) {
+      const props = page.properties;
+      const titleProp = config.titleField
+        ? props[config.titleField]
+        : Object.values(props).find(p => p?.type === 'title');
+      const title = plainText(titleProp) || '(sans titre)';
+      const date = config.dateField ? dateRange(props[config.dateField]).start : null;
+      const summary = config.summaryField ? plainText(props[config.summaryField]) : '';
+      entries.push({ id: page.id, title, date, summary, createdTime: page.created_time });
+    }
+
+    cursor = res.has_more ? String(res.next_cursor) : undefined;
+  } while (cursor);
+
+  return entries;
+}
+
+export async function fetchPageBlocks(token: string, pageId: string): Promise<NotionBlock[]> {
+  const blocks: NotionBlock[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const path = `/blocks/${pageId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`;
+    const res = await nGet(token, path);
+    blocks.push(...((res.results as NotionBlock[]) ?? []));
+    cursor = res.has_more ? String(res.next_cursor) : undefined;
+  } while (cursor);
+
+  return blocks;
 }
