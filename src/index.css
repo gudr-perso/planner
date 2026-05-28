@@ -1,0 +1,277 @@
+@import "tailwindcss";
+@import "@schedule-x/theme-default/dist/calendar.css";
+
+/* ── Theme tokens ────────────────────────────────────────────────────────────
+   Default theme (current navy/cyan) + Forge theme (habits-tracker palette).
+   Switch via <html data-theme="forge">.
+   ──────────────────────────────────────────────────────────────────────────── */
+:root,
+:root[data-theme="default"] {
+  /* Chrome — navy palette from notion-timer-extension (#050c3f / #0a1870) */
+  --bg-deep:        #02071f; /* deepest navy — modals, on-accent text */
+  --bg:             #050c3f; /* app/toolbar/panel bg (extension --dark) */
+  --bg-elev:        #0a1870; /* accent-tinted bg */
+  --border:         #1c2470; /* primary border */
+  --border-soft:    #3a4ba0; /* subtle border */
+  --text:           #DDE3F0; /* primary text */
+  --text-muted:     #7D8AAD; /* secondary text */
+  --text-dim:       #94a3b8; /* inactive */
+  --accent:         #B1DCE2; /* primary accent */
+  --accent-fg:      #02071f; /* text on accent bg */
+
+  /* Main view surface (calendar/gantt/rolling) */
+  --surface:        #ECEEF8;
+  --surface-2:      #F4F5FC; /* current month/highlight */
+  --surface-3:      #F2F3FA; /* past week soft */
+  --surface-row-past:    #EAECF5;
+  --surface-weekend:     #E8EAF5;
+  --surface-current-week:#E3E8F8;
+  --surface-row:         #E0E4F2;
+  --surface-header:      #D4D8EE;
+  --surface-header-cur:  #CDD4EE;
+  --surface-divider:     #C2C8DE;
+  --surface-border:      #BEC5DC;
+  --surface-text:        #1e293b; /* text on light surface */
+  --surface-text-muted:  #475569;
+  --surface-text-dim:    #64748b;
+  --surface-neutral:     #f1f5f9;
+
+  /* Semantic */
+  --color-success:       #10B981;
+  --color-success-bg:    #d1fae5;
+  --color-success-deep:  #064e3b;
+  --color-success-dark:  #059669;
+  --color-error:         #EF4444;
+  --color-error-bg:      #fee2e2;
+  --color-error-deep:    #7f1d1d;
+  --color-error-dark:    #dc2626;
+  --color-warn:          #F59E0B;
+  --color-warn-orange:   #F97316;
+  --color-warn-orange-bg:#ffedd5;
+  --color-warn-orange-deep:#7c2d12;
+  --color-warn-orange-dark:#ea580c;
+  --color-info:          #3b82f6;
+  --color-info-bg:       #dbeafe;
+  --color-info-deep:     #1e3a8a;
+  --color-today:         #2563eb;
+  --color-sky:           #4fc3f7;
+  --color-teal:          #14B8A6;
+  --color-purple:        #8B5CF6;
+  --color-indigo:        #6366F1;
+  --color-pink:          #EC4899;
+}
+
+:root[data-theme="forge"] {
+  /* Chrome — Forge palette from habits-tracker */
+  --bg-deep:        #06091a;
+  --bg:             #0a1027;
+  --bg-elev:        #0e1530;
+  --border:         #161e3d;
+  --border-soft:    rgba(150,180,235,0.22);
+  --text:           #f0f4ff;
+  --text-muted:     rgba(232,238,255,0.6);
+  --text-dim:       rgba(232,238,255,0.35);
+  --accent:         #5dd7ff;
+  --accent-fg:      #06091a;
+
+  /* Main view surface — dark in Forge */
+  --surface:        #0e1530;
+  --surface-2:      #161e3d;
+  --surface-3:      #0a1027;
+  --surface-row-past:    #0a1027;
+  --surface-weekend:     #0e1530;
+  --surface-current-week:#161e3d;
+  --surface-row:         #0a1027;
+  --surface-header:      #161e3d;
+  --surface-header-cur:  rgba(93,215,255,0.18);
+  --surface-divider:     rgba(150,180,235,0.10);
+  --surface-border:      rgba(150,180,235,0.22);
+  --surface-text:        #f0f4ff;
+  --surface-text-muted:  rgba(232,238,255,0.6);
+  --surface-text-dim:    rgba(232,238,255,0.45);
+  --surface-neutral:     #0e1530;
+
+  /* Semantic — Forge tints */
+  --color-success:       #22e08a;
+  --color-success-bg:    rgba(34,224,138,0.15);
+  --color-success-deep:  rgba(34,224,138,0.45);
+  --color-success-dark:  #16a566;
+  --color-error:         #ff5d6c;
+  --color-error-bg:      rgba(255,93,108,0.15);
+  --color-error-deep:    rgba(255,93,108,0.45);
+  --color-error-dark:    #c93a4a;
+  --color-warn:          #ffce4b;
+  --color-warn-orange:   #ff7a1a;
+  --color-warn-orange-bg:rgba(255,122,26,0.15);
+  --color-warn-orange-deep:rgba(255,122,26,0.45);
+  --color-warn-orange-dark:#f36100;
+  --color-info:          #3aa8ff;
+  --color-info-bg:       rgba(58,168,255,0.15);
+  --color-info-deep:     rgba(58,168,255,0.45);
+  --color-today:         #3aa8ff;
+  --color-sky:           #5dd7ff;
+  --color-teal:          #22e08a;
+  --color-purple:        #a47cff;
+  --color-indigo:        #a47cff;
+  --color-pink:          #ff7a1a;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Schedule-X : scroll vertical vue semaine/jour ───────────────────────────
+   La chaîne flex doit contraindre chaque niveau pour que .sx__view-container
+   reste dans les limites de la fenêtre et puisse scroller.
+   ──────────────────────────────────────────────────────────────────────────── */
+.sx__calendar-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Le calendrier lui-même (header + view-container) */
+.sx__calendar {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Wrapper React injecté par <ScheduleXCalendar> — doit participer au flex */
+.sx-react-calendar-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Le conteneur de vue qui a déjà overflow:auto — on le contraint en hauteur */
+.sx__view-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+
+/* ── Lighter backgrounds for Calendar and Gantt ───────────────────────────── */
+
+/* Schedule-X v2 — main surface areas */
+.sx__calendar,
+.sx__calendar-header,
+.sx__month-grid,
+.sx__week-grid,
+.sx__time-grid,
+.sx__time-grid-wrapper,
+.sx__week-header-wrapper,
+.sx__event-calendar,
+.sx__date-picker,
+.sx__date-picker__popover {
+  background-color: var(--surface) !important;
+}
+
+/* Month grid individual cells */
+.sx__month-grid-day {
+  background-color: var(--surface) !important;
+}
+.sx__month-grid-day--current-month {
+  background-color: var(--surface-2) !important;
+}
+
+/* Keep today highlight readable */
+.sx__month-grid-day--today .sx__month-grid-day__header-date {
+  background-color: var(--color-today) !important;
+  color: #fff !important;
+}
+
+/* ── Forge theme: lighten Schedule-X text + Gantt text on dark surface ───── */
+:root[data-theme="forge"] .sx__calendar,
+:root[data-theme="forge"] .sx__date-picker,
+:root[data-theme="forge"] .sx__date-picker__popover {
+  --sx-color-on-background: var(--surface-text);
+  --sx-color-on-surface: var(--surface-text);
+  --sx-color-on-surface-variant: var(--surface-text-muted);
+  --sx-color-outline: var(--surface-divider);
+  --sx-color-outline-variant: var(--surface-divider);
+  --sx-internal-color-text: var(--surface-text);
+  color: var(--surface-text);
+}
+
+:root[data-theme="forge"] .sx__month-grid-day__header-date,
+:root[data-theme="forge"] .sx__week-grid__date,
+:root[data-theme="forge"] .sx__week-grid__day-name,
+:root[data-theme="forge"] .sx__time-grid__hour,
+:root[data-theme="forge"] .sx__chevron-wrapper,
+:root[data-theme="forge"] .sx__forward-backward-navigation,
+:root[data-theme="forge"] .sx__today-button,
+:root[data-theme="forge"] .sx__view-selection-selected-item,
+:root[data-theme="forge"] .sx__view-selection-item,
+:root[data-theme="forge"] .sx__range-heading {
+  color: var(--surface-text) !important;
+}
+
+:root[data-theme="forge"] .sx__today-button,
+:root[data-theme="forge"] .sx__view-selection-selected-item {
+  background-color: var(--surface-2) !important;
+  border-color: var(--surface-divider) !important;
+}
+
+:root[data-theme="forge"] .sx__chevron {
+  fill: var(--surface-text) !important;
+}
+
+/* Gantt task list text on dark surface */
+:root[data-theme="forge"] .gantt-table,
+:root[data-theme="forge"] .gantt-task-list-wrapper,
+:root[data-theme="forge"] .gantt-task-list-wrapper *,
+:root[data-theme="forge"] .gantt-wrapper text,
+:root[data-theme="forge"] ._CZjuD,
+:root[data-theme="forge"] ._2dZTy {
+  color: var(--surface-text);
+  fill: var(--surface-text);
+}
+
+:root[data-theme="forge"] .gantt-wrapper svg text {
+  fill: var(--surface-text-muted) !important;
+}
+
+/* ── Schedule-X : séparation visuelle entre événements ───────────────────────
+   Ajoute une fine ombre + léger espace pour que les RDVs bout à bout soient
+   clairement distincts, surtout en vue jour/semaine.
+   ──────────────────────────────────────────────────────────────────────────── */
+.sx__event {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25) !important;
+  border-radius: 5px !important;
+  margin: 1px 2px !important;
+  cursor: pointer !important;
+}
+
+/* Accentue la bordure gauche des events Google Calendar */
+.sx__event[data-calendar-id="gcal"] {
+  border-left: 3px solid var(--accent) !important;
+}
+
+/* Gantt task-react tweak */
+.gantt-task-list-wrapper,
+.gantt-wrapper,
+._CZjuD,
+._2dZTy {
+  background: var(--surface) !important;
+}
+
+.gantt-table, .gantt-task-list-wrapper {
+  font-size: 13px;
+}

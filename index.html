@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>planner-proto</title>
+    <script>
+      window.__errors = [];
+      window.addEventListener('error', (e) => {
+        window.__errors.push({ msg: e.message, src: e.filename, line: e.lineno, col: e.colno, stack: e.error?.stack });
+      });
+      window.addEventListener('unhandledrejection', (e) => {
+        window.__errors.push({ reject: String(e.reason), stack: e.reason?.stack });
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
