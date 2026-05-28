@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useStore, colorForTask } from '../store';
 import { load, save } from '../persistence';
-import type { GoogleEvent, Task } from '../types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
