@@ -1,3 +1,6 @@
 name = "planner"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-05-28"
+
+[vars]
+VITE_GOOGLE_CLIENT_ID = "523234988712-f0gnfsik43jaqe0p4e0rn26osenpod48.apps.googleusercontent.com"
