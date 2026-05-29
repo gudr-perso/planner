@@ -575,10 +575,17 @@ export async function fetchPartenaires(token: string, config: PartenairesConfig)
         }
       }
 
-      // Type (multi_select)
-      const types: string[] = config.typeField
-        ? ((props[config.typeField]?.multi_select ?? []) as Array<{ name: string }>).map(o => o.name)
-        : [];
+      // Type (select ou multi_select)
+      const types: string[] = (() => {
+        if (!config.typeField) return [];
+        const prop = props[config.typeField] as Record<string, unknown> | undefined;
+        if (!prop) return [];
+        if (Array.isArray(prop.multi_select))
+          return (prop.multi_select as Array<{ name: string }>).map(o => o.name);
+        const sel = (prop.select as { name?: string } | undefined)?.name;
+        if (sel) return [sel];
+        return [];
+      })();
 
       entries.push({ id: page.id, title, shortCode, etatSuivis, types, notion_url: page.url });
     }

@@ -605,7 +605,7 @@ export function SettingsView({
                   <PropCombo value={partenairesConfig.etatSuivisField} onChange={v => setPartenairesConfig(prev => ({ ...prev, etatSuivisField: v }))} schema={partenairesSchema} placeholder="(champ formula, optionnel)" />
                 </FieldRow>
                 <FieldRow label="Champ Type">
-                  <PropCombo value={partenairesConfig.typeField} onChange={v => setPartenairesConfig(prev => ({ ...prev, typeField: v }))} schema={partenairesSchema} placeholder="(multi_select pour regroupement)" />
+                  <PropCombo value={partenairesConfig.typeField} onChange={v => setPartenairesConfig(prev => ({ ...prev, typeField: v }))} schema={partenairesSchema} placeholder="(select ou multi_select)" />
                 </FieldRow>
               </>
             )}
