@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useStore, colorForTask } from '../store';
 import { STATUS_COLORS, STATUS_LABELS } from '../types';
@@ -21,7 +21,6 @@ const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
 function DraggableTask({ task, hideProject, hideStatus }: { task: Task; hideProject?: boolean; hideStatus?: boolean }) {
   const store = useStore();
   const color = colorForTask(task, store);
-  const handleClick = () => store.openTaskModal(task.id);
   const project = store.projectById.get(task.project_id);
   const person = store.personById.get(task.assignee_id);
 
@@ -34,6 +33,17 @@ function DraggableTask({ task, hideProject, hideStatus }: { task: Task; hideProj
     id: `task:${task.id}`,
     data: { taskId: task.id, source: 'unplanned' },
   });
+
+  // Prevent the click event that fires after pointerup from opening the modal post-drag
+  const wasDragging = useRef(false);
+  useEffect(() => {
+    if (isDragging) wasDragging.current = true;
+    else setTimeout(() => { wasDragging.current = false; }, 100);
+  }, [isDragging]);
+
+  const handleClick = () => {
+    if (!wasDragging.current) store.openTaskModal(task.id);
+  };
 
   return (
     <div
