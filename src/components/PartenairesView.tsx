@@ -26,15 +26,7 @@ type SortKey = 'title' | 'shortCode' | 'etatSuivis';
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function PartenairesView({
-  onOpenSuivis,
-  viewMode: viewModeProp,
-  search: searchProp,
-}: {
-  onOpenSuivis: (p: PartenaireEntry) => void;
-  viewMode?: 'card' | 'list';
-  search?: string;
-}) {
+export function PartenairesView({ onOpenSuivis }: { onOpenSuivis: (p: PartenaireEntry) => void }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const cfg = load<PartenairesConfig | null>('partenairesConfig', null);
   const token = notionCfg?.integrationToken ?? '';
@@ -47,16 +39,12 @@ export function PartenairesView({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set());
 
-  // Use props from Toolbar if provided, otherwise local state
-  const [localViewMode, setLocalViewMode] = useState<'card' | 'list'>(() =>
+  const [viewMode, setViewMode] = useState<'card' | 'list'>(() =>
     load<'card' | 'list'>('partenaires-view-mode', 'card')
   );
-  const [localSearch, setLocalSearch] = useState('');
+  const [search, setSearch] = useState('');
 
-  const viewMode = viewModeProp ?? localViewMode;
-  const search = searchProp ?? localSearch;
-
-  useEffect(() => { save('partenaires-view-mode', localViewMode); }, [localViewMode]);
+  useEffect(() => { save('partenaires-view-mode', viewMode); }, [viewMode]);
 
   useEffect(() => {
     if (!token || !cfg?.databaseId) return;
@@ -148,10 +136,10 @@ export function PartenairesView({
         </h2>
 
         <div className="flex items-center gap-3">
-          {/* Toggle vue cartes/liste (contrôles locaux, en complément du toolbar) */}
+          {/* Toggle vue cartes/liste */}
           <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
             <button
-              onClick={() => setLocalViewMode('card')}
+              onClick={() => setViewMode('card')}
               className="px-2.5 py-1.5 text-xs font-medium transition"
               style={viewMode === 'card'
                 ? { background: 'var(--accent)', color: 'var(--accent-fg)' }
@@ -159,7 +147,7 @@ export function PartenairesView({
               title="Vue cartes"
             >⊞</button>
             <button
-              onClick={() => setLocalViewMode('list')}
+              onClick={() => setViewMode('list')}
               className="px-2.5 py-1.5 text-xs font-medium transition border-l"
               style={viewMode === 'list'
                 ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--border)' }
@@ -167,17 +155,15 @@ export function PartenairesView({
               title="Vue liste"
             >☰</button>
           </div>
-          {/* Recherche locale (si pas contrôlée par le toolbar) */}
-          {searchProp === undefined && (
-            <input
-              type="text"
-              value={localSearch}
-              onChange={e => setLocalSearch(e.target.value)}
-              placeholder="Rechercher…"
-              className="text-xs rounded px-2.5 py-1.5 outline-none w-48"
-              style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-            />
-          )}
+          {/* Recherche */}
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher…"
+            className="text-xs rounded px-2.5 py-1.5 outline-none w-48"
+            style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          />
         </div>
       </div>
 
@@ -254,7 +240,7 @@ function CardView({
             </button>
 
             {!collapsed && (
-              <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 220px))' }}>
                 {entries.map(entry => (
                   <PartenaireCard key={entry.id} entry={entry} onOpen={onOpenSuivis} />
                 ))}
@@ -276,19 +262,19 @@ function PartenaireCard({ entry, onOpen }: { entry: PartenaireEntry; onOpen: (p:
       onClick={() => onOpen(entry)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="text-left flex flex-col rounded-lg p-4 transition"
+      className="text-left flex flex-col rounded-lg p-3 transition"
       style={{
         background: hovered
-          ? 'color-mix(in srgb, var(--accent) 4%, var(--surface))'
-          : 'var(--surface)',
+          ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-elev))'
+          : 'var(--bg-elev)',
         border: `1px solid ${hovered ? 'var(--accent)' : 'var(--border)'}`,
-        boxShadow: hovered ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
+        boxShadow: hovered ? '0 2px 8px rgba(0,0,0,0.3)' : 'none',
         cursor: 'pointer',
       }}
     >
       {/* Nom */}
       <span
-        className="text-sm font-semibold leading-tight mb-1"
+        className="text-xs font-semibold leading-tight mb-1"
         style={{ color: 'var(--text)' }}
       >
         {entry.title}
@@ -296,7 +282,7 @@ function PartenaireCard({ entry, onOpen }: { entry: PartenaireEntry; onOpen: (p:
 
       {/* Code abrégé */}
       {entry.shortCode && (
-        <span className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[10px] mb-1.5" style={{ color: 'var(--text-muted)' }}>
           {entry.shortCode}
         </span>
       )}

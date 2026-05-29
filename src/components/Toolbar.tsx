@@ -157,11 +157,6 @@ export function Toolbar({
   onToggleDataSource,
   theme,
   onToggleTheme,
-  // Partenaires toolbar
-  partenairesViewMode,
-  onPartenairesViewMode,
-  partenairesSearch,
-  onPartenairesSearch,
   // Suivis toolbar
   suivisSearch,
   onSuivisSearch,
@@ -174,10 +169,6 @@ export function Toolbar({
   onToggleDataSource: () => void;
   theme: 'default' | 'forge';
   onToggleTheme: () => void;
-  partenairesViewMode?: 'card' | 'list';
-  onPartenairesViewMode?: (m: 'card' | 'list') => void;
-  partenairesSearch?: string;
-  onPartenairesSearch?: (s: string) => void;
   suivisSearch?: string;
   onSuivisSearch?: (s: string) => void;
   suivisPartenaireFilterLabel?: string;
@@ -212,44 +203,6 @@ export function Toolbar({
           {dataSource === 'notion' ? 'Notion' : 'démo'}
         </button>
       </div>
-
-      {/* ── Partenaires toolbar ── */}
-      {view === 'partenaires' && (
-        <>
-          {/* Vue cartes / liste */}
-          <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-            <button
-              onClick={() => onPartenairesViewMode?.('card')}
-              className="px-2.5 py-1.5 text-xs font-medium transition"
-              style={partenairesViewMode === 'card'
-                ? { background: 'var(--accent)', color: 'var(--accent-fg)' }
-                : { background: 'var(--bg-deep)', color: 'var(--text-muted)' }}
-              title="Vue cartes"
-            >
-              ⊞
-            </button>
-            <button
-              onClick={() => onPartenairesViewMode?.('list')}
-              className="px-2.5 py-1.5 text-xs font-medium transition border-l"
-              style={partenairesViewMode === 'list'
-                ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--border)' }
-                : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
-              title="Vue liste"
-            >
-              ☰
-            </button>
-          </div>
-          {/* Recherche */}
-          <input
-            type="text"
-            value={partenairesSearch ?? ''}
-            onChange={e => onPartenairesSearch?.(e.target.value)}
-            placeholder="Rechercher un partenaire…"
-            className="text-xs rounded px-2.5 py-1.5 outline-none w-56"
-            style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-          />
-        </>
-      )}
 
       {/* ── Suivis toolbar ── */}
       {view === 'suivis' && (

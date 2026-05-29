@@ -605,7 +605,7 @@ export function SettingsView({
                   <PropCombo value={partenairesConfig.etatSuivisField} onChange={v => setPartenairesConfig(prev => ({ ...prev, etatSuivisField: v }))} schema={partenairesSchema} placeholder="(champ formula, optionnel)" />
                 </FieldRow>
                 <FieldRow label="Champ Type">
-                  <PropSelect value={partenairesConfig.typeField} onChange={v => setPartenairesConfig(prev => ({ ...prev, typeField: v }))} schema={partenairesSchema} filter={p => ['multi_select', 'select'].includes(p.type)} placeholder="(multi_select pour regroupement)" />
+                  <PropCombo value={partenairesConfig.typeField} onChange={v => setPartenairesConfig(prev => ({ ...prev, typeField: v }))} schema={partenairesSchema} placeholder="(multi_select pour regroupement)" />
                 </FieldRow>
               </>
             )}
@@ -667,7 +667,7 @@ export function SettingsView({
                   <PropCombo value={suivisConfig.contactField} onChange={v => setSuivisConfig(prev => ({ ...prev, contactField: v }))} schema={suivisSchema} placeholder="(relation ou people)" />
                 </FieldRow>
                 <FieldRow label="Dernière action">
-                  <PropSelect value={suivisConfig.lastActionDateField ?? ''} onChange={v => setSuivisConfig(prev => ({ ...prev, lastActionDateField: v }))} schema={suivisSchema} filter={p => p.type === 'date'} placeholder="(optionnel)" />
+                  <PropCombo value={suivisConfig.lastActionDateField ?? ''} onChange={v => setSuivisConfig(prev => ({ ...prev, lastActionDateField: v }))} schema={suivisSchema} placeholder="(optionnel)" />
                 </FieldRow>
               </>
             )}

@@ -83,9 +83,6 @@ function PlannerApp() {
   const [notionWriteStatus, setNotionWriteStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
   const [notionWriteMsg, setNotionWriteMsg] = useState<string | null>(null);
   const [partenaireFilter, setPartenaireFilter] = useState<PartenaireEntry | null>(null);
-  // Partenaires toolbar state (lifted up so Toolbar can display it)
-  const [partenairesViewMode, setPartenairesViewMode] = useState<'card' | 'list'>('card');
-  const [partenairesSearch, setPartenairesSearch] = useState('');
   const [suivisSearch, setSuivisSearch] = useState('');
   const [dataSource, setDataSource] = useState<'demo' | 'notion'>(() => load<'demo' | 'notion'>('dataSource', 'demo'));
   const [theme, setTheme] = useState<'default' | 'forge'>(() => load<'default' | 'forge'>('theme', 'default'));
@@ -274,10 +271,6 @@ function PlannerApp() {
               onToggleDataSource={toggleDataSource}
               theme={theme}
               onToggleTheme={toggleTheme}
-              partenairesViewMode={partenairesViewMode}
-              onPartenairesViewMode={setPartenairesViewMode}
-              partenairesSearch={partenairesSearch}
-              onPartenairesSearch={setPartenairesSearch}
               suivisSearch={suivisSearch}
               onSuivisSearch={setSuivisSearch}
               suivisPartenaireFilterLabel={partenaireFilter?.title}
@@ -304,8 +297,6 @@ function PlannerApp() {
                   : view === 'partenaires' ? (
                     <PartenairesView
                       onOpenSuivis={(p) => { setPartenaireFilter(p); setView('suivis'); }}
-                      viewMode={partenairesViewMode}
-                      search={partenairesSearch}
                     />
                   )
                   : view === 'suivis' ? (
