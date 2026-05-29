@@ -510,34 +510,15 @@ export async function fetchBriefings(token: string, config: BriefingConfig): Pro
   return entries;
 }
 
-async function fetchBlocksFlat(token: string, blockId: string): Promise<NotionBlock[]> {
+export async function fetchPageBlocks(token: string, pageId: string): Promise<NotionBlock[]> {
   const blocks: NotionBlock[] = [];
   let cursor: string | undefined;
   do {
-    const path = `/blocks/${blockId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`;
+    const path = `/blocks/${pageId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`;
     const res = await nGet(token, path);
     blocks.push(...((res.results as NotionBlock[]) ?? []));
     cursor = res.has_more ? String(res.next_cursor) : undefined;
   } while (cursor);
-  return blocks;
-}
-
-export async function fetchPageBlocks(token: string, pageId: string, depth = 0): Promise<NotionBlock[]> {
-  const blocks = await fetchBlocksFlat(token, pageId);
-
-  // Récupérer les enfants des blocs qui en ont (toggle, synced_block, column_list…)
-  // Limité à 3 niveaux pour éviter les appels excessifs
-  if (depth < 3) {
-    await Promise.all(
-      blocks
-        .filter(b => b.has_children)
-        .map(async b => {
-          const children = await fetchPageBlocks(token, b.id, depth + 1);
-          (b as Record<string, unknown>)._children = children;
-        })
-    );
-  }
-
   return blocks;
 }
 
