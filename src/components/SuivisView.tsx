@@ -283,7 +283,7 @@ export function SuivisView({
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {selectedEntry.suivi && (
-                  <PropRow icon="🏷" label="Suivi">
+                  <PropRow icon="📋" label="Suivi">
                     <span
                       className="text-[11px] px-2 py-0.5 rounded font-medium"
                       style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}
