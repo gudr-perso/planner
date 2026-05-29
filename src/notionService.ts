@@ -112,6 +112,15 @@ function selectName(prop: PropVal): string {
   );
 }
 
+function selectColor(prop: PropVal): string {
+  if (!prop) return 'default';
+  return (
+    (prop.status as Record<string, string>)?.color ??
+    (prop.select as Record<string, string>)?.color ??
+    'default'
+  );
+}
+
 // Handles people type AND multi_select/select (when assignee is a choice field)
 function assigneeList(prop: PropVal): Array<{ id: string; name: string }> {
   if (!prop) return [];
@@ -501,16 +510,33 @@ export async function fetchBriefings(token: string, config: BriefingConfig): Pro
   return entries;
 }
 
-export async function fetchPageBlocks(token: string, pageId: string): Promise<NotionBlock[]> {
+async function fetchBlocksFlat(token: string, blockId: string): Promise<NotionBlock[]> {
   const blocks: NotionBlock[] = [];
   let cursor: string | undefined;
-
   do {
-    const path = `/blocks/${pageId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`;
+    const path = `/blocks/${blockId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`;
     const res = await nGet(token, path);
     blocks.push(...((res.results as NotionBlock[]) ?? []));
     cursor = res.has_more ? String(res.next_cursor) : undefined;
   } while (cursor);
+  return blocks;
+}
+
+export async function fetchPageBlocks(token: string, pageId: string, depth = 0): Promise<NotionBlock[]> {
+  const blocks = await fetchBlocksFlat(token, pageId);
+
+  // Récupérer les enfants des blocs qui en ont (toggle, synced_block, column_list…)
+  // Limité à 3 niveaux pour éviter les appels excessifs
+  if (depth < 3) {
+    await Promise.all(
+      blocks
+        .filter(b => b.has_children)
+        .map(async b => {
+          const children = await fetchPageBlocks(token, b.id, depth + 1);
+          (b as Record<string, unknown>)._children = children;
+        })
+    );
+  }
 
   return blocks;
 }
@@ -667,8 +693,9 @@ export async function fetchSuivis(
         : Object.values(props).find(p => p?.type === 'title');
       const title = plainText(titleProp) || '(sans titre)';
 
-      // Suivi (select)
+      // Suivi (select + couleur)
       const suivi = config.suivisField ? selectName(props[config.suivisField]) : '';
+      const suiviColor = config.suivisField ? selectColor(props[config.suivisField]) : 'default';
 
       // Relations → titres résolus
       const resolveRel = (fieldName: string): string[] => {
@@ -706,6 +733,7 @@ export async function fetchSuivis(
         id: page.id,
         title,
         suivi,
+        suiviColor,
         projets,
         partenaires,
         contact,

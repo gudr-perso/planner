@@ -143,6 +143,7 @@ export type SuiviEntry = {
   id: string;
   title: string;
   suivi: string;
+  suiviColor: string;   // couleur Notion du select (ex: "blue", "green", "default"…)
   projets: string[];
   partenaires: string[];
   contact: string[];

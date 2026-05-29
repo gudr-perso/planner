@@ -7,6 +7,28 @@ import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+/** Palette Notion → badge coloré (fond semi-transparent + texte) */
+const NOTION_COLOR: Record<string, { bg: string; fg: string }> = {
+  gray:    { bg: '#80808022', fg: '#808080' },
+  brown:   { bg: '#9f6b5322', fg: '#9f6b53' },
+  orange:  { bg: '#d9730d22', fg: '#d9730d' },
+  yellow:  { bg: '#ca8a0422', fg: '#ca8a04' },
+  green:   { bg: '#0f7b6c22', fg: '#0f7b6c' },
+  blue:    { bg: '#0b6e9922', fg: '#0b6e99' },
+  purple:  { bg: '#6940a522', fg: '#6940a5' },
+  pink:    { bg: '#ad1a7222', fg: '#ad1a72' },
+  red:     { bg: '#e03e3e22', fg: '#e03e3e' },
+};
+
+function suiviBadgeStyle(color?: string): { background: string; color: string } {
+  const c = NOTION_COLOR[color ?? ''];
+  if (c) return { background: c.bg, color: c.fg };
+  return {
+    background: 'color-mix(in srgb, var(--text-muted) 12%, transparent)',
+    color: 'var(--text-muted)',
+  };
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
   try {
@@ -286,7 +308,7 @@ export function SuivisView({
                   <PropRow icon="📋" label="Suivi">
                     <span
                       className="text-[11px] px-2 py-0.5 rounded font-medium"
-                      style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}
+                      style={suiviBadgeStyle(selectedEntry.suiviColor)}
                     >
                       {selectedEntry.suivi}
                     </span>
@@ -427,7 +449,7 @@ function SuiviRow({
         {entry.suivi ? (
           <span
             className="text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap"
-            style={{ background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)' }}
+            style={suiviBadgeStyle(entry.suiviColor)}
           >
             {entry.suivi}
           </span>
