@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { NotionBlock, NotionRichText } from '../types';
 
 function notionColorToCSS(color: string): string {
@@ -185,6 +186,9 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
       return <img src={url} alt="" style={{ maxWidth: '100%', borderRadius: 6, margin: '8px 0' }} />;
     }
 
+    case 'toggle':
+      return <ToggleBlock block={block} onToggleTodo={onToggleTodo} />;
+
     default:
       if (rt.length > 0) {
         return (
@@ -195,6 +199,42 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
       }
       return null;
   }
+}
+
+function ToggleBlock({
+  block,
+  onToggleTodo,
+}: {
+  block: NotionBlock;
+  onToggleTodo?: (blockId: string, checked: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rt = getRT(block);
+  const children = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
+
+  return (
+    <div style={{ margin: '3px 0' }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer',
+          userSelect: 'none', color: 'var(--text)',
+        }}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span style={{
+          fontSize: 10, marginTop: '0.45em', flexShrink: 0, transition: 'transform 120ms',
+          display: 'inline-block', transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+          color: 'var(--text-muted)',
+        }}>▶</span>
+        <span style={{ fontWeight: 500 }}><RichText parts={rt} /></span>
+      </div>
+      {open && children && children.length > 0 && (
+        <div style={{ paddingLeft: 22, marginTop: 2 }}>
+          <NotionBlockRenderer blocks={children} onToggleTodo={onToggleTodo} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function NotionBlockRenderer({

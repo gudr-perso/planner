@@ -207,12 +207,12 @@ export function SuivisView({
               <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg)' }}>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   <SortTh col="title" label="Nom" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortTh col="suivi" label="Suivi" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortTh col="projets" label="Projets" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortTh col="partenaires" label="Partenaires" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortTh col="contact" label="Contact" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortTh col="createdTime" label="Créé le" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortTh col="lastActionDate" label="Dernière action" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortTh col="suivi" label="Suivi" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={90} />
+                  <SortTh col="projets" label="Projets" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={140} />
+                  <SortTh col="partenaires" label="Partenaires" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={140} />
+                  <SortTh col="contact" label="Contact" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={120} />
+                  <SortTh col="createdTime" label="Créé le" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={90} />
+                  <SortTh col="lastActionDate" label="Dernière action" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={110} />
                 </tr>
               </thead>
               <tbody>
@@ -354,18 +354,19 @@ export function SuivisView({
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SortTh({
-  col, label, sortKey, sortDir, onSort,
+  col, label, sortKey, sortDir, onSort, width,
 }: {
   col: SortKey;
   label: string;
   sortKey: SortKey;
   sortDir: 'asc' | 'desc';
   onSort: (k: SortKey) => void;
+  width?: number | string;
 }) {
   return (
     <th
       className="px-4 py-2.5 text-left font-medium cursor-pointer select-none hover:opacity-80 transition whitespace-nowrap"
-      style={{ color: sortKey === col ? 'var(--accent)' : 'var(--text-muted)', fontSize: 11 }}
+      style={{ color: sortKey === col ? 'var(--accent)' : 'var(--text-muted)', fontSize: 11, width }}
       onClick={() => onSort(col)}
     >
       {label}{sortKey === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
