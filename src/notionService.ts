@@ -476,3 +476,7 @@ export async function fetchPageBlocks(token: string, pageId: string): Promise<No
 
   return blocks;
 }
+
+export async function patchBlockChecked(token: string, blockId: string, checked: boolean): Promise<void> {
+  await nPatch(token, `/blocks/${blockId}`, { to_do: { checked } });
+}

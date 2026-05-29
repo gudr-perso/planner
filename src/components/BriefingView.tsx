@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { load, save } from '../persistence';
-import { fetchBriefings, fetchPageBlocks } from '../notionService';
+import { fetchBriefings, fetchPageBlocks, patchBlockChecked } from '../notionService';
 import type { BriefingConfig, BriefingEntry, NotionBlock, NotionConfig } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 
@@ -69,6 +69,7 @@ export function BriefingView() {
   const [blocks, setBlocks] = useState<NotionBlock[]>([]);
   const [blocksLoading, setBlocksLoading] = useState(false);
   const [blocksError, setBlocksError] = useState<string | null>(null);
+  const [todoStatus, setTodoStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
 
   useEffect(() => {
     if (!token || !briefingCfg?.databaseId) return;
@@ -89,6 +90,31 @@ export function BriefingView() {
       .then(setBlocks)
       .catch(e => setBlocksError((e as Error).message))
       .finally(() => setBlocksLoading(false));
+  }, [token]);
+
+  const handleToggleTodo = useCallback((blockId: string, checked: boolean) => {
+    // Mise à jour optimiste
+    setBlocks(prev => prev.map(b =>
+      b.id === blockId
+        ? { ...b, to_do: { ...(b.to_do as Record<string, unknown>), checked } }
+        : b
+    ));
+    setTodoStatus('saving');
+    patchBlockChecked(token, blockId, checked)
+      .then(() => {
+        setTodoStatus('ok');
+        setTimeout(() => setTodoStatus(null), 1500);
+      })
+      .catch(() => {
+        // Revert
+        setBlocks(prev => prev.map(b =>
+          b.id === blockId
+            ? { ...b, to_do: { ...(b.to_do as Record<string, unknown>), checked: !checked } }
+            : b
+        ));
+        setTodoStatus('error');
+        setTimeout(() => setTodoStatus(null), 3000);
+      });
   }, [token]);
 
   const selectedEntry = entries.find(e => e.id === selectedId);
@@ -216,18 +242,34 @@ export function BriefingView() {
               </div>
             </div>
 
-            <button
-              onClick={() => setSelectedId(null)}
-              title="Fermer"
-              style={{
-                color: 'var(--text-muted)', fontSize: 15, lineHeight: 1, flexShrink: 0,
-                marginTop: 2, background: 'transparent', border: 'none', cursor: 'pointer',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
-            >
-              ✕
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {todoStatus && (
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded"
+                  style={todoStatus === 'error'
+                    ? { background: 'var(--color-error-bg)', color: 'var(--color-error)' }
+                    : todoStatus === 'ok'
+                      ? { background: 'var(--color-success-bg)', color: 'var(--color-success)' }
+                      : { color: 'var(--text-muted)' }}
+                >
+                  {todoStatus === 'saving' && <span className="animate-spin inline-block">⟳</span>}
+                  {todoStatus === 'ok' && '✓ Sauvegardé'}
+                  {todoStatus === 'error' && '⚠ Erreur'}
+                </span>
+              )}
+              <button
+                onClick={() => setSelectedId(null)}
+                title="Fermer"
+                style={{
+                  color: 'var(--text-muted)', fontSize: 15, lineHeight: 1,
+                  marginTop: 2, background: 'transparent', border: 'none', cursor: 'pointer',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Contenu des blocs */}
@@ -241,7 +283,7 @@ export function BriefingView() {
             ) : blocks.length === 0 ? (
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>(Page vide)</p>
             ) : (
-              <NotionBlockRenderer blocks={blocks} />
+              <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} />
             )}
           </div>
         </div>

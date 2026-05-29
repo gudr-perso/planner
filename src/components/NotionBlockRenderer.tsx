@@ -50,7 +50,11 @@ function getRT(block: NotionBlock): NotionRichText[] {
   return (data?.rich_text as NotionRichText[]) ?? [];
 }
 
-function BlockItem({ block, listIndex }: { block: NotionBlock; listIndex: number }) {
+function BlockItem({ block, listIndex, onToggleTodo }: {
+  block: NotionBlock;
+  listIndex: number;
+  onToggleTodo?: (blockId: string, checked: boolean) => void;
+}) {
   const rt = getRT(block);
 
   switch (block.type) {
@@ -105,18 +109,26 @@ function BlockItem({ block, listIndex }: { block: NotionBlock; listIndex: number
 
     case 'to_do': {
       const checked = !!((block.to_do as Record<string, unknown>)?.checked);
+      const interactive = !!onToggleTodo;
       return (
-        <div style={{ display: 'flex', gap: 8, margin: '3px 0', paddingLeft: 6, alignItems: 'flex-start' }}>
+        <div
+          style={{ display: 'flex', gap: 8, margin: '3px 0', paddingLeft: 6, alignItems: 'flex-start', cursor: interactive ? 'pointer' : undefined }}
+          onClick={interactive ? () => onToggleTodo!(block.id, !checked) : undefined}
+        >
           <span style={{
-            width: 15, height: 15, borderRadius: 3, border: '1.5px solid var(--border)',
+            width: 15, height: 15, borderRadius: 3,
+            border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
             background: checked ? 'var(--accent)' : 'transparent',
             flexShrink: 0, marginTop: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'background 120ms, border-color 120ms',
+            boxShadow: interactive ? '0 0 0 0 var(--accent)' : undefined,
           }}>
             {checked && <span style={{ color: 'var(--accent-fg)', fontSize: 9, fontWeight: 700, lineHeight: 1 }}>✓</span>}
           </span>
           <span style={{
             color: checked ? 'var(--text-muted)' : 'var(--text)',
             textDecoration: checked ? 'line-through' : undefined,
+            userSelect: interactive ? 'none' : undefined,
           }}>
             <RichText parts={rt} />
           </span>
@@ -185,7 +197,13 @@ function BlockItem({ block, listIndex }: { block: NotionBlock; listIndex: number
   }
 }
 
-export function NotionBlockRenderer({ blocks }: { blocks: NotionBlock[] }) {
+export function NotionBlockRenderer({
+  blocks,
+  onToggleTodo,
+}: {
+  blocks: NotionBlock[];
+  onToggleTodo?: (blockId: string, checked: boolean) => void;
+}) {
   let listCounter = 0;
 
   return (
@@ -197,7 +215,7 @@ export function NotionBlockRenderer({ blocks }: { blocks: NotionBlock[] }) {
         } else {
           listCounter = 0;
         }
-        return <BlockItem key={block.id} block={block} listIndex={listCounter} />;
+        return <BlockItem key={block.id} block={block} listIndex={listCounter} onToggleTodo={onToggleTodo} />;
       })}
     </div>
   );
