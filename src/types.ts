@@ -115,6 +115,8 @@ export type BriefingConfig = {
   titleField: string;
   dateField: string;
   summaryField: string;
+  statusField?: string;   // champ État à filtrer
+  statusDoneValue?: string; // valeur à exclure (défaut : "Terminé")
 };
 
 export type BriefingEntry = {

@@ -476,6 +476,19 @@ export function SettingsView({
                 <FieldRow label="Champ En bref">
                   <PropCombo value={briefingConfig.summaryField} onChange={v => setBriefingConfig(prev => ({ ...prev, summaryField: v }))} schema={briefingSchema} />
                 </FieldRow>
+                <FieldRow label="Champ État">
+                  <PropCombo value={briefingConfig.statusField ?? ''} onChange={v => setBriefingConfig(prev => ({ ...prev, statusField: v }))} schema={briefingSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Valeur Terminé">
+                  <input
+                    type="text"
+                    value={briefingConfig.statusDoneValue ?? ''}
+                    onChange={e => setBriefingConfig(prev => ({ ...prev, statusDoneValue: e.target.value }))}
+                    placeholder="Terminé"
+                    className="flex-1 text-xs rounded px-2 py-1.5 outline-none"
+                    style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  />
+                </FieldRow>
               </>
             )}
             <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">

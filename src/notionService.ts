@@ -436,15 +436,49 @@ export async function fetchBriefings(token: string, config: BriefingConfig): Pro
   const entries: BriefingEntry[] = [];
   let cursor: string | undefined;
 
+  const doneValue = config.statusDoneValue || 'Terminé';
+  // Filtre d'exclusion : essaie d'abord le type "status", puis "select" en fallback
+  const buildFilter = (type: 'status' | 'select'): Record<string, unknown> | undefined =>
+    config.statusField
+      ? { property: config.statusField, [type]: { does_not_equal: doneValue } }
+      : undefined;
+
+  let activeFilter = buildFilter('status');
+
   do {
     const body: Record<string, unknown> = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
+    if (activeFilter) body.filter = activeFilter;
     body.sorts = config.dateField
       ? [{ property: config.dateField, direction: 'descending' }]
       : [{ timestamp: 'created_time', direction: 'descending' }];
 
-    const res = await nPost(token, `/databases/${config.databaseId}/query`, body);
-    const pages = (res.results ?? []) as Array<{ id: string; created_time?: string; properties: Record<string, PropVal> }>;
+    let res: Record<string, unknown>;
+    try {
+      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    } catch (e) {
+      if (activeFilter && !cursor) {
+        // Le type "status" a été rejeté → on tente "select"
+        activeFilter = buildFilter('select');
+        if (activeFilter) {
+          body.filter = activeFilter;
+          try {
+            res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+          } catch {
+            // Dernier fallback : sans filtre
+            delete body.filter;
+            activeFilter = undefined;
+            res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+          }
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
+    }
+
+    const pages = (res!.results ?? []) as Array<{ id: string; created_time?: string; properties: Record<string, PropVal> }>;
 
     for (const page of pages) {
       const props = page.properties;
