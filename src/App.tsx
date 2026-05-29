@@ -20,6 +20,7 @@ import { GcalModal } from './components/GcalModal';
 import { BriefingView } from './components/BriefingView';
 import { PartenairesView } from './components/PartenairesView';
 import { SuivisView } from './components/SuivisView';
+import { HomeView } from './components/HomeView';
 import type { PartenaireEntry } from './types';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
@@ -73,7 +74,7 @@ function useResizablePanel(storageKey: string, initialWidth: number, min = 180, 
 function PlannerApp() {
   const [data, setData] = useState<DataBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<ViewKey>(() => load<ViewKey>('view', 'calendar'));
+  const [view, setView] = useState<ViewKey>(() => load<ViewKey>('view', 'home'));
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => load<boolean>('sidebarCollapsed', false));
   const [gcalToken, setGcalToken] = useState<string | null>(loadToken);
   const [modalTaskId, setModalTaskId] = useState<string | null>(null);
@@ -95,6 +96,28 @@ function PlannerApp() {
   }));
 
   const { width: panelWidth, onMouseDown: onPanelResize } = useResizablePanel('panelWidth', 280);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshData = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (dataSource === 'notion') {
+        const cfg = load<NotionConfig | null>('notionConfig', null);
+        if (cfg?.integrationToken && cfg?.databaseId) {
+          const d = await syncFromNotion(cfg);
+          setData((prev) => ({ ...d, googleEvents: prev?.googleEvents ?? [] }));
+          return;
+        }
+      }
+      const d = await loadDemoData();
+      setData((prev) => prev ? { ...d, googleEvents: prev.googleEvents } : d);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dataSource]);
 
   useEffect(() => {
     if (dataSource === 'notion') {
@@ -275,10 +298,12 @@ function PlannerApp() {
               onSuivisSearch={setSuivisSearch}
               suivisPartenaireFilterLabel={partenaireFilter?.title}
               onClearSuivisFilter={() => setPartenaireFilter(null)}
+              onRefresh={refreshData}
+              refreshing={refreshing}
             />
             <div className="flex-1 flex min-h-0 relative">
-              {view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && <UnplannedPanel width={panelWidth} />}
-              {view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && (
+              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && <UnplannedPanel width={panelWidth} />}
+              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
                   style={{ background: 'var(--border)' }}
@@ -288,8 +313,9 @@ function PlannerApp() {
                   title="Redimensionner"
                 />
               )}
-              <main className="flex-1 min-w-0 overflow-hidden" style={{ background: 'var(--surface)' }}>
-                {view === 'calendar' ? <CalendarView />
+              <main className="flex-1 min-w-0 overflow-hidden" style={{ background: view === 'home' ? 'var(--bg-deep, #02071f)' : 'var(--surface)' }}>
+                {view === 'home' ? <HomeView onNavigate={setView} />
+                  : view === 'calendar' ? <CalendarView />
                   : view === 'rolling'  ? <RollingWeeksView />
                   : view === 'rolling2' ? <RollingWeeksView2 />
                   : view === 'settings' ? <SettingsView onSync={handleNotionSync} />

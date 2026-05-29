@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 
-export type ViewKey = 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'partenaires' | 'suivis';
+export type ViewKey = 'home' | 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'partenaires' | 'suivis';
 
 function SubprojectDropdown({
   subprojects,
@@ -162,6 +162,8 @@ export function Toolbar({
   onSuivisSearch,
   suivisPartenaireFilterLabel,
   onClearSuivisFilter,
+  onRefresh,
+  refreshing,
 }: {
   view: ViewKey;
   onView: (v: ViewKey) => void;
@@ -173,6 +175,8 @@ export function Toolbar({
   onSuivisSearch?: (s: string) => void;
   suivisPartenaireFilterLabel?: string;
   onClearSuivisFilter?: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   const store = useStore();
   const { filters, setFilters, gcal } = store;
@@ -185,7 +189,7 @@ export function Toolbar({
   };
 
   // Vues sans planning (pas de filtres projet/personnes)
-  const isNonPlanningView = view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis';
+  const isNonPlanningView = view === 'home' || view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis';
 
   return (
     <header className="border-b px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-2 shrink-0" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
@@ -392,6 +396,19 @@ export function Toolbar({
             </span>
           )}
         </div>
+
+        {/* Refresh */}
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded border transition disabled:opacity-50"
+            style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+            title="Recharger les données"
+          >
+            <span className={refreshing ? 'animate-spin' : ''} style={{ fontSize: 13 }}>⟳</span>
+          </button>
+        )}
 
         {/* Theme switch */}
         <button

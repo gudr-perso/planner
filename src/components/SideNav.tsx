@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, FileText, Home, Settings, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 
 const PLANNING_VIEWS: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt'];
 
-type NavItemDef = { key: string; icon: string; label: string };
+type NavItemDef = { key: string; icon: React.ReactNode; label: string };
 
 const MAIN_ITEMS: NavItemDef[] = [
-  { key: 'planning',    icon: '📅', label: 'Planning' },
-  { key: 'briefing',   icon: '⏰', label: 'Briefing' },
-  { key: 'partenaires', icon: '🤝', label: 'Partenaires' },
-  { key: 'suivis',     icon: '📋', label: 'Suivis' },
+  { key: 'home',        icon: <Home size={17} />,        label: 'Accueil' },
+  { key: 'planning',    icon: <CalendarDays size={17} />, label: 'Planning' },
+  { key: 'briefing',   icon: <AlarmClock size={17} />, label: 'Briefing' },
+  { key: 'partenaires', icon: <Users size={17} />, label: 'Partenaires' },
+  { key: 'suivis',     icon: <FileText size={17} />, label: 'Suivis' },
 ];
 
 const BOTTOM_ITEMS: NavItemDef[] = [
-  { key: 'settings', icon: '⚙', label: 'Paramètres' },
+  { key: 'settings', icon: <Settings size={17} />, label: 'Paramètres' },
 ];
 
 function NavItem({
@@ -58,7 +60,7 @@ function NavItem({
         minWidth: 0,
       }}
     >
-      <span style={{ fontSize: 17, flexShrink: 0, lineHeight: 1 }}>{item.icon}</span>
+      <span style={{ flexShrink: 0, lineHeight: 1, display: 'flex' }}>{item.icon}</span>
       {!collapsed && (
         <span style={{
           fontSize: 13,
@@ -158,7 +160,7 @@ export function SideNav({
           onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; }}
         >
-          {collapsed ? '›' : '‹'}
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
     </nav>
