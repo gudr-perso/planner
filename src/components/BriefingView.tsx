@@ -5,10 +5,15 @@ import type { BriefingConfig, BriefingEntry, NotionBlock, NotionConfig } from '.
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 
 // ── Resize hook — panneau droit ────────────────────────────────────────────────
-function useResizableRightPanel(storageKey: string, initialWidth: number, min = 320, max = 900) {
+function useResizableRightPanel(storageKey: string, initialWidth: number, minRight = 280, minLeft = 280) {
   const [width, setWidth] = useState(() => load<number>(storageKey, initialWidth));
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+
+  const clamp = (raw: number) => {
+    const containerW = containerRef.current?.getBoundingClientRect().width ?? Infinity;
+    return Math.max(minRight, Math.min(containerW - minLeft, raw));
+  };
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -16,14 +21,13 @@ function useResizableRightPanel(storageKey: string, initialWidth: number, min = 
     const onMove = (ev: MouseEvent) => {
       if (!dragging.current || !containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const next = Math.max(min, Math.min(max, rect.right - ev.clientX));
-      setWidth(next);
+      setWidth(clamp(rect.right - ev.clientX));
     };
     const onUp = (ev: MouseEvent) => {
       dragging.current = false;
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        const next = Math.max(min, Math.min(max, rect.right - ev.clientX));
+        const next = clamp(rect.right - ev.clientX);
         setWidth(next);
         save(storageKey, next);
       }
@@ -32,7 +36,7 @@ function useResizableRightPanel(storageKey: string, initialWidth: number, min = 
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [storageKey, min, max]);
+  }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { width, containerRef, onMouseDown };
 }
