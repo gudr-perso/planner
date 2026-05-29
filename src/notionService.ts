@@ -556,6 +556,7 @@ export async function fetchPartenaires(token: string, config: PartenairesConfig)
       url?: string;
       created_time?: string;
       properties: Record<string, PropVal>;
+      icon?: { type: string; emoji?: string; external?: { url: string }; file?: { url: string } };
     }>;
 
     for (const page of pages) {
@@ -594,7 +595,17 @@ export async function fetchPartenaires(token: string, config: PartenairesConfig)
         return [];
       })();
 
-      entries.push({ id: page.id, title, shortCode, etatSuivis, types, notion_url: page.url });
+      // Icône Notion (emoji ou image)
+      let icon: PartenaireEntry['icon'];
+      if (page.icon?.type === 'emoji' && page.icon.emoji) {
+        icon = { type: 'emoji', emoji: page.icon.emoji };
+      } else if (page.icon?.type === 'external' && page.icon.external?.url) {
+        icon = { type: 'image', url: page.icon.external.url };
+      } else if (page.icon?.type === 'file' && page.icon.file?.url) {
+        icon = { type: 'image', url: page.icon.file.url };
+      }
+
+      entries.push({ id: page.id, title, shortCode, etatSuivis, types, notion_url: page.url, icon });
     }
 
     cursor = res!.has_more ? String(res!.next_cursor) : undefined;

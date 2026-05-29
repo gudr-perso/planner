@@ -253,6 +253,44 @@ function CardView({
   );
 }
 
+function PartenaireAvatar({ entry }: { entry: PartenaireEntry }) {
+  const initials = entry.title
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('');
+
+  if (entry.icon?.type === 'emoji') {
+    return (
+      <span style={{ fontSize: 28, lineHeight: 1 }}>{entry.icon.emoji}</span>
+    );
+  }
+  if (entry.icon?.type === 'image') {
+    return (
+      <img
+        src={entry.icon.url}
+        alt=""
+        style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover' }}
+      />
+    );
+  }
+  return (
+    <span
+      style={{
+        width: 32, height: 32, borderRadius: 6,
+        background: 'color-mix(in srgb, var(--accent) 18%, var(--bg-deep))',
+        color: 'var(--accent)',
+        fontSize: 12, fontWeight: 700,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      {initials || '?'}
+    </span>
+  );
+}
+
 function PartenaireCard({ entry, onOpen }: { entry: PartenaireEntry; onOpen: (p: PartenaireEntry) => void }) {
   const [hovered, setHovered] = useState(false);
   const badges = parseEtatBadges(entry.etatSuivis);
@@ -272,6 +310,11 @@ function PartenaireCard({ entry, onOpen }: { entry: PartenaireEntry; onOpen: (p:
         cursor: 'pointer',
       }}
     >
+      {/* Avatar (emoji / image / initiales) */}
+      <div className="mb-2">
+        <PartenaireAvatar entry={entry} />
+      </div>
+
       {/* Nom */}
       <span
         className="text-xs font-semibold leading-tight mb-1"
@@ -403,8 +446,11 @@ function PartenaireRow({ entry, onOpen }: { entry: PartenaireEntry; onOpen: (p: 
         transition: 'background 100ms',
       }}
     >
-      <td className="px-4 py-2.5" style={{ color: 'var(--text)', fontWeight: 500 }}>
-        {entry.title}
+      <td className="px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <PartenaireAvatar entry={entry} />
+          <span style={{ color: 'var(--text)', fontWeight: 500 }}>{entry.title}</span>
+        </div>
       </td>
       <td className="px-4 py-2.5" style={{ color: 'var(--text-muted)' }}>
         {entry.shortCode || '—'}

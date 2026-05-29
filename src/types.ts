@@ -118,6 +118,10 @@ export type PartenairesConfig = {
   typeField: string;        // multi_select (regroupement)
 };
 
+export type PartenaireIcon =
+  | { type: 'emoji'; emoji: string }
+  | { type: 'image'; url: string };
+
 export type PartenaireEntry = {
   id: string;
   title: string;
@@ -125,6 +129,7 @@ export type PartenaireEntry = {
   etatSuivis: string;
   types: string[];
   notion_url?: string;
+  icon?: PartenaireIcon;
 };
 
 // ── Suivis ────────────────────────────────────────────────────────────────────
