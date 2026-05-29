@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { load } from '../persistence';
+import { load, save } from '../persistence';
 import { fetchSuivis, fetchPageBlocks, patchBlockChecked } from '../notionService';
 import type { NotionBlock, NotionConfig, PartenaireEntry, SuivisConfig, SuiviEntry } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
@@ -40,6 +40,7 @@ export function SuivisView({
 
   const [search, setSearch] = useState('');
   const [suivisFilter, setSuivisFilter] = useState('');
+  const [showClos, setShowClos] = useState(() => load<boolean>('suivis-show-clos', false));
   const [sortKey, setSortKey] = useState<SortKey>('lastActionDate');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -98,6 +99,7 @@ export function SuivisView({
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     let list = entries;
+    if (!showClos) list = list.filter(e => e.suivi !== 'Clos');
     if (q) list = list.filter(e => e.title.toLowerCase().includes(q));
     if (suivisFilter) list = list.filter(e => e.suivi === suivisFilter);
 
@@ -168,6 +170,20 @@ export function SuivisView({
           )}
 
           <div className="flex items-center gap-2 ml-auto">
+            {/* Toggle clos */}
+            <button
+              onClick={() => { const v = !showClos; setShowClos(v); save('suivis-show-clos', v); }}
+              className="text-xs px-2.5 py-1 rounded transition-all"
+              style={{
+                background: showClos ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'var(--bg-deep)',
+                color: showClos ? 'var(--accent)' : 'var(--text-muted)',
+                border: `1px solid ${showClos ? 'color-mix(in srgb, var(--accent) 35%, transparent)' : 'var(--border)'}`,
+              }}
+              title={showClos ? 'Masquer les clos' : 'Afficher les clos'}
+            >
+              {showClos ? '🔓' : '🔒'} Clos
+            </button>
+
             {/* Filtre suivi */}
             {suivisValues.length > 0 && (
               <select
