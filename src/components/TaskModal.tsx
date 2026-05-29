@@ -14,9 +14,14 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
   const person = store.personById.get(task.assignee_id);
   const statusColor = STATUS_COLORS[task.status];
 
-  const fmt = (iso: string | null) => iso
-    ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
-    : '—';
+  const fmt = (iso: string | null) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const datePart = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (!iso.includes('T')) return datePart;
+    const timePart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return `${datePart} ${timePart}`;
+  };
 
   return (
     <div

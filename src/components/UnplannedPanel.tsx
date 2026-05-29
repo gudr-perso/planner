@@ -3,7 +3,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { useStore, colorForTask } from '../store';
 import { STATUS_COLORS, STATUS_LABELS } from '../types';
 import { save, load } from '../persistence';
-import type { Task } from '../types';
+import type { Task, Status } from '../types';
 
 // ── Grouping ──────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ const GROUP_OPTIONS: { label: string; value: GroupBy }[] = [
 function DraggableTask({ task, hideProject, hideStatus }: { task: Task; hideProject?: boolean; hideStatus?: boolean }) {
   const store = useStore();
   const color = colorForTask(task, store);
+  const handleClick = () => store.openTaskModal(task.id);
   const project = store.projectById.get(task.project_id);
   const person = store.personById.get(task.assignee_id);
 
@@ -39,6 +40,7 @@ function DraggableTask({ task, hideProject, hideStatus }: { task: Task; hideProj
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      onClick={handleClick}
       className={`select-none rounded-lg p-2.5 cursor-grab active:cursor-grabbing transition-all ${
         isDragging ? 'opacity-30 scale-95' : 'hover:brightness-110'
       }`}
@@ -105,6 +107,18 @@ export function UnplannedPanel({ width }: { width: number }) {
   const store = useStore();
   const [groupBy, setGroupBy] = useState<GroupBy>(() => load<GroupBy>('unplannedGroup', 'none'));
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [filterStatuses, setFilterStatuses] = useState<Set<Status>>(
+    () => new Set(load<Status[]>('unplannedFilterStatuses', []))
+  );
+
+  const toggleStatus = (s: Status) => {
+    setFilterStatuses(prev => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      save('unplannedFilterStatuses', [...next]);
+      return next;
+    });
+  };
 
   const handleGroup = (g: GroupBy) => {
     setGroupBy(g);
@@ -129,8 +143,14 @@ export function UnplannedPanel({ width }: { width: number }) {
     const projOk = store.filters.projectIds.size === 0 || store.filters.projectIds.has(t.project_id);
     const persOk = store.filters.assigneeIds.size === 0 || store.filters.assigneeIds.has(t.assignee_id);
     const spOk = store.filters.subprojectIds.size === 0 || (t.subproject_id ? store.filters.subprojectIds.has(t.subproject_id) : true);
-    return projOk && persOk && spOk;
+    const statusOk = filterStatuses.size === 0 || filterStatuses.has(t.status);
+    return projOk && persOk && spOk && statusOk;
   });
+
+  const availableStatuses = useMemo(
+    () => [...new Set(unplanned.map(t => t.status))] as Status[],
+    [unplanned]
+  );
 
   // Build groups
   type Group = { key: string; label: string | null; color: string; tasks: Task[] };
@@ -200,6 +220,28 @@ export function UnplannedPanel({ width }: { width: number }) {
             </button>
           ))}
         </div>
+
+        {/* Status filter */}
+        {availableStatuses.length > 0 && (
+          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+            <span className="text-[10px] shrink-0 mr-0.5" style={{ color: 'var(--text-muted)' }}>Statut :</span>
+            {availableStatuses.map(s => {
+              const active = filterStatuses.has(s);
+              return (
+                <button
+                  key={s}
+                  onClick={() => toggleStatus(s)}
+                  className="text-[9px] px-1.5 py-0.5 rounded transition"
+                  style={active
+                    ? { background: STATUS_COLORS[s], color: '#fff', fontWeight: 600 }
+                    : { background: STATUS_COLORS[s] + '25', color: STATUS_COLORS[s] }}
+                >
+                  {STATUS_LABELS[s]}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Hint */}
