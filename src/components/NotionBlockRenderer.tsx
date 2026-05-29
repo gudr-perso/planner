@@ -115,31 +115,51 @@ function CalloutBlock({ block }: { block: NotionBlock }) {
 
 // ── ToggleBlock : fetch lazy au premier clic ───────────────────────────────────
 function ToggleBlock({ block }: { block: NotionBlock }) {
-  const { onToggleTodo } = useContext(BlockCtx);
+  const { onToggleTodo, token } = useContext(BlockCtx);
   const [open, setOpen] = useState(false);
   const rt = getRT(block);
-  const { kids, loading, fetch } = useBlockChildren(block, false /* fetchOnMount */);
+
+  // Initialise avec les enfants pré-chargés si disponibles
+  const [kids, setKids] = useState<NotionBlock[]>(
+    () => ((block as Record<string, unknown>)._children as NotionBlock[]) ?? []
+  );
+  const [loading, setLoading] = useState(false);
+  const fetched = useRef(
+    ((block as Record<string, unknown>)._children as NotionBlock[] | undefined) !== undefined
+  );
 
   const handleToggle = () => {
-    if (!open) fetch(); // déclenche le fetch au premier clic si besoin
+    // Fetch au premier clic — sans vérifier has_children (parfois faux côté API Notion)
+    if (!open && !fetched.current && token) {
+      fetched.current = true;
+      setLoading(true);
+      fetchPageBlocks(token, block.id)
+        .then(setKids)
+        .catch(() => { /* silencieux */ })
+        .finally(() => setLoading(false));
+    }
     setOpen(o => !o);
   };
 
   return (
     <div style={{ margin: '3px 0' }}>
       <div
-        style={{
-          display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer',
-          userSelect: 'none', color: 'var(--text)',
-        }}
+        style={{ display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer', userSelect: 'none' }}
         onClick={handleToggle}
       >
+        {/* Triangle CSS — indépendant de la police */}
         <span style={{
-          fontSize: 10, marginTop: '0.45em', flexShrink: 0, transition: 'transform 120ms',
-          display: 'inline-block', transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
-          color: 'var(--text-muted)',
-        }}>▶</span>
-        <span style={{ fontWeight: 500 }}><RichText parts={rt} /></span>
+          display: 'inline-block',
+          width: 0, height: 0,
+          borderTop: '4px solid transparent',
+          borderBottom: '4px solid transparent',
+          borderLeft: '6px solid var(--text-muted)',
+          marginTop: '0.5em',
+          flexShrink: 0,
+          transition: 'transform 120ms',
+          transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+        }} />
+        <span style={{ color: 'var(--text)', fontWeight: 500 }}><RichText parts={rt} /></span>
         {loading && <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>…</span>}
       </div>
       {open && kids.length > 0 && (
