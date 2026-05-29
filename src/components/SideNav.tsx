@@ -7,7 +7,7 @@ type NavItemDef = { key: string; icon: string; label: string };
 
 const MAIN_ITEMS: NavItemDef[] = [
   { key: 'planning',    icon: '📅', label: 'Planning' },
-  { key: 'briefing',   icon: '☀️', label: 'Briefing' },
+  { key: 'briefing',   icon: '⏰', label: 'Briefing' },
   { key: 'partenaires', icon: '🤝', label: 'Partenaires' },
   { key: 'suivis',     icon: '📋', label: 'Suivis' },
 ];
