@@ -485,6 +485,11 @@ function BlockItem({ block, listIndex }: {
     case 'tab':
       return <TabBlock block={block} />;
 
+    // Blocs non exposés par l'API Notion → silencer (ne pas afficher le message d'erreur)
+    case 'unsupported':
+    case 'ai_block':
+      return null;
+
     default:
       if (rt.length > 0) {
         return (
