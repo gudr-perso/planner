@@ -1,6 +1,40 @@
-import { useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { fetchPageBlocks } from '../notionService';
 import type { NotionBlock, NotionRichText } from '../types';
 
+// ── Context (token + todo handler propagés à tous les sous-composants) ─────────
+type BlockCtxType = {
+  token: string;
+  onToggleTodo?: (blockId: string, checked: boolean) => void;
+};
+const BlockCtx = createContext<BlockCtxType>({ token: '' });
+
+// ── Hook : enfants pré-chargés ou fetch lazy ────────────────────────────────
+function useBlockChildren(block: NotionBlock, fetchOnMount: boolean) {
+  const { token } = useContext(BlockCtx);
+  const preloaded = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
+  const [kids, setKids] = useState<NotionBlock[]>(preloaded ?? []);
+  const [loading, setLoading] = useState(false);
+  // didFetch évite les doubles appels sans provoquer de re-render
+  const didFetch = useRef(preloaded !== undefined);
+
+  const doFetch = () => {
+    if (didFetch.current || !block.has_children || !token) return;
+    didFetch.current = true;
+    setLoading(true);
+    fetchPageBlocks(token, block.id)
+      .then(setKids)
+      .catch(() => { /* silencieux */ })
+      .finally(() => setLoading(false));
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (fetchOnMount) doFetch(); }, []);
+
+  return { kids, loading, fetch: doFetch };
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 function notionColorToCSS(color: string): string {
   const map: Record<string, string> = {
     gray: '#9b9b9b', brown: '#64473a', orange: '#d9730d', yellow: '#dfab01',
@@ -28,7 +62,8 @@ function RichText({ parts }: { parts: NotionRichText[] }) {
           textDecoration: [ann.strikethrough && 'line-through', ann.underline && 'underline'].filter(Boolean).join(' ') || undefined,
           color: ann.color && ann.color !== 'default' && !ann.color.endsWith('_background')
             ? notionColorToCSS(ann.color) : undefined,
-          background: ann.color?.endsWith('_background') ? notionColorToCSS(ann.color.replace('_background', '')) + '33' : undefined,
+          background: ann.color?.endsWith('_background')
+            ? notionColorToCSS(ann.color.replace('_background', '')) + '33' : undefined,
         };
         if (ann.code) {
           return (
@@ -51,11 +86,77 @@ function getRT(block: NotionBlock): NotionRichText[] {
   return (data?.rich_text as NotionRichText[]) ?? [];
 }
 
-function BlockItem({ block, listIndex, onToggleTodo }: {
+// ── CalloutBlock : fetch automatique des enfants au montage ────────────────────
+function CalloutBlock({ block }: { block: NotionBlock }) {
+  const { onToggleTodo } = useContext(BlockCtx);
+  const rt = getRT(block);
+  const data = block.callout as Record<string, unknown> | undefined;
+  const icon = (data?.icon as Record<string, unknown>)?.emoji as string ?? '💡';
+  const { kids, loading } = useBlockChildren(block, true /* fetchOnMount */);
+
+  return (
+    <div style={{
+      display: 'flex', gap: 10, padding: '10px 14px', margin: '8px 0',
+      background: 'var(--bg-deep)', borderRadius: 6, border: '1px solid var(--border)',
+    }}>
+      <span style={{ fontSize: 16, flexShrink: 0, lineHeight: '1.6' }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {rt.length > 0 && <span style={{ color: 'var(--text)' }}><RichText parts={rt} /></span>}
+        {loading && (
+          <span className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>…</span>
+        )}
+        {kids.length > 0 && (
+          <NotionBlockRenderer blocks={kids} onToggleTodo={onToggleTodo} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── ToggleBlock : fetch lazy au premier clic ───────────────────────────────────
+function ToggleBlock({ block }: { block: NotionBlock }) {
+  const { onToggleTodo } = useContext(BlockCtx);
+  const [open, setOpen] = useState(false);
+  const rt = getRT(block);
+  const { kids, loading, fetch } = useBlockChildren(block, false /* fetchOnMount */);
+
+  const handleToggle = () => {
+    if (!open) fetch(); // déclenche le fetch au premier clic si besoin
+    setOpen(o => !o);
+  };
+
+  return (
+    <div style={{ margin: '3px 0' }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer',
+          userSelect: 'none', color: 'var(--text)',
+        }}
+        onClick={handleToggle}
+      >
+        <span style={{
+          fontSize: 10, marginTop: '0.45em', flexShrink: 0, transition: 'transform 120ms',
+          display: 'inline-block', transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+          color: 'var(--text-muted)',
+        }}>▶</span>
+        <span style={{ fontWeight: 500 }}><RichText parts={rt} /></span>
+        {loading && <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>…</span>}
+      </div>
+      {open && kids.length > 0 && (
+        <div style={{ paddingLeft: 22, marginTop: 2 }}>
+          <NotionBlockRenderer blocks={kids} onToggleTodo={onToggleTodo} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── BlockItem ──────────────────────────────────────────────────────────────────
+function BlockItem({ block, listIndex }: {
   block: NotionBlock;
   listIndex: number;
-  onToggleTodo?: (blockId: string, checked: boolean) => void;
 }) {
+  const { onToggleTodo } = useContext(BlockCtx);
   const rt = getRT(block);
 
   switch (block.type) {
@@ -100,7 +201,7 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
           </div>
           {bulletKids && bulletKids.length > 0 && (
             <div style={{ paddingLeft: 13 }}>
-              <NotionBlockRenderer blocks={bulletKids} onToggleTodo={onToggleTodo} />
+              <NotionBlockRenderer blocks={bulletKids} />
             </div>
           )}
         </div>
@@ -119,7 +220,7 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
           </div>
           {numKids && numKids.length > 0 && (
             <div style={{ paddingLeft: 26 }}>
-              <NotionBlockRenderer blocks={numKids} onToggleTodo={onToggleTodo} />
+              <NotionBlockRenderer blocks={numKids} />
             </div>
           )}
         </div>
@@ -156,7 +257,7 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
           </div>
           {todoKids && todoKids.length > 0 && (
             <div style={{ paddingLeft: 23 }}>
-              <NotionBlockRenderer blocks={todoKids} onToggleTodo={onToggleTodo} />
+              <NotionBlockRenderer blocks={todoKids} />
             </div>
           )}
         </div>
@@ -166,25 +267,8 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
     case 'divider':
       return <hr style={{ margin: '14px 0', border: 'none', borderTop: '1px solid var(--border)' }} />;
 
-    case 'callout': {
-      const data = block.callout as Record<string, unknown> | undefined;
-      const icon = (data?.icon as Record<string, unknown>)?.emoji as string ?? '💡';
-      const calloutKids = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
-      return (
-        <div style={{
-          display: 'flex', gap: 10, padding: '10px 14px', margin: '8px 0',
-          background: 'var(--bg-deep)', borderRadius: 6, border: '1px solid var(--border)',
-        }}>
-          <span style={{ fontSize: 16, flexShrink: 0, lineHeight: '1.6' }}>{icon}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {rt.length > 0 && <span style={{ color: 'var(--text)' }}><RichText parts={rt} /></span>}
-            {calloutKids && calloutKids.length > 0 && (
-              <NotionBlockRenderer blocks={calloutKids} onToggleTodo={onToggleTodo} />
-            )}
-          </div>
-        </div>
-      );
-    }
+    case 'callout':
+      return <CalloutBlock block={block} />;
 
     case 'quote':
       return (
@@ -219,7 +303,7 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
     }
 
     case 'toggle':
-      return <ToggleBlock block={block} onToggleTodo={onToggleTodo} />;
+      return <ToggleBlock block={block} />;
 
     default:
       if (rt.length > 0) {
@@ -233,62 +317,36 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
   }
 }
 
-function ToggleBlock({
-  block,
-  onToggleTodo,
-}: {
-  block: NotionBlock;
-  onToggleTodo?: (blockId: string, checked: boolean) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const rt = getRT(block);
-  const children = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
-
-  return (
-    <div style={{ margin: '3px 0' }}>
-      <div
-        style={{
-          display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer',
-          userSelect: 'none', color: 'var(--text)',
-        }}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span style={{
-          fontSize: 10, marginTop: '0.45em', flexShrink: 0, transition: 'transform 120ms',
-          display: 'inline-block', transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
-          color: 'var(--text-muted)',
-        }}>▶</span>
-        <span style={{ fontWeight: 500 }}><RichText parts={rt} /></span>
-      </div>
-      {open && children && children.length > 0 && (
-        <div style={{ paddingLeft: 22, marginTop: 2 }}>
-          <NotionBlockRenderer blocks={children} onToggleTodo={onToggleTodo} />
-        </div>
-      )}
-    </div>
-  );
-}
-
+// ── Export principal ──────────────────────────────────────────────────────────
 export function NotionBlockRenderer({
   blocks,
   onToggleTodo,
+  token,
 }: {
   blocks: NotionBlock[];
   onToggleTodo?: (blockId: string, checked: boolean) => void;
+  token?: string;
 }) {
+  // Hérite du contexte parent si pas de token explicite (appels récursifs)
+  const parentCtx = useContext(BlockCtx);
+  const effectiveToken = token ?? parentCtx.token;
+  const effectiveOnToggleTodo = onToggleTodo ?? parentCtx.onToggleTodo;
+
   let listCounter = 0;
 
   return (
-    <div style={{ color: 'var(--text)', lineHeight: '1.6', fontSize: 14 }}>
-      {blocks.map((block, idx) => {
-        if (block.type === 'numbered_list_item') {
-          if (idx === 0 || blocks[idx - 1].type !== 'numbered_list_item') listCounter = 0;
-          listCounter++;
-        } else {
-          listCounter = 0;
-        }
-        return <BlockItem key={block.id} block={block} listIndex={listCounter} onToggleTodo={onToggleTodo} />;
-      })}
-    </div>
+    <BlockCtx.Provider value={{ token: effectiveToken, onToggleTodo: effectiveOnToggleTodo }}>
+      <div style={{ color: 'var(--text)', lineHeight: '1.6', fontSize: 14 }}>
+        {blocks.map((block, idx) => {
+          if (block.type === 'numbered_list_item') {
+            if (idx === 0 || blocks[idx - 1].type !== 'numbered_list_item') listCounter = 0;
+            listCounter++;
+          } else {
+            listCounter = 0;
+          }
+          return <BlockItem key={block.id} block={block} listIndex={listCounter} />;
+        })}
+      </div>
+    </BlockCtx.Provider>
   );
 }

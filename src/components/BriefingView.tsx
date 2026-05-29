@@ -251,7 +251,7 @@ export function BriefingView() {
             ) : blocks.length === 0 ? (
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>(Page vide)</p>
             ) : (
-              <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} />
+              <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} token={token} />
             )}
           </div>
         </div>
