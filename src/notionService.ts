@@ -439,9 +439,9 @@ export async function fetchBriefings(token: string, config: BriefingConfig): Pro
   do {
     const body: Record<string, unknown> = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
-    if (config.dateField) {
-      body.sorts = [{ property: config.dateField, direction: 'descending' }];
-    }
+    body.sorts = config.dateField
+      ? [{ property: config.dateField, direction: 'descending' }]
+      : [{ timestamp: 'created_time', direction: 'descending' }];
 
     const res = await nPost(token, `/databases/${config.databaseId}/query`, body);
     const pages = (res.results ?? []) as Array<{ id: string; created_time?: string; properties: Record<string, PropVal> }>;
