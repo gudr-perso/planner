@@ -87,52 +87,78 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
         </h3>
       );
 
-    case 'bulleted_list_item':
+    case 'bulleted_list_item': {
+      const bulletKids = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
       return (
-        <div style={{ display: 'flex', gap: 8, margin: '3px 0', paddingLeft: 6 }}>
-          <span style={{
-            marginTop: '0.55em', width: 5, height: 5, borderRadius: '50%',
-            background: 'var(--text-muted)', flexShrink: 0,
-          }} />
-          <span style={{ color: 'var(--text)' }}><RichText parts={rt} /></span>
+        <div style={{ margin: '3px 0', paddingLeft: 6 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span style={{
+              marginTop: '0.55em', width: 5, height: 5, borderRadius: '50%',
+              background: 'var(--text-muted)', flexShrink: 0,
+            }} />
+            <span style={{ color: 'var(--text)' }}><RichText parts={rt} /></span>
+          </div>
+          {bulletKids && bulletKids.length > 0 && (
+            <div style={{ paddingLeft: 13 }}>
+              <NotionBlockRenderer blocks={bulletKids} onToggleTodo={onToggleTodo} />
+            </div>
+          )}
         </div>
       );
+    }
 
-    case 'numbered_list_item':
+    case 'numbered_list_item': {
+      const numKids = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
       return (
-        <div style={{ display: 'flex', gap: 8, margin: '3px 0', paddingLeft: 6 }}>
-          <span style={{ color: 'var(--text-muted)', flexShrink: 0, minWidth: 18, textAlign: 'right', lineHeight: '1.6' }}>
-            {listIndex}.
-          </span>
-          <span style={{ color: 'var(--text)' }}><RichText parts={rt} /></span>
+        <div style={{ margin: '3px 0', paddingLeft: 6 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span style={{ color: 'var(--text-muted)', flexShrink: 0, minWidth: 18, textAlign: 'right', lineHeight: '1.6' }}>
+              {listIndex}.
+            </span>
+            <span style={{ color: 'var(--text)' }}><RichText parts={rt} /></span>
+          </div>
+          {numKids && numKids.length > 0 && (
+            <div style={{ paddingLeft: 26 }}>
+              <NotionBlockRenderer blocks={numKids} onToggleTodo={onToggleTodo} />
+            </div>
+          )}
         </div>
       );
+    }
 
     case 'to_do': {
       const checked = !!((block.to_do as Record<string, unknown>)?.checked);
       const interactive = !!onToggleTodo;
+      const todoKids = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
       return (
-        <div
-          style={{ display: 'flex', gap: 8, margin: '3px 0', paddingLeft: 6, alignItems: 'flex-start', cursor: interactive ? 'pointer' : undefined }}
-          onClick={interactive ? () => onToggleTodo!(block.id, !checked) : undefined}
-        >
-          <span style={{
-            width: 15, height: 15, borderRadius: 3,
-            border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
-            background: checked ? 'var(--accent)' : 'transparent',
-            flexShrink: 0, marginTop: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'background 120ms, border-color 120ms',
-            boxShadow: interactive ? '0 0 0 0 var(--accent)' : undefined,
-          }}>
-            {checked && <span style={{ color: 'var(--accent-fg)', fontSize: 9, fontWeight: 700, lineHeight: 1 }}>✓</span>}
-          </span>
-          <span style={{
-            color: checked ? 'var(--text-muted)' : 'var(--text)',
-            textDecoration: checked ? 'line-through' : undefined,
-            userSelect: interactive ? 'none' : undefined,
-          }}>
-            <RichText parts={rt} />
-          </span>
+        <div style={{ margin: '3px 0', paddingLeft: 6 }}>
+          <div
+            style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: interactive ? 'pointer' : undefined }}
+            onClick={interactive ? () => onToggleTodo!(block.id, !checked) : undefined}
+          >
+            <span style={{
+              width: 15, height: 15, borderRadius: 3,
+              border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+              background: checked ? 'var(--accent)' : 'transparent',
+              flexShrink: 0, marginTop: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'background 120ms, border-color 120ms',
+              boxShadow: interactive ? '0 0 0 0 var(--accent)' : undefined,
+            }}>
+              {checked && <span style={{ color: 'var(--accent-fg)', fontSize: 9, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+            </span>
+            <span style={{
+              color: checked ? 'var(--text-muted)' : 'var(--text)',
+              textDecoration: checked ? 'line-through' : undefined,
+              userSelect: interactive ? 'none' : undefined,
+            }}>
+              <RichText parts={rt} />
+            </span>
+          </div>
+          {todoKids && todoKids.length > 0 && (
+            <div style={{ paddingLeft: 23 }}>
+              <NotionBlockRenderer blocks={todoKids} onToggleTodo={onToggleTodo} />
+            </div>
+          )}
         </div>
       );
     }
@@ -143,13 +169,19 @@ function BlockItem({ block, listIndex, onToggleTodo }: {
     case 'callout': {
       const data = block.callout as Record<string, unknown> | undefined;
       const icon = (data?.icon as Record<string, unknown>)?.emoji as string ?? '💡';
+      const calloutKids = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
       return (
         <div style={{
           display: 'flex', gap: 10, padding: '10px 14px', margin: '8px 0',
           background: 'var(--bg-deep)', borderRadius: 6, border: '1px solid var(--border)',
         }}>
           <span style={{ fontSize: 16, flexShrink: 0, lineHeight: '1.6' }}>{icon}</span>
-          <span style={{ color: 'var(--text)' }}><RichText parts={rt} /></span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {rt.length > 0 && <span style={{ color: 'var(--text)' }}><RichText parts={rt} /></span>}
+            {calloutKids && calloutKids.length > 0 && (
+              <NotionBlockRenderer blocks={calloutKids} onToggleTodo={onToggleTodo} />
+            )}
+          </div>
         </div>
       );
     }

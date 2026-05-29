@@ -224,8 +224,8 @@ export function SuivisView({
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   <SortTh col="title" label="Nom" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortTh col="suivi" label="Suivi" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={90} />
-                  <SortTh col="projets" label="Projets" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={140} />
-                  <SortTh col="partenaires" label="Partenaires" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={140} />
+                  <SortTh col="projets" label="Projets" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={280} />
+                  <SortTh col="partenaires" label="Partenaires" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={280} />
                   <SortTh col="contact" label="Contact" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={120} />
                   <SortTh col="createdTime" label="Créé le" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={90} />
                   <SortTh col="lastActionDate" label="Dernière action" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} width={110} />
@@ -435,14 +435,14 @@ function SuiviRow({
       </td>
 
       {/* Projets */}
-      <td className="px-4 py-2.5" style={{ color: 'var(--text-muted)', maxWidth: 140 }}>
+      <td className="px-4 py-2.5" style={{ color: 'var(--text-muted)', maxWidth: 280 }}>
         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {entry.projets.join(', ') || '—'}
         </span>
       </td>
 
       {/* Partenaires */}
-      <td className="px-4 py-2.5" style={{ color: 'var(--text-muted)', maxWidth: 140 }}>
+      <td className="px-4 py-2.5" style={{ color: 'var(--text-muted)', maxWidth: 280 }}>
         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {entry.partenaires.join(', ') || '—'}
         </span>
