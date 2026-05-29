@@ -6,8 +6,10 @@ const PLANNING_VIEWS: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt'];
 type NavItemDef = { key: string; icon: string; label: string };
 
 const MAIN_ITEMS: NavItemDef[] = [
-  { key: 'planning', icon: '📅', label: 'Planning' },
-  { key: 'briefing', icon: '☀️', label: 'Briefing' },
+  { key: 'planning',    icon: '📅', label: 'Planning' },
+  { key: 'briefing',   icon: '☀️', label: 'Briefing' },
+  { key: 'partenaires', icon: '🤝', label: 'Partenaires' },
+  { key: 'suivis',     icon: '📋', label: 'Suivis' },
 ];
 
 const BOTTOM_ITEMS: NavItemDef[] = [

@@ -5,10 +5,14 @@ import type {
   NotionBlock,
   NotionConfig,
   NotionPropertySchema,
+  PartenairesConfig,
+  PartenaireEntry,
   Person,
   Project,
   Status,
   SubProject,
+  SuivisConfig,
+  SuiviEntry,
   Task,
 } from './types';
 
@@ -513,4 +517,206 @@ export async function fetchPageBlocks(token: string, pageId: string): Promise<No
 
 export async function patchBlockChecked(token: string, blockId: string, checked: boolean): Promise<void> {
   await nPatch(token, `/blocks/${blockId}`, { to_do: { checked } });
+}
+
+// ── Partenaires ───────────────────────────────────────────────────────────────
+
+export async function fetchPartenaires(token: string, config: PartenairesConfig): Promise<PartenaireEntry[]> {
+  const entries: PartenaireEntry[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const body: Record<string, unknown> = {
+      page_size: 100,
+      sorts: [{ property: config.titleField || 'Name', direction: 'ascending' }],
+    };
+    if (cursor) body.start_cursor = cursor;
+
+    let res: Record<string, unknown>;
+    try {
+      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    } catch (e) {
+      // Fallback sans tri si le champ de titre est mal configuré
+      if (!cursor) {
+        res = await nPost(token, `/databases/${config.databaseId}/query`, { page_size: 100 });
+      } else {
+        throw e;
+      }
+    }
+
+    const pages = (res!.results ?? []) as Array<{
+      id: string;
+      url?: string;
+      created_time?: string;
+      properties: Record<string, PropVal>;
+    }>;
+
+    for (const page of pages) {
+      const props = page.properties;
+
+      // Title
+      const titleProp = config.titleField
+        ? props[config.titleField]
+        : Object.values(props).find(p => p?.type === 'title');
+      const title = plainText(titleProp) || '(sans nom)';
+
+      // Code abrégé (rich_text ou title)
+      const shortCode = config.shortCodeField ? plainText(props[config.shortCodeField]) : '';
+
+      // État des suivis — champ formula Notion
+      let etatSuivis = '';
+      if (config.etatSuivisField) {
+        const ep = props[config.etatSuivisField];
+        if (ep) {
+          const f = (ep as Record<string, unknown>).formula as Record<string, unknown> | undefined;
+          if (f?.type === 'string') etatSuivis = String(f.string ?? '');
+          else if (f?.type === 'number') etatSuivis = String(f.number ?? '');
+          else etatSuivis = plainText(ep) || selectName(ep);
+        }
+      }
+
+      // Type (multi_select)
+      const types: string[] = config.typeField
+        ? ((props[config.typeField]?.multi_select ?? []) as Array<{ name: string }>).map(o => o.name)
+        : [];
+
+      entries.push({ id: page.id, title, shortCode, etatSuivis, types, notion_url: page.url });
+    }
+
+    cursor = res!.has_more ? String(res!.next_cursor) : undefined;
+  } while (cursor);
+
+  // Tri client-side par titre
+  entries.sort((a, b) => a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' }));
+
+  return entries;
+}
+
+// ── Suivis ────────────────────────────────────────────────────────────────────
+
+export async function fetchSuivis(
+  token: string,
+  config: SuivisConfig,
+  partenairePageId?: string,
+): Promise<SuiviEntry[]> {
+  const entries: SuiviEntry[] = [];
+  let cursor: string | undefined;
+
+  // Filtre optionnel par partenaire (relation)
+  const filter: Record<string, unknown> | undefined = partenairePageId && config.partenairesField
+    ? { property: config.partenairesField, relation: { contains: partenairePageId } }
+    : undefined;
+
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    if (filter) body.filter = filter;
+
+    let res: Record<string, unknown>;
+    try {
+      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    } catch (e) {
+      if (filter && !cursor) {
+        // Fallback sans filtre si la relation est rejetée
+        console.warn('[Notion] Filtre relation rejeté, fallback sans filtre:', e);
+        delete body.filter;
+        res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      } else {
+        throw e;
+      }
+    }
+
+    const pages = (res!.results ?? []) as Array<{
+      id: string;
+      url?: string;
+      created_time?: string;
+      properties: Record<string, PropVal>;
+    }>;
+
+    // Collecter les IDs relation à résoudre
+    const relIds = new Set<string>();
+    for (const page of pages) {
+      const props = page.properties;
+      const collectRels = (fieldName: string) => {
+        const rels = (props[fieldName] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined;
+        rels?.forEach(r => relIds.add(r.id));
+        // People field
+        const people = (props[fieldName] as Record<string, unknown>)?.people as Array<{ id: string }> | undefined;
+        people?.forEach(p => relIds.add(p.id));
+      };
+      if (config.projetsField) collectRels(config.projetsField);
+      if (config.partenairesField) collectRels(config.partenairesField);
+      if (config.contactField) collectRels(config.contactField);
+    }
+
+    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(token, relIds) : new Map<string, string>();
+
+    for (const page of pages) {
+      const props = page.properties;
+
+      // Title
+      const titleProp = config.titleField
+        ? props[config.titleField]
+        : Object.values(props).find(p => p?.type === 'title');
+      const title = plainText(titleProp) || '(sans titre)';
+
+      // Suivi (select)
+      const suivi = config.suivisField ? selectName(props[config.suivisField]) : '';
+
+      // Relations → titres résolus
+      const resolveRel = (fieldName: string): string[] => {
+        if (!fieldName || !props[fieldName]) return [];
+        const prop = props[fieldName] as Record<string, unknown>;
+        // relation type
+        if (Array.isArray(prop.relation)) {
+          return (prop.relation as Array<{ id: string }>)
+            .map(r => relIdToTitle.get(r.id) ?? r.id.slice(0, 8))
+            .filter(Boolean);
+        }
+        // people type
+        if (Array.isArray(prop.people)) {
+          return (prop.people as Array<{ id: string; name?: string }>)
+            .map(p => p.name ?? relIdToTitle.get(p.id) ?? p.id.slice(0, 8))
+            .filter(Boolean);
+        }
+        // multi_select fallback
+        if (Array.isArray(prop.multi_select)) {
+          return (prop.multi_select as Array<{ name: string }>).map(o => o.name);
+        }
+        return [];
+      };
+
+      const projets = resolveRel(config.projetsField);
+      const partenaires = resolveRel(config.partenairesField);
+      const contact = resolveRel(config.contactField);
+
+      // Dates
+      const lastActionDate = config.lastActionDateField
+        ? dateRange(props[config.lastActionDateField]).start
+        : null;
+
+      entries.push({
+        id: page.id,
+        title,
+        suivi,
+        projets,
+        partenaires,
+        contact,
+        createdTime: page.created_time ?? null,
+        lastActionDate,
+        notion_url: page.url,
+      });
+    }
+
+    cursor = res!.has_more ? String(res!.next_cursor) : undefined;
+  } while (cursor);
+
+  // Tri client-side : lastActionDate desc, puis createdTime desc
+  entries.sort((a, b) => {
+    const da = a.lastActionDate ?? a.createdTime ?? '';
+    const db = b.lastActionDate ?? b.createdTime ?? '';
+    return db.localeCompare(da);
+  });
+
+  return entries;
 }

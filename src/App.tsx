@@ -18,6 +18,9 @@ import { SettingsView } from './components/SettingsView';
 import { TaskModal } from './components/TaskModal';
 import { GcalModal } from './components/GcalModal';
 import { BriefingView } from './components/BriefingView';
+import { PartenairesView } from './components/PartenairesView';
+import { SuivisView } from './components/SuivisView';
+import type { PartenaireEntry } from './types';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
@@ -79,6 +82,11 @@ function PlannerApp() {
   const [gcalError, setGcalError] = useState<string | null>(null);
   const [notionWriteStatus, setNotionWriteStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
   const [notionWriteMsg, setNotionWriteMsg] = useState<string | null>(null);
+  const [partenaireFilter, setPartenaireFilter] = useState<PartenaireEntry | null>(null);
+  // Partenaires toolbar state (lifted up so Toolbar can display it)
+  const [partenairesViewMode, setPartenairesViewMode] = useState<'card' | 'list'>('card');
+  const [partenairesSearch, setPartenairesSearch] = useState('');
+  const [suivisSearch, setSuivisSearch] = useState('');
   const [dataSource, setDataSource] = useState<'demo' | 'notion'>(() => load<'demo' | 'notion'>('dataSource', 'demo'));
   const [theme, setTheme] = useState<'default' | 'forge'>(() => load<'default' | 'forge'>('theme', 'default'));
   const [filters, setFiltersState] = useState<StoreCtx['filters']>(() => ({
@@ -259,10 +267,25 @@ function PlannerApp() {
             onToggle={() => setSidebarCollapsed((c) => !c)}
           />
           <div className="flex-1 flex flex-col min-w-0">
-            <Toolbar view={view} onView={setView} dataSource={dataSource} onToggleDataSource={toggleDataSource} theme={theme} onToggleTheme={toggleTheme} />
+            <Toolbar
+              view={view}
+              onView={setView}
+              dataSource={dataSource}
+              onToggleDataSource={toggleDataSource}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              partenairesViewMode={partenairesViewMode}
+              onPartenairesViewMode={setPartenairesViewMode}
+              partenairesSearch={partenairesSearch}
+              onPartenairesSearch={setPartenairesSearch}
+              suivisSearch={suivisSearch}
+              onSuivisSearch={setSuivisSearch}
+              suivisPartenaireFilterLabel={partenaireFilter?.title}
+              onClearSuivisFilter={() => setPartenaireFilter(null)}
+            />
             <div className="flex-1 flex min-h-0 relative">
-              {view !== 'settings' && view !== 'briefing' && <UnplannedPanel width={panelWidth} />}
-              {view !== 'settings' && view !== 'briefing' && (
+              {view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && <UnplannedPanel width={panelWidth} />}
+              {view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
                   style={{ background: 'var(--border)' }}
@@ -278,6 +301,19 @@ function PlannerApp() {
                   : view === 'rolling2' ? <RollingWeeksView2 />
                   : view === 'settings' ? <SettingsView onSync={handleNotionSync} />
                   : view === 'briefing' ? <BriefingView />
+                  : view === 'partenaires' ? (
+                    <PartenairesView
+                      onOpenSuivis={(p) => { setPartenaireFilter(p); setView('suivis'); }}
+                      viewMode={partenairesViewMode}
+                      search={partenairesSearch}
+                    />
+                  )
+                  : view === 'suivis' ? (
+                    <SuivisView
+                      partenaireFilter={partenaireFilter}
+                      onClearFilter={() => setPartenaireFilter(null)}
+                    />
+                  )
                   : <GanttView />}
               </main>
             </div>

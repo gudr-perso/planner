@@ -9,7 +9,9 @@ import type {
   NotionFieldMap,
   NotionPropertySchema,
   NotionStatusMapping,
+  PartenairesConfig,
   Status,
+  SuivisConfig,
 } from '../types';
 import { STATUS_LABELS, STATUS_COLORS } from '../types';
 
@@ -143,6 +145,20 @@ export function SettingsView({
   const [briefingSchema, setBriefingSchema] = useState<NotionPropertySchema[]>([]);
   const [briefingLoading, setBriefingLoading] = useState(false);
 
+  const DEFAULT_PARTENAIRES: PartenairesConfig = { databaseId: '', titleField: '', shortCodeField: '', etatSuivisField: '', typeField: '' };
+  const [partenairesConfig, setPartenairesConfig] = useState<PartenairesConfig>(() =>
+    load<PartenairesConfig>('partenairesConfig', DEFAULT_PARTENAIRES)
+  );
+  const [partenairesSchema, setPartenairesSchema] = useState<NotionPropertySchema[]>([]);
+  const [partenairesLoading, setPartenairesLoading] = useState(false);
+
+  const DEFAULT_SUIVIS: SuivisConfig = { databaseId: '', titleField: '', suivisField: '', projetsField: '', partenairesField: '', contactField: '' };
+  const [suivisConfig, setSuivisConfig] = useState<SuivisConfig>(() =>
+    load<SuivisConfig>('suivisConfig', DEFAULT_SUIVIS)
+  );
+  const [suivisSchema, setSuivisSchema] = useState<NotionPropertySchema[]>([]);
+  const [suivisLoading, setSuivisLoading] = useState(false);
+
   const flash = (msg: string) => {
     setStatusMsg(msg);
     setTimeout(() => setStatusMsg(null), 3000);
@@ -169,6 +185,52 @@ export function SettingsView({
   const handleSaveBriefing = () => {
     save('briefingConfig', briefingConfig);
     flash('Configuration Briefing sauvegardée');
+  };
+
+  const handleLoadPartenairesSchema = async () => {
+    if (!config.integrationToken || !partenairesConfig.databaseId) {
+      setError('Token d\'intégration et ID base Partenaires requis');
+      return;
+    }
+    setPartenairesLoading(true);
+    setError(null);
+    try {
+      const props = await fetchDatabaseSchema(config.integrationToken, partenairesConfig.databaseId);
+      setPartenairesSchema(props);
+      flash(`${props.length} propriétés chargées (Partenaires)`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPartenairesLoading(false);
+    }
+  };
+
+  const handleSavePartenaires = () => {
+    save('partenairesConfig', partenairesConfig);
+    flash('Configuration Partenaires sauvegardée');
+  };
+
+  const handleLoadSuivisSchema = async () => {
+    if (!config.integrationToken || !suivisConfig.databaseId) {
+      setError('Token d\'intégration et ID base Suivis requis');
+      return;
+    }
+    setSuivisLoading(true);
+    setError(null);
+    try {
+      const props = await fetchDatabaseSchema(config.integrationToken, suivisConfig.databaseId);
+      setSuivisSchema(props);
+      flash(`${props.length} propriétés chargées (Suivis)`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSuivisLoading(false);
+    }
+  };
+
+  const handleSaveSuivis = () => {
+    save('suivisConfig', suivisConfig);
+    flash('Configuration Suivis sauvegardée');
   };
 
   const handleLoadSchema = async () => {
@@ -494,6 +556,124 @@ export function SettingsView({
             <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
               <button
                 onClick={handleSaveBriefing}
+                className="text-xs px-4 py-2 rounded font-medium transition"
+                style={{ background: 'var(--border)', color: 'var(--text)' }}
+              >
+                Sauvegarder
+              </button>
+            </div>
+          </section>
+
+          {/* ── Base Partenaires ── */}
+          <section>
+            <SectionTitle>Partenaires</SectionTitle>
+            <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+              Base Notion pour les partenaires (clients, fournisseurs…). Réutilise le token d'intégration ci-dessus.
+            </p>
+            <FieldRow label="ID base Partenaires">
+              <input
+                type="text"
+                value={partenairesConfig.databaseId}
+                onChange={e => setPartenairesConfig(prev => ({ ...prev, databaseId: e.target.value }))}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </FieldRow>
+            <div className="flex items-center gap-3 mt-3 mb-4 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleLoadPartenairesSchema}
+                disabled={partenairesLoading}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
+                {partenairesLoading ? '…' : 'Charger le schéma'}
+              </button>
+              {partenairesSchema.length > 0 && (
+                <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ {partenairesSchema.length} propriétés</span>
+              )}
+            </div>
+            {(partenairesSchema.length > 0 || partenairesConfig.titleField || partenairesConfig.shortCodeField) && (
+              <>
+                <FieldRow label="Champ Nom">
+                  <PropCombo value={partenairesConfig.titleField} onChange={v => setPartenairesConfig(prev => ({ ...prev, titleField: v }))} schema={partenairesSchema} />
+                </FieldRow>
+                <FieldRow label="Champ Abrégé">
+                  <PropCombo value={partenairesConfig.shortCodeField} onChange={v => setPartenairesConfig(prev => ({ ...prev, shortCodeField: v }))} schema={partenairesSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="État des suivis">
+                  <PropCombo value={partenairesConfig.etatSuivisField} onChange={v => setPartenairesConfig(prev => ({ ...prev, etatSuivisField: v }))} schema={partenairesSchema} placeholder="(champ formula, optionnel)" />
+                </FieldRow>
+                <FieldRow label="Champ Type">
+                  <PropSelect value={partenairesConfig.typeField} onChange={v => setPartenairesConfig(prev => ({ ...prev, typeField: v }))} schema={partenairesSchema} filter={p => ['multi_select', 'select'].includes(p.type)} placeholder="(multi_select pour regroupement)" />
+                </FieldRow>
+              </>
+            )}
+            <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleSavePartenaires}
+                className="text-xs px-4 py-2 rounded font-medium transition"
+                style={{ background: 'var(--border)', color: 'var(--text)' }}
+              >
+                Sauvegarder
+              </button>
+            </div>
+          </section>
+
+          {/* ── Base Suivis ── */}
+          <section>
+            <SectionTitle>Suivis</SectionTitle>
+            <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+              Base Notion pour les suivis commerciaux / relationnels. Réutilise le token d'intégration ci-dessus.
+            </p>
+            <FieldRow label="ID base Suivis">
+              <input
+                type="text"
+                value={suivisConfig.databaseId}
+                onChange={e => setSuivisConfig(prev => ({ ...prev, databaseId: e.target.value }))}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </FieldRow>
+            <div className="flex items-center gap-3 mt-3 mb-4 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleLoadSuivisSchema}
+                disabled={suivisLoading}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
+                {suivisLoading ? '…' : 'Charger le schéma'}
+              </button>
+              {suivisSchema.length > 0 && (
+                <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ {suivisSchema.length} propriétés</span>
+              )}
+            </div>
+            {(suivisSchema.length > 0 || suivisConfig.titleField || suivisConfig.suivisField) && (
+              <>
+                <FieldRow label="Champ Nom">
+                  <PropCombo value={suivisConfig.titleField} onChange={v => setSuivisConfig(prev => ({ ...prev, titleField: v }))} schema={suivisSchema} />
+                </FieldRow>
+                <FieldRow label="Champ Suivi">
+                  <PropSelect value={suivisConfig.suivisField} onChange={v => setSuivisConfig(prev => ({ ...prev, suivisField: v }))} schema={suivisSchema} filter={p => ['select', 'multi_select', 'status'].includes(p.type)} placeholder="(select)" />
+                </FieldRow>
+                <FieldRow label="Champ Projets">
+                  <PropCombo value={suivisConfig.projetsField} onChange={v => setSuivisConfig(prev => ({ ...prev, projetsField: v }))} schema={suivisSchema} placeholder="(relation)" />
+                </FieldRow>
+                <FieldRow label="Champ Partenaires">
+                  <PropCombo value={suivisConfig.partenairesField} onChange={v => setSuivisConfig(prev => ({ ...prev, partenairesField: v }))} schema={suivisSchema} placeholder="(relation)" />
+                </FieldRow>
+                <FieldRow label="Champ Contact">
+                  <PropCombo value={suivisConfig.contactField} onChange={v => setSuivisConfig(prev => ({ ...prev, contactField: v }))} schema={suivisSchema} placeholder="(relation ou people)" />
+                </FieldRow>
+                <FieldRow label="Dernière action">
+                  <PropSelect value={suivisConfig.lastActionDateField ?? ''} onChange={v => setSuivisConfig(prev => ({ ...prev, lastActionDateField: v }))} schema={suivisSchema} filter={p => p.type === 'date'} placeholder="(optionnel)" />
+                </FieldRow>
+              </>
+            )}
+            <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleSaveSuivis}
                 className="text-xs px-4 py-2 rounded font-medium transition"
                 style={{ background: 'var(--border)', color: 'var(--text)' }}
               >

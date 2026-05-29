@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 
-export type ViewKey = 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing';
+export type ViewKey = 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'partenaires' | 'suivis';
 
 function SubprojectDropdown({
   subprojects,
@@ -157,6 +157,16 @@ export function Toolbar({
   onToggleDataSource,
   theme,
   onToggleTheme,
+  // Partenaires toolbar
+  partenairesViewMode,
+  onPartenairesViewMode,
+  partenairesSearch,
+  onPartenairesSearch,
+  // Suivis toolbar
+  suivisSearch,
+  onSuivisSearch,
+  suivisPartenaireFilterLabel,
+  onClearSuivisFilter,
 }: {
   view: ViewKey;
   onView: (v: ViewKey) => void;
@@ -164,6 +174,14 @@ export function Toolbar({
   onToggleDataSource: () => void;
   theme: 'default' | 'forge';
   onToggleTheme: () => void;
+  partenairesViewMode?: 'card' | 'list';
+  onPartenairesViewMode?: (m: 'card' | 'list') => void;
+  partenairesSearch?: string;
+  onPartenairesSearch?: (s: string) => void;
+  suivisSearch?: string;
+  onSuivisSearch?: (s: string) => void;
+  suivisPartenaireFilterLabel?: string;
+  onClearSuivisFilter?: () => void;
 }) {
   const store = useStore();
   const { filters, setFilters, gcal } = store;
@@ -174,6 +192,9 @@ export function Toolbar({
     else next.add(value);
     return next;
   };
+
+  // Vues sans planning (pas de filtres projet/personnes)
+  const isNonPlanningView = view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis';
 
   return (
     <header className="border-b px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-2 shrink-0" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
@@ -192,8 +213,76 @@ export function Toolbar({
         </button>
       </div>
 
-      {/* View toggle */}
-      <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+      {/* ── Partenaires toolbar ── */}
+      {view === 'partenaires' && (
+        <>
+          {/* Vue cartes / liste */}
+          <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+            <button
+              onClick={() => onPartenairesViewMode?.('card')}
+              className="px-2.5 py-1.5 text-xs font-medium transition"
+              style={partenairesViewMode === 'card'
+                ? { background: 'var(--accent)', color: 'var(--accent-fg)' }
+                : { background: 'var(--bg-deep)', color: 'var(--text-muted)' }}
+              title="Vue cartes"
+            >
+              ⊞
+            </button>
+            <button
+              onClick={() => onPartenairesViewMode?.('list')}
+              className="px-2.5 py-1.5 text-xs font-medium transition border-l"
+              style={partenairesViewMode === 'list'
+                ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--border)' }
+                : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+              title="Vue liste"
+            >
+              ☰
+            </button>
+          </div>
+          {/* Recherche */}
+          <input
+            type="text"
+            value={partenairesSearch ?? ''}
+            onChange={e => onPartenairesSearch?.(e.target.value)}
+            placeholder="Rechercher un partenaire…"
+            className="text-xs rounded px-2.5 py-1.5 outline-none w-56"
+            style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          />
+        </>
+      )}
+
+      {/* ── Suivis toolbar ── */}
+      {view === 'suivis' && (
+        <>
+          {/* Chip filtre partenaire actif */}
+          {suivisPartenaireFilterLabel && (
+            <div
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
+              style={{ background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}
+            >
+              <span>🤝 {suivisPartenaireFilterLabel}</span>
+              <button
+                onClick={onClearSuivisFilter}
+                className="leading-none transition hover:opacity-70"
+                title="Effacer le filtre partenaire"
+                style={{ fontSize: 12 }}
+              >✕</button>
+            </div>
+          )}
+          {/* Recherche */}
+          <input
+            type="text"
+            value={suivisSearch ?? ''}
+            onChange={e => onSuivisSearch?.(e.target.value)}
+            placeholder="Rechercher un suivi…"
+            className="text-xs rounded px-2.5 py-1.5 outline-none w-56"
+            style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          />
+        </>
+      )}
+
+      {/* View toggle — Planning uniquement */}
+      {!isNonPlanningView && <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
         <button
           onClick={() => onView('calendar')}
           className="px-3 py-1.5 text-xs font-medium transition"
@@ -230,10 +319,10 @@ export function Toolbar({
         >
           📊 Gantt
         </button>
-      </div>
+      </div>}
 
-      {/* Project filters */}
-      <div className="flex items-center gap-1.5">
+      {/* Project filters — Planning uniquement */}
+      {!isNonPlanningView && <div className="flex items-center gap-1.5">
         <span className="text-[11px] mr-0.5" style={{ color: 'var(--text-muted)' }}>Projets :</span>
         {store.data.projects.map((p) => {
           const active = filters.projectIds.size === 0 || filters.projectIds.has(p.id);
@@ -254,10 +343,10 @@ export function Toolbar({
             </button>
           );
         })}
-      </div>
+      </div>}
 
-      {/* Subproject filters — dropdown checklist, only when subprojects exist */}
-      {(store.data.subprojects?.length ?? 0) > 0 && (
+      {/* Subproject filters — dropdown checklist, only when subprojects exist + planning view */}
+      {!isNonPlanningView && (store.data.subprojects?.length ?? 0) > 0 && (
         <SubprojectDropdown
           subprojects={store.data.subprojects!}
           projectById={store.projectById}
@@ -266,8 +355,8 @@ export function Toolbar({
         />
       )}
 
-      {/* People filters */}
-      <div className="flex items-center gap-1.5">
+      {/* People filters — Planning uniquement */}
+      {!isNonPlanningView && <div className="flex items-center gap-1.5">
         <span className="text-[11px] mr-0.5" style={{ color: 'var(--text-muted)' }}>Personnes :</span>
         {store.data.people.map((p) => {
           const active = filters.assigneeIds.size === 0 || filters.assigneeIds.has(p.id);
@@ -289,12 +378,12 @@ export function Toolbar({
             </button>
           );
         })}
-      </div>
+      </div>}
 
       {/* Right section */}
       <div className="flex items-center gap-4 ml-auto">
-        {/* Color by */}
-        <div className="flex items-center gap-1">
+        {/* Color by — Planning uniquement */}
+        {!isNonPlanningView && <div className="flex items-center gap-1">
           <span className="text-[11px] mr-0.5" style={{ color: 'var(--text-muted)' }}>Couleur :</span>
           {(['status', 'project', 'assignee'] as const).map((mode) => (
             <button
@@ -308,7 +397,7 @@ export function Toolbar({
               {mode === 'status' ? 'Statut' : mode === 'project' ? 'Projet' : 'Personne'}
             </button>
           ))}
-        </div>
+        </div>}
 
         {/* Gcal toggle */}
         <div className="flex items-center gap-2 border-l pl-4" style={{ borderColor: 'var(--border)' }}>
