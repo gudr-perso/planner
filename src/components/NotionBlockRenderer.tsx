@@ -226,6 +226,102 @@ function ToggleableHeading({ block, level }: { block: NotionBlock; level: 1 | 2 
   );
 }
 
+// ── TabBlock : onglets Notion (type "tab") ─────────────────────────────────────
+// Structure API : bloc tab → enfants = paragraphes (rich_text = titre onglet,
+// _children = contenu de l'onglet)
+
+function TabContentPane({ tab }: { tab: NotionBlock }) {
+  const { onToggleTodo, token } = useContext(BlockCtx);
+  const [kids, setKids] = useState<NotionBlock[]>(
+    () => ((tab as Record<string, unknown>)._children as NotionBlock[]) ?? []
+  );
+  const [loading, setLoading] = useState(false);
+  const fetched = useRef(
+    ((tab as Record<string, unknown>)._children as NotionBlock[] | undefined) !== undefined
+  );
+
+  useEffect(() => {
+    if (fetched.current || !token) return;
+    fetched.current = true;
+    setLoading(true);
+    fetchPageBlocks(token, tab.id)
+      .then(setKids)
+      .catch(() => { /* silencieux */ })
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading) return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Chargement…</span>;
+  if (kids.length === 0) return <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>(Onglet vide)</span>;
+  return <NotionBlockRenderer blocks={kids} onToggleTodo={onToggleTodo} />;
+}
+
+function TabBlock({ block }: { block: NotionBlock }) {
+  const { token } = useContext(BlockCtx);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [tabs, setTabs] = useState<NotionBlock[]>(
+    () => ((block as Record<string, unknown>)._children as NotionBlock[]) ?? []
+  );
+  const [tabsLoading, setTabsLoading] = useState(false);
+  const fetched = useRef(
+    ((block as Record<string, unknown>)._children as NotionBlock[] | undefined) !== undefined
+  );
+
+  useEffect(() => {
+    if (fetched.current || !token) return;
+    fetched.current = true;
+    setTabsLoading(true);
+    fetchPageBlocks(token, block.id)
+      .then(setTabs)
+      .catch(() => { /* silencieux */ })
+      .finally(() => setTabsLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (tabsLoading) {
+    return <span className="animate-pulse" style={{ fontSize: 12, color: 'var(--text-muted)' }}>Chargement des onglets…</span>;
+  }
+  if (tabs.length === 0) return null;
+
+  return (
+    <div style={{ margin: '8px 0', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+      {/* Barre d'onglets */}
+      <div style={{
+        display: 'flex', overflowX: 'auto',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg-deep)',
+      }}>
+        {tabs.map((tab, idx) => {
+          const label = (getRT(tab)).map(p => p.plain_text).join('') || `Onglet ${idx + 1}`;
+          const isActive = idx === activeIdx;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveIdx(idx)}
+              style={{
+                padding: '7px 14px', fontSize: 12, whiteSpace: 'nowrap',
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                transition: 'color 120ms, border-color 120ms',
+              }}
+              onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text)'; }}
+              onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      {/* Contenu — tous les panneaux montés (fetch unique), visibilité CSS */}
+      {tabs.map((tab, idx) => (
+        <div key={tab.id} style={{ display: idx === activeIdx ? 'block' : 'none', padding: '10px 14px' }}>
+          <TabContentPane tab={tab} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── BlockItem ──────────────────────────────────────────────────────────────────
 function BlockItem({ block, listIndex }: {
   block: NotionBlock;
@@ -385,6 +481,9 @@ function BlockItem({ block, listIndex }: {
 
     case 'toggle':
       return <ToggleBlock block={block} />;
+
+    case 'tab':
+      return <TabBlock block={block} />;
 
     default:
       if (rt.length > 0) {
