@@ -113,13 +113,25 @@ function CalloutBlock({ block }: { block: NotionBlock }) {
   );
 }
 
-// ── ToggleBlock : fetch lazy au premier clic ───────────────────────────────────
-function ToggleBlock({ block }: { block: NotionBlock }) {
-  const { onToggleTodo, token } = useContext(BlockCtx);
-  const [open, setOpen] = useState(false);
-  const rt = getRT(block);
+// ── Flèche SVG pour les toggles (indépendante de la police et du CSS reset) ────
+function ToggleArrow({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 6 9" width="7" height="9"
+      style={{
+        display: 'block', flexShrink: 0, marginTop: '0.3em',
+        transition: 'transform 120ms',
+        transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+      }}
+    >
+      <path d="M0 0 L6 4.5 L0 9 Z" fill="var(--text-muted)" />
+    </svg>
+  );
+}
 
-  // Initialise avec les enfants pré-chargés si disponibles
+// ── Hook partagé pour fetch d'enfants de toggle ─────────────────────────────────
+function useToggleKids(block: NotionBlock) {
+  const { token } = useContext(BlockCtx);
   const [kids, setKids] = useState<NotionBlock[]>(
     () => ((block as Record<string, unknown>)._children as NotionBlock[]) ?? []
   );
@@ -128,9 +140,8 @@ function ToggleBlock({ block }: { block: NotionBlock }) {
     ((block as Record<string, unknown>)._children as NotionBlock[] | undefined) !== undefined
   );
 
-  const handleToggle = () => {
-    // Fetch au premier clic — sans vérifier has_children (parfois faux côté API Notion)
-    if (!open && !fetched.current && token) {
+  const fetchKids = (open: boolean) => {
+    if (open && !fetched.current && token) {
       fetched.current = true;
       setLoading(true);
       fetchPageBlocks(token, block.id)
@@ -138,7 +149,21 @@ function ToggleBlock({ block }: { block: NotionBlock }) {
         .catch(() => { /* silencieux */ })
         .finally(() => setLoading(false));
     }
-    setOpen(o => !o);
+  };
+  return { kids, loading, fetchKids };
+}
+
+// ── ToggleBlock : fetch lazy au premier clic ───────────────────────────────────
+function ToggleBlock({ block }: { block: NotionBlock }) {
+  const { onToggleTodo } = useContext(BlockCtx);
+  const [open, setOpen] = useState(false);
+  const rt = getRT(block);
+  const { kids, loading, fetchKids } = useToggleKids(block);
+
+  const handleToggle = () => {
+    const next = !open;
+    fetchKids(next);
+    setOpen(next);
   };
 
   return (
@@ -147,19 +172,49 @@ function ToggleBlock({ block }: { block: NotionBlock }) {
         style={{ display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer', userSelect: 'none' }}
         onClick={handleToggle}
       >
-        {/* Triangle CSS — indépendant de la police */}
-        <span style={{
-          display: 'inline-block',
-          width: 0, height: 0,
-          borderTop: '4px solid transparent',
-          borderBottom: '4px solid transparent',
-          borderLeft: '6px solid var(--text-muted)',
-          marginTop: '0.5em',
-          flexShrink: 0,
-          transition: 'transform 120ms',
-          transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
-        }} />
+        <ToggleArrow open={open} />
         <span style={{ color: 'var(--text)', fontWeight: 500 }}><RichText parts={rt} /></span>
+        {loading && <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>…</span>}
+      </div>
+      {open && kids.length > 0 && (
+        <div style={{ paddingLeft: 22, marginTop: 2 }}>
+          <NotionBlockRenderer blocks={kids} onToggleTodo={onToggleTodo} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ToggleableHeading : heading_1/2/3 avec is_toggleable:true ─────────────────
+function ToggleableHeading({ block, level }: { block: NotionBlock; level: 1 | 2 | 3 }) {
+  const { onToggleTodo } = useContext(BlockCtx);
+  const [open, setOpen] = useState(false);
+  const rt = getRT(block);
+  const { kids, loading, fetchKids } = useToggleKids(block);
+
+  const handleToggle = () => {
+    const next = !open;
+    fetchKids(next);
+    setOpen(next);
+  };
+
+  const textStyle: React.CSSProperties = level === 1
+    ? { fontSize: '1.35em', fontWeight: 700, lineHeight: 1.3 }
+    : level === 2
+      ? { fontSize: '1.1em', fontWeight: 600, lineHeight: 1.3 }
+      : { fontSize: '0.95em', fontWeight: 600, lineHeight: 1.3 };
+  const marginStyle = level === 1 ? '18px 0 4px' : level === 2 ? '12px 0 3px' : '8px 0 2px';
+
+  return (
+    <div style={{ margin: marginStyle }}>
+      <div
+        style={{ display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer', userSelect: 'none' }}
+        onClick={handleToggle}
+      >
+        <ToggleArrow open={open} />
+        <span style={{ color: 'var(--text)', ...textStyle }}>
+          <RichText parts={rt} />
+        </span>
         {loading && <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>…</span>}
       </div>
       {open && kids.length > 0 && (
@@ -188,6 +243,8 @@ function BlockItem({ block, listIndex }: {
       );
 
     case 'heading_1':
+      if ((block.heading_1 as Record<string, unknown>)?.is_toggleable)
+        return <ToggleableHeading block={block} level={1} />;
       return (
         <h1 style={{ fontSize: '1.35em', fontWeight: 700, margin: '22px 0 8px', color: 'var(--text)', lineHeight: 1.3 }}>
           <RichText parts={rt} />
@@ -195,6 +252,8 @@ function BlockItem({ block, listIndex }: {
       );
 
     case 'heading_2':
+      if ((block.heading_2 as Record<string, unknown>)?.is_toggleable)
+        return <ToggleableHeading block={block} level={2} />;
       return (
         <h2 style={{ fontSize: '1.1em', fontWeight: 600, margin: '16px 0 6px', color: 'var(--text)', lineHeight: 1.3 }}>
           <RichText parts={rt} />
@@ -202,6 +261,8 @@ function BlockItem({ block, listIndex }: {
       );
 
     case 'heading_3':
+      if ((block.heading_3 as Record<string, unknown>)?.is_toggleable)
+        return <ToggleableHeading block={block} level={3} />;
       return (
         <h3 style={{ fontSize: '0.95em', fontWeight: 600, margin: '12px 0 4px', color: 'var(--text)', lineHeight: 1.3 }}>
           <RichText parts={rt} />
