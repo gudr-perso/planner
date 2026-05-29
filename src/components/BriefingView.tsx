@@ -1,8 +1,41 @@
-import { useCallback, useEffect, useState } from 'react';
-import { load } from '../persistence';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { load, save } from '../persistence';
 import { fetchBriefings, fetchPageBlocks } from '../notionService';
 import type { BriefingConfig, BriefingEntry, NotionBlock, NotionConfig } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
+
+// ── Resize hook — panneau droit ────────────────────────────────────────────────
+function useResizableRightPanel(storageKey: string, initialWidth: number, min = 320, max = 900) {
+  const [width, setWidth] = useState(() => load<number>(storageKey, initialWidth));
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const next = Math.max(min, Math.min(max, rect.right - ev.clientX));
+      setWidth(next);
+    };
+    const onUp = (ev: MouseEvent) => {
+      dragging.current = false;
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const next = Math.max(min, Math.min(max, rect.right - ev.clientX));
+        setWidth(next);
+        save(storageKey, next);
+      }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [storageKey, min, max]);
+
+  return { width, containerRef, onMouseDown };
+}
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
@@ -25,6 +58,8 @@ export function BriefingView() {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const briefingCfg = load<BriefingConfig | null>('briefingConfig', null);
   const token = notionCfg?.integrationToken ?? '';
+
+  const { width: detailWidth, containerRef, onMouseDown: onPanelResize } = useResizableRightPanel('briefingDetailWidth', 480);
 
   const [entries, setEntries] = useState<BriefingEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,17 +109,12 @@ export function BriefingView() {
   }
 
   return (
-    <div className="h-full flex overflow-hidden" style={{ background: 'var(--bg)' }}>
+    <div ref={containerRef} className="h-full flex overflow-hidden" style={{ background: 'var(--bg)' }}>
 
       {/* ── Liste ── */}
       <div
         className="flex flex-col overflow-hidden"
-        style={{
-          width: selectedId ? '55%' : '100%',
-          transition: 'width 220ms ease',
-          borderRight: selectedId ? '1px solid var(--border)' : 'none',
-          minWidth: 0,
-        }}
+        style={{ flex: 1, minWidth: 0 }}
       >
         {/* En-tête liste */}
         <div className="px-5 py-4 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -138,9 +168,21 @@ export function BriefingView() {
         )}
       </div>
 
+      {/* ── Poignée de redimensionnement ── */}
+      {selectedId && (
+        <div
+          className="w-1 shrink-0 cursor-col-resize transition-colors"
+          style={{ background: 'var(--border)' }}
+          onMouseDown={onPanelResize}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--border)'; }}
+          title="Redimensionner"
+        />
+      )}
+
       {/* ── Panneau détail ── */}
       {selectedId && selectedEntry && (
-        <div className="flex flex-col overflow-hidden" style={{ flex: 1, minWidth: 0 }}>
+        <div className="flex flex-col overflow-hidden" style={{ width: detailWidth, flexShrink: 0 }}>
 
           {/* En-tête détail */}
           <div
