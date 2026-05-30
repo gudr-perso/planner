@@ -3,7 +3,105 @@ import { useStore } from '../store';
 
 export type ViewKey = 'home' | 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'partenaires' | 'suivis';
 
-function SubprojectDropdown({
+export function ProjectDropdown({
+  projects,
+  selected,
+  onChange,
+}: {
+  projects: { id: string; name: string; color: string }[];
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const activeCount = selected.size;
+  const allActive = selected.size === 0;
+
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onChange(next);
+  };
+
+  return (
+    <div ref={ref} className="relative flex items-center">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded border transition"
+        style={open || activeCount > 0
+          ? { background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }
+          : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+      >
+        <span>Projets</span>
+        {activeCount > 0 && (
+          <span
+            className="text-[10px] font-bold rounded-full px-1 leading-none"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+          >
+            {activeCount}
+          </span>
+        )}
+        <span style={{ fontSize: 8 }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1 z-50 rounded-lg shadow-xl overflow-hidden"
+          style={{ background: 'var(--bg)', border: '1px solid var(--border)', minWidth: 260 }}
+        >
+          <button
+            onClick={() => onChange(new Set())}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] transition hover:opacity-80 border-b"
+            style={{ color: allActive ? 'var(--accent)' : 'var(--text-muted)', borderColor: 'var(--border)', background: allActive ? 'color-mix(in srgb, var(--accent) 6%, transparent)' : 'transparent' }}
+          >
+            <span
+              className="w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0"
+              style={{ borderColor: allActive ? 'var(--accent)' : 'var(--border)', background: allActive ? 'var(--accent)' : 'transparent' }}
+            >
+              {allActive && <span style={{ color: 'var(--accent-fg)', fontSize: 9, fontWeight: 700 }}>✓</span>}
+            </span>
+            Tous
+          </button>
+          <div className="max-h-64 overflow-y-auto">
+            {projects.map((p) => {
+              const checked = !allActive && selected.has(p.id);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => toggle(p.id)}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] transition hover:opacity-80"
+                  style={{ color: checked ? p.color : 'var(--text)', background: checked ? p.color + '15' : 'transparent' }}
+                >
+                  <span
+                    className="w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0"
+                    style={{ borderColor: checked ? p.color : 'var(--border-soft)', background: checked ? p.color : 'transparent' }}
+                  >
+                    {checked && <span style={{ color: '#fff', fontSize: 9, fontWeight: 700 }}>✓</span>}
+                  </span>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
+                  {p.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export export function SubprojectDropdown({
   subprojects,
   projectById,
   selected,
@@ -67,7 +165,7 @@ function SubprojectDropdown({
       {open && (
         <div
           className="absolute top-full left-0 mt-1 z-50 rounded-lg shadow-xl overflow-hidden"
-          style={{ background: 'var(--bg)', border: '1px solid var(--border)', minWidth: 220 }}
+          style={{ background: 'var(--bg)', border: '1px solid var(--border)', minWidth: 260 }}
         >
           {/* Reset */}
           <button

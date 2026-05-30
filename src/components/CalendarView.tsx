@@ -11,6 +11,7 @@ import { createEventsServicePlugin } from '@schedule-x/events-service';
 import { useStore } from '../store';
 import { useCallback } from 'react';
 import { save, load } from '../persistence';
+import { ProjectDropdown, SubprojectDropdown } from './Toolbar';
 
 type CalEvent = { id: string; title: string; start: string; end: string; calendarId: string };
 type CalendarsCfg = Record<string, { colorName: string; lightColors: { main: string; container: string; onContainer: string } }>;
@@ -212,6 +213,23 @@ export function CalendarView() {
             {HOURS.slice(1).map(h => <option key={h} value={h}>{h}</option>)}
           </select>
         </div>
+
+        {/* Project filter */}
+        <ProjectDropdown
+          projects={store.data.projects}
+          selected={store.filters.projectIds}
+          onChange={(next) => store.setFilters({ projectIds: next })}
+        />
+
+        {/* Subproject filter */}
+        {(store.data.subprojects?.length ?? 0) > 0 && (
+          <SubprojectDropdown
+            subprojects={store.data.subprojects!}
+            projectById={store.projectById}
+            selected={store.filters.subprojectIds}
+            onChange={(next) => store.setFilters({ subprojectIds: next })}
+          />
+        )}
 
         {/* Weekends toggle */}
         <button
