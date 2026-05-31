@@ -58,7 +58,7 @@ export function ProjectDropdown({
       {open && (
         <div
           className="absolute top-full left-0 mt-1 z-50 rounded-lg shadow-xl overflow-hidden"
-          style={{ background: 'var(--bg)', border: '1px solid var(--border)', minWidth: 260 }}
+          style={{ background: 'var(--bg)', border: '1px solid var(--border)', minWidth: 300 }}
         >
           <button
             onClick={() => onChange(new Set())}
@@ -165,7 +165,7 @@ export function SubprojectDropdown({
       {open && (
         <div
           className="absolute top-full left-0 mt-1 z-50 rounded-lg shadow-xl overflow-hidden"
-          style={{ background: 'var(--bg)', border: '1px solid var(--border)', minWidth: 260 }}
+          style={{ background: 'var(--bg)', border: '1px solid var(--border)', minWidth: 300 }}
         >
           {/* Reset */}
           <button
@@ -376,29 +376,14 @@ export function Toolbar({
         </button>
       </div>}
 
-      {/* Project filters — Planning uniquement */}
-      {!isNonPlanningView && <div className="flex items-center gap-1.5">
-        <span className="text-[11px] mr-0.5" style={{ color: 'var(--text-muted)' }}>Projets :</span>
-        {store.data.projects.map((p) => {
-          const active = filters.projectIds.size === 0 || filters.projectIds.has(p.id);
-          return (
-            <button
-              key={p.id}
-              onClick={() => setFilters({ projectIds: toggleSet(filters.projectIds, p.id) })}
-              className={`text-[11px] px-2 py-0.5 rounded-full border transition font-medium ${
-                active ? 'opacity-100' : 'opacity-30'
-              }`}
-              style={{
-                borderColor: p.color,
-                color: active ? p.color : 'var(--text-dim)',
-                background: active ? p.color + '20' : 'transparent',
-              }}
-            >
-              {p.name}
-            </button>
-          );
-        })}
-      </div>}
+      {/* Project filters — dropdown, Planning uniquement */}
+      {!isNonPlanningView && (
+        <ProjectDropdown
+          projects={store.data.projects}
+          selected={filters.projectIds}
+          onChange={(next) => setFilters({ projectIds: next })}
+        />
+      )}
 
       {/* Subproject filters — dropdown checklist, only when subprojects exist + planning view */}
       {!isNonPlanningView && (store.data.subprojects?.length ?? 0) > 0 && (
