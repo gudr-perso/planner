@@ -3,6 +3,7 @@ import { fetchDatabaseSchema, syncFromNotion } from '../notionService';
 import { save, load } from '../persistence';
 import { downloadConfig, importConfig } from '../configIO';
 import type {
+  AssociationsConfig,
   BriefingConfig,
   DataBundle,
   NotionConfig,
@@ -13,6 +14,8 @@ import type {
   PartenairesConfig,
   Status,
   SuivisConfig,
+  TempsConfig,
+  TicketsConfig,
 } from '../types';
 import { STATUS_LABELS, STATUS_COLORS } from '../types';
 
@@ -164,6 +167,27 @@ export function SettingsView({
   const [suivisSchema, setSuivisSchema] = useState<NotionPropertySchema[]>([]);
   const [suivisLoading, setSuivisLoading] = useState(false);
 
+  const DEFAULT_TEMPS: TempsConfig = { databaseId: '', titleField: '', startField: '', endField: '', dureeHField: '', dureeMinField: '', commentaireField: '', projetsField: '', sousProjetField: '', objectifHebdoH: 39 };
+  const [tempsConfig, setTempsConfig] = useState<TempsConfig>(() =>
+    load<TempsConfig>('tempsConfig', DEFAULT_TEMPS)
+  );
+  const [tempsSchema, setTempsSchema] = useState<NotionPropertySchema[]>([]);
+  const [tempsLoading, setTempsLoading] = useState(false);
+
+  const DEFAULT_TICKETS: TicketsConfig = { databaseId: '', ticketIdField: '', sujetField: '', codeAssocField: '', statutField: '', prioriteField: '', niveauField: '', dateModifField: '', demandeurField: '', lienField: '', zoneField: '', memoField: '', codeDossierField: '', categorieField: '', sousCategorieField: '', conclusionField: '', departementField: '', associationField: '', statutsTerminesValues: [] };
+  const [ticketsConfig, setTicketsConfig] = useState<TicketsConfig>(() =>
+    load<TicketsConfig>('ticketsConfig', DEFAULT_TICKETS)
+  );
+  const [ticketsSchema, setTicketsSchema] = useState<NotionPropertySchema[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+
+  const DEFAULT_ASSOCIATIONS: AssociationsConfig = { databaseId: '', nomField: '', codeField: '', statutField: '', prioriteField: '', solutionField: '', suiviField: '', statutsTerminesValues: [] };
+  const [assocConfig, setAssocConfig] = useState<AssociationsConfig>(() =>
+    load<AssociationsConfig>('associationsConfig', DEFAULT_ASSOCIATIONS)
+  );
+  const [assocSchema, setAssocSchema] = useState<NotionPropertySchema[]>([]);
+  const [assocLoading, setAssocLoading] = useState(false);
+
   const flash = (msg: string) => {
     setStatusMsg(msg);
     setTimeout(() => setStatusMsg(null), 3000);
@@ -236,6 +260,75 @@ export function SettingsView({
   const handleSaveSuivis = () => {
     save('suivisConfig', suivisConfig);
     flash('Configuration Suivis sauvegardée');
+  };
+
+  const handleLoadTempsSchema = async () => {
+    if (!config.integrationToken || !tempsConfig.databaseId) {
+      setError('Token d\'intégration et ID base Temps requis');
+      return;
+    }
+    setTempsLoading(true);
+    setError(null);
+    try {
+      const props = await fetchDatabaseSchema(config.integrationToken, tempsConfig.databaseId);
+      setTempsSchema(props);
+      flash(`${props.length} propriétés chargées (Temps)`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setTempsLoading(false);
+    }
+  };
+
+  const handleSaveTemps = () => {
+    save('tempsConfig', tempsConfig);
+    flash('Configuration Temps sauvegardée');
+  };
+
+  const handleLoadTicketsSchema = async () => {
+    if (!config.integrationToken || !ticketsConfig.databaseId) {
+      setError('Token d\'intégration et ID base Tickets requis');
+      return;
+    }
+    setTicketsLoading(true);
+    setError(null);
+    try {
+      const props = await fetchDatabaseSchema(config.integrationToken, ticketsConfig.databaseId);
+      setTicketsSchema(props);
+      flash(`${props.length} propriétés chargées (Tickets)`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
+
+  const handleSaveTickets = () => {
+    save('ticketsConfig', ticketsConfig);
+    flash('Configuration Tickets sauvegardée');
+  };
+
+  const handleLoadAssocSchema = async () => {
+    if (!config.integrationToken || !assocConfig.databaseId) {
+      setError('Token d\'intégration et ID base Associations requis');
+      return;
+    }
+    setAssocLoading(true);
+    setError(null);
+    try {
+      const props = await fetchDatabaseSchema(config.integrationToken, assocConfig.databaseId);
+      setAssocSchema(props);
+      flash(`${props.length} propriétés chargées (Associations)`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setAssocLoading(false);
+    }
+  };
+
+  const handleSaveAssoc = () => {
+    save('associationsConfig', assocConfig);
+    flash('Configuration Associations sauvegardée');
   };
 
   const handleLoadSchema = async () => {
@@ -793,6 +886,261 @@ export function SettingsView({
             <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
               <button
                 onClick={handleSaveSuivis}
+                className="text-xs px-4 py-2 rounded font-medium transition"
+                style={{ background: 'var(--border)', color: 'var(--text)' }}
+              >
+                Sauvegarder
+              </button>
+            </div>
+          </section>
+
+          {/* ── Base Temps ── */}
+          <section>
+            <SectionTitle>Temps</SectionTitle>
+            <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+              Base Notion pour le suivi du temps de travail. Réutilise le token d'intégration ci-dessus.
+            </p>
+            <FieldRow label="ID base Temps">
+              <input
+                type="text"
+                value={tempsConfig.databaseId}
+                onChange={e => setTempsConfig(prev => ({ ...prev, databaseId: e.target.value }))}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </FieldRow>
+            <div className="flex items-center gap-3 mt-3 mb-4 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleLoadTempsSchema}
+                disabled={tempsLoading}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
+                {tempsLoading ? '…' : 'Charger le schéma'}
+              </button>
+              {tempsSchema.length > 0 && (
+                <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ {tempsSchema.length} propriétés</span>
+              )}
+            </div>
+            {(tempsSchema.length > 0 || tempsConfig.titleField || tempsConfig.startField) && (
+              <>
+                <FieldRow label="Champ Nom">
+                  <PropCombo value={tempsConfig.titleField} onChange={v => setTempsConfig(prev => ({ ...prev, titleField: v }))} schema={tempsSchema} />
+                </FieldRow>
+                <FieldRow label="Début session">
+                  <PropCombo value={tempsConfig.startField} onChange={v => setTempsConfig(prev => ({ ...prev, startField: v }))} schema={tempsSchema} placeholder="(date + heure)" />
+                </FieldRow>
+                <FieldRow label="Fin session">
+                  <PropCombo value={tempsConfig.endField} onChange={v => setTempsConfig(prev => ({ ...prev, endField: v }))} schema={tempsSchema} placeholder="(date + heure)" />
+                </FieldRow>
+                <FieldRow label="Temps [h]">
+                  <PropCombo value={tempsConfig.dureeHField} onChange={v => setTempsConfig(prev => ({ ...prev, dureeHField: v }))} schema={tempsSchema} placeholder="(formule)" />
+                </FieldRow>
+                <FieldRow label="Temps [min]">
+                  <PropCombo value={tempsConfig.dureeMinField} onChange={v => setTempsConfig(prev => ({ ...prev, dureeMinField: v }))} schema={tempsSchema} placeholder="(formule)" />
+                </FieldRow>
+                <FieldRow label="Commentaire">
+                  <PropCombo value={tempsConfig.commentaireField} onChange={v => setTempsConfig(prev => ({ ...prev, commentaireField: v }))} schema={tempsSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Projets">
+                  <PropCombo value={tempsConfig.projetsField} onChange={v => setTempsConfig(prev => ({ ...prev, projetsField: v }))} schema={tempsSchema} placeholder="(relation)" />
+                </FieldRow>
+                <FieldRow label="Sous-projets">
+                  <PropCombo value={tempsConfig.sousProjetField} onChange={v => setTempsConfig(prev => ({ ...prev, sousProjetField: v }))} schema={tempsSchema} placeholder="(relation, optionnel)" />
+                </FieldRow>
+                <FieldRow label="Objectif hebdo (h)">
+                  <input
+                    type="number"
+                    value={tempsConfig.objectifHebdoH}
+                    onChange={e => setTempsConfig(prev => ({ ...prev, objectifHebdoH: parseFloat(e.target.value) || 39 }))}
+                    min={1} max={80} step={0.5}
+                    className="w-24 text-xs rounded px-2 py-1.5 outline-none"
+                    style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  />
+                </FieldRow>
+              </>
+            )}
+            <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleSaveTemps}
+                className="text-xs px-4 py-2 rounded font-medium transition"
+                style={{ background: 'var(--border)', color: 'var(--text)' }}
+              >
+                Sauvegarder
+              </button>
+            </div>
+          </section>
+
+          {/* ── Base Tickets ── */}
+          <section>
+            <SectionTitle>Tickets</SectionTitle>
+            <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+              Base Notion pour le suivi des tickets. Réutilise le token d'intégration ci-dessus.
+            </p>
+            <FieldRow label="ID base Tickets">
+              <input
+                type="text"
+                value={ticketsConfig.databaseId}
+                onChange={e => setTicketsConfig(prev => ({ ...prev, databaseId: e.target.value }))}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </FieldRow>
+            <div className="flex items-center gap-3 mt-3 mb-4 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleLoadTicketsSchema}
+                disabled={ticketsLoading}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
+                {ticketsLoading ? '…' : 'Charger le schéma'}
+              </button>
+              {ticketsSchema.length > 0 && (
+                <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ {ticketsSchema.length} propriétés</span>
+              )}
+            </div>
+            {(ticketsSchema.length > 0 || ticketsConfig.ticketIdField || ticketsConfig.sujetField) && (
+              <>
+                <FieldRow label="Ticket ID">
+                  <PropCombo value={ticketsConfig.ticketIdField} onChange={v => setTicketsConfig(prev => ({ ...prev, ticketIdField: v }))} schema={ticketsSchema} />
+                </FieldRow>
+                <FieldRow label="Sujet">
+                  <PropCombo value={ticketsConfig.sujetField} onChange={v => setTicketsConfig(prev => ({ ...prev, sujetField: v }))} schema={ticketsSchema} placeholder="(titre)" />
+                </FieldRow>
+                <FieldRow label="Code Association">
+                  <PropCombo value={ticketsConfig.codeAssocField} onChange={v => setTicketsConfig(prev => ({ ...prev, codeAssocField: v }))} schema={ticketsSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Statut">
+                  <PropCombo value={ticketsConfig.statutField} onChange={v => setTicketsConfig(prev => ({ ...prev, statutField: v }))} schema={ticketsSchema} />
+                </FieldRow>
+                <FieldRow label="Priorité">
+                  <PropCombo value={ticketsConfig.prioriteField} onChange={v => setTicketsConfig(prev => ({ ...prev, prioriteField: v }))} schema={ticketsSchema} />
+                </FieldRow>
+                <FieldRow label="Niveau">
+                  <PropCombo value={ticketsConfig.niveauField} onChange={v => setTicketsConfig(prev => ({ ...prev, niveauField: v }))} schema={ticketsSchema} />
+                </FieldRow>
+                <FieldRow label="Date modif.">
+                  <PropCombo value={ticketsConfig.dateModifField} onChange={v => setTicketsConfig(prev => ({ ...prev, dateModifField: v }))} schema={ticketsSchema} />
+                </FieldRow>
+                <FieldRow label="Demandeur">
+                  <PropCombo value={ticketsConfig.demandeurField} onChange={v => setTicketsConfig(prev => ({ ...prev, demandeurField: v }))} schema={ticketsSchema} placeholder="(email)" />
+                </FieldRow>
+                <FieldRow label="Lien">
+                  <PropCombo value={ticketsConfig.lienField} onChange={v => setTicketsConfig(prev => ({ ...prev, lienField: v }))} schema={ticketsSchema} placeholder="(formule)" />
+                </FieldRow>
+                <FieldRow label="Zone">
+                  <PropCombo value={ticketsConfig.zoneField} onChange={v => setTicketsConfig(prev => ({ ...prev, zoneField: v }))} schema={ticketsSchema} placeholder="(formule)" />
+                </FieldRow>
+                <FieldRow label="Mémo">
+                  <PropCombo value={ticketsConfig.memoField} onChange={v => setTicketsConfig(prev => ({ ...prev, memoField: v }))} schema={ticketsSchema} />
+                </FieldRow>
+                <FieldRow label="Code dossier">
+                  <PropCombo value={ticketsConfig.codeDossierField} onChange={v => setTicketsConfig(prev => ({ ...prev, codeDossierField: v }))} schema={ticketsSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Catégorie">
+                  <PropCombo value={ticketsConfig.categorieField} onChange={v => setTicketsConfig(prev => ({ ...prev, categorieField: v }))} schema={ticketsSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Sous-catégorie">
+                  <PropCombo value={ticketsConfig.sousCategorieField} onChange={v => setTicketsConfig(prev => ({ ...prev, sousCategorieField: v }))} schema={ticketsSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Conclusion">
+                  <PropCombo value={ticketsConfig.conclusionField} onChange={v => setTicketsConfig(prev => ({ ...prev, conclusionField: v }))} schema={ticketsSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Département">
+                  <PropCombo value={ticketsConfig.departementField} onChange={v => setTicketsConfig(prev => ({ ...prev, departementField: v }))} schema={ticketsSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Association">
+                  <PropCombo value={ticketsConfig.associationField} onChange={v => setTicketsConfig(prev => ({ ...prev, associationField: v }))} schema={ticketsSchema} placeholder="(relation)" />
+                </FieldRow>
+                <FieldRow label="Statuts terminés">
+                  <input
+                    type="text"
+                    value={ticketsConfig.statutsTerminesValues.join(', ')}
+                    onChange={e => setTicketsConfig(prev => ({ ...prev, statutsTerminesValues: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+                    placeholder="Annulé, Clos"
+                    className="flex-1 text-xs rounded px-2 py-1.5 outline-none"
+                    style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  />
+                </FieldRow>
+              </>
+            )}
+            <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleSaveTickets}
+                className="text-xs px-4 py-2 rounded font-medium transition"
+                style={{ background: 'var(--border)', color: 'var(--text)' }}
+              >
+                Sauvegarder
+              </button>
+            </div>
+          </section>
+
+          {/* ── Base Associations ── */}
+          <section>
+            <SectionTitle>Associations (Tickets)</SectionTitle>
+            <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+              Base Notion des associations liées aux tickets. Réutilise le token d'intégration ci-dessus.
+            </p>
+            <FieldRow label="ID base Associations">
+              <input
+                type="text"
+                value={assocConfig.databaseId}
+                onChange={e => setAssocConfig(prev => ({ ...prev, databaseId: e.target.value }))}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </FieldRow>
+            <div className="flex items-center gap-3 mt-3 mb-4 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleLoadAssocSchema}
+                disabled={assocLoading}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
+                {assocLoading ? '…' : 'Charger le schéma'}
+              </button>
+              {assocSchema.length > 0 && (
+                <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ {assocSchema.length} propriétés</span>
+              )}
+            </div>
+            {(assocSchema.length > 0 || assocConfig.nomField || assocConfig.codeField) && (
+              <>
+                <FieldRow label="Champ Nom">
+                  <PropCombo value={assocConfig.nomField} onChange={v => setAssocConfig(prev => ({ ...prev, nomField: v }))} schema={assocSchema} />
+                </FieldRow>
+                <FieldRow label="Champ Code">
+                  <PropCombo value={assocConfig.codeField} onChange={v => setAssocConfig(prev => ({ ...prev, codeField: v }))} schema={assocSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Champ Statut">
+                  <PropCombo value={assocConfig.statutField} onChange={v => setAssocConfig(prev => ({ ...prev, statutField: v }))} schema={assocSchema} />
+                </FieldRow>
+                <FieldRow label="Champ Priorité">
+                  <PropCombo value={assocConfig.prioriteField} onChange={v => setAssocConfig(prev => ({ ...prev, prioriteField: v }))} schema={assocSchema} placeholder="(optionnel)" />
+                </FieldRow>
+                <FieldRow label="Solution contournement">
+                  <PropCombo value={assocConfig.solutionField} onChange={v => setAssocConfig(prev => ({ ...prev, solutionField: v }))} schema={assocSchema} placeholder="(rich_text)" />
+                </FieldRow>
+                <FieldRow label="Champ Suivi">
+                  <PropCombo value={assocConfig.suiviField} onChange={v => setAssocConfig(prev => ({ ...prev, suiviField: v }))} schema={assocSchema} placeholder="(formule → URL)" />
+                </FieldRow>
+                <FieldRow label="Statuts terminés">
+                  <input
+                    type="text"
+                    value={assocConfig.statutsTerminesValues.join(', ')}
+                    onChange={e => setAssocConfig(prev => ({ ...prev, statutsTerminesValues: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+                    placeholder="Annulé, Clos"
+                    className="flex-1 text-xs rounded px-2 py-1.5 outline-none"
+                    style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  />
+                </FieldRow>
+              </>
+            )}
+            <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleSaveAssoc}
                 className="text-xs px-4 py-2 rounded font-medium transition"
                 style={{ background: 'var(--border)', color: 'var(--text)' }}
               >

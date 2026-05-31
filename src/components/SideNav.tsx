@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, FileText, Home, Settings, Users } from 'lucide-react';
+import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, Home, Settings, TicketCheck, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 
 const PLANNING_VIEWS: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt'];
@@ -7,11 +7,13 @@ const PLANNING_VIEWS: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt'];
 type NavItemDef = { key: string; icon: React.ReactNode; label: string };
 
 const MAIN_ITEMS: NavItemDef[] = [
-  { key: 'home',        icon: <Home size={17} />,        label: 'Accueil' },
-  { key: 'planning',    icon: <CalendarDays size={17} />, label: 'Planning' },
-  { key: 'briefing',   icon: <AlarmClock size={17} />, label: 'Briefing' },
-  { key: 'partenaires', icon: <Users size={17} />, label: 'Partenaires' },
-  { key: 'suivis',     icon: <FileText size={17} />, label: 'Suivis' },
+  { key: 'home',        icon: <Home size={17} />,         label: 'Accueil' },
+  { key: 'planning',    icon: <CalendarDays size={17} />,  label: 'Planning' },
+  { key: 'briefing',    icon: <AlarmClock size={17} />,    label: 'Briefing' },
+  { key: 'partenaires', icon: <Users size={17} />,         label: 'Partenaires' },
+  { key: 'suivis',      icon: <FileText size={17} />,      label: 'Suivis' },
+  { key: 'temps',       icon: <Clock size={17} />,         label: 'Temps' },
+  { key: 'tickets',     icon: <TicketCheck size={17} />,   label: 'Tickets' },
 ];
 
 const BOTTOM_ITEMS: NavItemDef[] = [

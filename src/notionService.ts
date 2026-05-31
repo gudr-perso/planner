@@ -1,4 +1,6 @@
 import type {
+  AssociationEntry,
+  AssociationsConfig,
   BriefingConfig,
   BriefingEntry,
   DataBundle,
@@ -14,6 +16,10 @@ import type {
   SuivisConfig,
   SuiviEntry,
   Task,
+  TempsConfig,
+  TempsEntry,
+  TicketEntry,
+  TicketsConfig,
 } from './types';
 
 
@@ -524,7 +530,12 @@ export async function fetchBriefings(token: string, config: BriefingConfig): Pro
         ? props[config.titleField]
         : Object.values(props).find(p => p?.type === 'title');
       const title = plainText(titleProp) || '(sans titre)';
-      const date = config.dateField ? dateRange(props[config.dateField]).start : null;
+      const dateProp = config.dateField ? props[config.dateField] : null;
+      const date = dateProp
+        ? (dateProp.type === 'created_time' || dateProp.type === 'last_edited_time')
+          ? notionDateToSx((dateProp as Record<string, unknown>)[dateProp.type] as string)
+          : dateRange(dateProp).start
+        : null;
       const summary = config.summaryField ? plainText(props[config.summaryField]) : '';
       entries.push({ id: page.id, title, date, summary, createdTime: page.created_time });
     }
@@ -549,6 +560,14 @@ export async function fetchPageBlocks(token: string, pageId: string): Promise<No
 
 export async function patchBlockChecked(token: string, blockId: string, checked: boolean): Promise<void> {
   await nPatch(token, `/blocks/${blockId}`, { to_do: { checked } });
+}
+
+export async function patchRichTextField(token: string, pageId: string, fieldName: string, value: string): Promise<void> {
+  await nPatch(token, `/pages/${pageId}`, {
+    properties: {
+      [fieldName]: { rich_text: [{ type: 'text', text: { content: value } }] },
+    },
+  });
 }
 
 // ── Partenaires ───────────────────────────────────────────────────────────────
@@ -770,5 +789,249 @@ export async function fetchSuivis(
     return db.localeCompare(da);
   });
 
+  return entries;
+}
+
+// ── Temps ─────────────────────────────────────────────────────────────────────
+
+function formulaString(prop: PropVal): string {
+  if (!prop) return '';
+  const f = (prop as Record<string, unknown>).formula as Record<string, unknown> | undefined;
+  if (!f) return '';
+  if (f.type === 'string') return String(f.string ?? '');
+  if (f.type === 'number') return String(f.number ?? '');
+  return '';
+}
+
+export async function fetchTemps(token: string, config: TempsConfig): Promise<TempsEntry[]> {
+  const entries: TempsEntry[] = [];
+  let cursor: string | undefined;
+
+  // Mois en cours + mois précédent
+  const now = new Date();
+  const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const isoFirst = `${firstDayPrevMonth.getFullYear()}-${String(firstDayPrevMonth.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const filter: Record<string, unknown> | undefined = config.startField
+    ? { property: config.startField, date: { on_or_after: isoFirst } }
+    : undefined;
+
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    if (filter) body.filter = filter;
+    if (config.startField) body.sorts = [{ property: config.startField, direction: 'descending' }];
+
+    const res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+
+    const pages = (res.results ?? []) as Array<{ id: string; properties: Record<string, PropVal> }>;
+
+    // Collect relation IDs
+    const relIds = new Set<string>();
+    for (const page of pages) {
+      const props = page.properties;
+      const addRels = (field: string) => {
+        const rels = (props[field] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined;
+        rels?.forEach(r => relIds.add(r.id));
+      };
+      if (config.projetsField) addRels(config.projetsField);
+      if (config.sousProjetField) addRels(config.sousProjetField);
+    }
+    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(token, relIds) : new Map<string, string>();
+
+    for (const page of pages) {
+      const props = page.properties;
+
+      const titleProp = config.titleField
+        ? props[config.titleField]
+        : Object.values(props).find(p => p?.type === 'title');
+      const title = plainText(titleProp) || '(sans titre)';
+
+      const resolveRels = (field: string): string[] => {
+        if (!field || !props[field]) return [];
+        const rels = (props[field] as Record<string, unknown>).relation as Array<{ id: string }> | undefined;
+        if (!rels) return [];
+        return rels.map(r => relIdToTitle.get(r.id) ?? r.id.slice(0, 8)).filter(Boolean);
+      };
+
+      const startRaw = dateRange(config.startField ? props[config.startField] : null);
+      const endRaw = dateRange(config.endField ? props[config.endField] : null);
+
+      entries.push({
+        id: page.id,
+        title,
+        start: startRaw.start,
+        end: endRaw.start,
+        dureeH: config.dureeHField ? formulaString(props[config.dureeHField]) : '',
+        dureeMin: config.dureeMinField ? formulaString(props[config.dureeMinField]) : '',
+        commentaire: config.commentaireField ? plainText(props[config.commentaireField]) : '',
+        projets: resolveRels(config.projetsField),
+        sousProjets: resolveRels(config.sousProjetField),
+      });
+    }
+
+    cursor = res.has_more ? String(res.next_cursor) : undefined;
+  } while (cursor);
+
+  return entries;
+}
+
+// ── Tickets ───────────────────────────────────────────────────────────────────
+
+function multiSelectNames(prop: PropVal): string[] {
+  if (!prop) return [];
+  const ms = (prop as Record<string, unknown>).multi_select as Array<{ name: string }> | undefined;
+  if (ms) return ms.map(o => o.name);
+  const s = (prop as Record<string, unknown>).select as { name?: string } | undefined;
+  if (s?.name) return [s.name];
+  const st = (prop as Record<string, unknown>).status as { name?: string } | undefined;
+  if (st?.name) return [st.name];
+  return [];
+}
+
+export async function fetchTickets(
+  token: string,
+  config: TicketsConfig,
+  includeTermines = false,
+): Promise<TicketEntry[]> {
+  const entries: TicketEntry[] = [];
+  let cursor: string | undefined;
+
+  const buildFilter = (): Record<string, unknown> | undefined => {
+    if (includeTermines || !config.statutField || config.statutsTerminesValues.length === 0) return undefined;
+    const conditions = config.statutsTerminesValues.map(v => ({
+      property: config.statutField,
+      multi_select: { does_not_contain: v },
+    }));
+    return conditions.length === 1 ? conditions[0] : { and: conditions };
+  };
+
+  const filter = buildFilter();
+
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    if (filter) body.filter = filter;
+
+    let res: Record<string, unknown>;
+    try {
+      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    } catch (e) {
+      if (filter && !cursor) {
+        delete body.filter;
+        res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      } else {
+        throw e;
+      }
+    }
+
+    const pages = (res!.results ?? []) as Array<{ id: string; properties: Record<string, PropVal> }>;
+
+    // Collect association relation IDs
+    const relIds = new Set<string>();
+    for (const page of pages) {
+      const rels = (page.properties[config.associationField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined;
+      rels?.forEach(r => relIds.add(r.id));
+    }
+    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(token, relIds) : new Map<string, string>();
+
+    for (const page of pages) {
+      const props = page.properties;
+
+      const titleProp = config.sujetField
+        ? props[config.sujetField]
+        : Object.values(props).find(p => p?.type === 'title');
+
+      const assocRels = (props[config.associationField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined ?? [];
+      const assocId = assocRels[0]?.id ?? '';
+      const assocName = assocId ? (relIdToTitle.get(assocId) ?? assocId.slice(0, 8)) : '';
+
+      entries.push({
+        id: page.id,
+        ticketId: config.ticketIdField ? plainText(props[config.ticketIdField]) || selectName(props[config.ticketIdField]) : '',
+        sujet: plainText(titleProp) || '(sans sujet)',
+        codeAssoc: config.codeAssocField ? plainText(props[config.codeAssocField]) : '',
+        statut: multiSelectNames(config.statutField ? props[config.statutField] : null).join(', '),
+        priorite: multiSelectNames(config.prioriteField ? props[config.prioriteField] : null).join(', '),
+        niveau: multiSelectNames(config.niveauField ? props[config.niveauField] : null).join(', '),
+        dateModif: config.dateModifField ? dateRange(props[config.dateModifField]).start : null,
+        demandeur: config.demandeurField ? (extractExtraValue(props[config.demandeurField], new Map()) || '') : '',
+        lien: config.lienField ? formulaString(props[config.lienField]) || (extractExtraValue(props[config.lienField], new Map())) : '',
+        zone: config.zoneField ? formulaString(props[config.zoneField]) || plainText(props[config.zoneField]) : '',
+        memo: config.memoField ? plainText(props[config.memoField]) : '',
+        codeDossier: config.codeDossierField ? plainText(props[config.codeDossierField]) : '',
+        categorie: config.categorieField ? selectName(props[config.categorieField]) || plainText(props[config.categorieField]) : '',
+        sousCategorie: config.sousCategorieField ? selectName(props[config.sousCategorieField]) || plainText(props[config.sousCategorieField]) : '',
+        conclusion: config.conclusionField ? plainText(props[config.conclusionField]) : '',
+        departement: config.departementField ? selectName(props[config.departementField]) || plainText(props[config.departementField]) : '',
+        associationId: assocId,
+        associationName: assocName,
+      });
+    }
+
+    cursor = res!.has_more ? String(res!.next_cursor) : undefined;
+  } while (cursor);
+
+  entries.sort((a, b) => a.ticketId.localeCompare(b.ticketId, 'fr', { numeric: true }));
+  return entries;
+}
+
+export async function fetchAssociations(
+  token: string,
+  config: AssociationsConfig,
+  includeTermines = false,
+): Promise<AssociationEntry[]> {
+  const entries: AssociationEntry[] = [];
+  let cursor: string | undefined;
+
+  const buildFilter = (): Record<string, unknown> | undefined => {
+    if (includeTermines || !config.statutField || config.statutsTerminesValues.length === 0) return undefined;
+    const conditions = config.statutsTerminesValues.map(v => ({
+      or: [
+        { property: config.statutField, status: { does_not_equal: v } },
+        { property: config.statutField, select: { does_not_equal: v } },
+      ],
+    }));
+    return conditions.length === 1 ? conditions[0] : { and: conditions };
+  };
+
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const filter = buildFilter();
+    if (filter) body.filter = filter;
+
+    let res: Record<string, unknown>;
+    try {
+      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    } catch {
+      delete body.filter;
+      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    }
+
+    const pages = (res!.results ?? []) as Array<{ id: string; properties: Record<string, PropVal> }>;
+
+    for (const page of pages) {
+      const props = page.properties;
+
+      const titleProp = config.nomField
+        ? props[config.nomField]
+        : Object.values(props).find(p => p?.type === 'title');
+
+      entries.push({
+        id: page.id,
+        nom: plainText(titleProp) || '(sans nom)',
+        code: config.codeField ? plainText(props[config.codeField]) : '',
+        statut: config.statutField ? (selectName(props[config.statutField]) || '') : '',
+        priorite: config.prioriteField ? multiSelectNames(props[config.prioriteField]).join(', ') : '',
+        solution: config.solutionField ? plainText(props[config.solutionField]) : '',
+        suivi: config.suiviField ? formulaString(props[config.suiviField]) || plainText(props[config.suiviField]) : '',
+      });
+    }
+
+    cursor = res!.has_more ? String(res!.next_cursor) : undefined;
+  } while (cursor);
+
+  entries.sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }));
   return entries;
 }

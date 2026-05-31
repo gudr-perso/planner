@@ -195,3 +195,97 @@ export type NotionBlock = {
   has_children: boolean;
   [key: string]: unknown;
 };
+
+// ── Temps ─────────────────────────────────────────────────────────────────────
+
+export type TempsConfig = {
+  databaseId: string;
+  titleField: string;
+  startField: string;
+  endField: string;
+  dureeHField: string;
+  dureeMinField: string;
+  commentaireField: string;
+  projetsField: string;
+  sousProjetField: string;
+  objectifHebdoH: number;
+};
+
+export type TempsEntry = {
+  id: string;
+  title: string;
+  start: string | null;
+  end: string | null;
+  dureeH: string;
+  dureeMin: string;
+  commentaire: string;
+  projets: string[];
+  sousProjets: string[];
+};
+
+// ── Tickets ───────────────────────────────────────────────────────────────────
+
+export type TicketsConfig = {
+  databaseId: string;
+  ticketIdField: string;
+  sujetField: string;
+  codeAssocField: string;
+  statutField: string;
+  prioriteField: string;
+  niveauField: string;
+  dateModifField: string;
+  demandeurField: string;
+  lienField: string;
+  zoneField: string;
+  memoField: string;
+  codeDossierField: string;
+  categorieField: string;
+  sousCategorieField: string;
+  conclusionField: string;
+  departementField: string;
+  associationField: string;
+  statutsTerminesValues: string[];
+};
+
+export type TicketEntry = {
+  id: string;
+  ticketId: string;
+  sujet: string;
+  codeAssoc: string;
+  statut: string;
+  priorite: string;
+  niveau: string;
+  dateModif: string | null;
+  demandeur: string;
+  lien: string;
+  zone: string;
+  memo: string;
+  codeDossier: string;
+  categorie: string;
+  sousCategorie: string;
+  conclusion: string;
+  departement: string;
+  associationId: string;
+  associationName: string;
+};
+
+export type AssociationsConfig = {
+  databaseId: string;
+  nomField: string;
+  codeField: string;
+  statutField: string;
+  prioriteField: string;
+  solutionField: string;
+  suiviField: string;
+  statutsTerminesValues: string[];
+};
+
+export type AssociationEntry = {
+  id: string;
+  nom: string;
+  code: string;
+  statut: string;
+  priorite: string;
+  solution: string;
+  suivi: string;
+};
