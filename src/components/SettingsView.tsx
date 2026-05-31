@@ -124,8 +124,10 @@ function ExtraFieldCombo({
 
 export function SettingsView({
   onSync,
+  onGcalClientIdSave,
 }: {
   onSync: (data: DataBundle) => void;
+  onGcalClientIdSave?: (id: string) => void;
 }) {
   const [config, setConfig] = useState<NotionConfig>(() =>
     load<NotionConfig>('notionConfig', DEFAULT_CONFIG)
@@ -139,6 +141,8 @@ export function SettingsView({
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   const DEFAULT_BRIEFING: BriefingConfig = { databaseId: '', titleField: '', dateField: '', summaryField: '' };
+  const [gcalClientId, setGcalClientId] = useState<string>(() => load<string>('gcalClientId', ''));
+
   const [briefingConfig, setBriefingConfig] = useState<BriefingConfig>(() =>
     load<BriefingConfig>('briefingConfig', DEFAULT_BRIEFING)
   );
@@ -359,6 +363,34 @@ export function SettingsView({
               <span style={{ color: 'var(--accent)' }}>notion.so/my-integrations</span>,
               partagez votre base de données avec elle, puis collez le token.
             </p>
+          </section>
+
+          {/* ── Google Agenda ── */}
+          <section>
+            <SectionTitle>Google Agenda</SectionTitle>
+            <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+              Client ID OAuth 2.0 (console.cloud.google.com → Identifiants → OAuth 2.0).
+              Stocké localement, jamais intégré dans le bundle.
+            </p>
+            <FieldRow label="Client ID">
+              <input
+                type="password"
+                value={gcalClientId}
+                onChange={e => setGcalClientId(e.target.value)}
+                placeholder="xxxxxxxx.apps.googleusercontent.com"
+                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </FieldRow>
+            <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={() => { save('gcalClientId', gcalClientId); onGcalClientIdSave?.(gcalClientId); flash('Client ID Google sauvegardé'); }}
+                className="text-xs px-4 py-2 rounded font-medium transition"
+                style={{ background: 'var(--border)', color: 'var(--text)' }}
+              >
+                Sauvegarder
+              </button>
+            </div>
           </section>
 
           {/* ── Mapping des champs ── */}

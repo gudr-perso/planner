@@ -101,7 +101,7 @@ export function ProjectDropdown({
   );
 }
 
-export export function SubprojectDropdown({
+export function SubprojectDropdown({
   subprojects,
   projectById,
   selected,

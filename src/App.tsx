@@ -23,7 +23,7 @@ import { SuivisView } from './components/SuivisView';
 import { HomeView } from './components/HomeView';
 import type { PartenaireEntry } from './types';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
+// Google Client ID stored in localStorage (configured via Settings), never baked into the bundle.
 
 type StoredToken = { token: string; expiresAt: number };
 
@@ -71,7 +71,7 @@ function useResizablePanel(storageKey: string, initialWidth: number, min = 180, 
 }
 
 // ── Inner app ─────────────────────────────────────────────────────────────────
-function PlannerApp() {
+function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: string) => void }) {
   const [data, setData] = useState<DataBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewKey>(() => load<ViewKey>('view', 'home'));
@@ -85,6 +85,7 @@ function PlannerApp() {
   const [notionWriteMsg, setNotionWriteMsg] = useState<string | null>(null);
   const [partenaireFilter, setPartenaireFilter] = useState<PartenaireEntry | null>(null);
   const [suivisSearch, setSuivisSearch] = useState('');
+  const googleClientId = load<string>('gcalClientId', '');
   const [dataSource, setDataSource] = useState<'demo' | 'notion'>(() => load<'demo' | 'notion'>('dataSource', 'demo'));
   const [theme, setTheme] = useState<'default' | 'forge'>(() => load<'default' | 'forge'>('theme', 'default'));
   const [filters, setFiltersState] = useState<StoreCtx['filters']>(() => ({
@@ -235,7 +236,7 @@ function PlannerApp() {
       accessToken: gcalToken,
       loading: gcalLoading,
       error: gcalError,
-      connect: () => !GOOGLE_CLIENT_ID ? setGcalError('Google Client ID non configuré (VITE_GOOGLE_CLIENT_ID)') : login(),
+      connect: () => !googleClientId ? setGcalError('Google Client ID non configuré (voir Paramètres → Google Agenda)') : login(),
       disconnect: () => { setGcalToken(null); save('gcalToken', null); setGcalError(null); },
     },
     planTask, unplanTask, updateTaskDates,
@@ -318,7 +319,7 @@ function PlannerApp() {
                   : view === 'calendar' ? <CalendarView />
                   : view === 'rolling'  ? <RollingWeeksView />
                   : view === 'rolling2' ? <RollingWeeksView2 />
-                  : view === 'settings' ? <SettingsView onSync={handleNotionSync} />
+                  : view === 'settings' ? <SettingsView onSync={handleNotionSync} onGcalClientIdSave={(id) => { save('gcalClientId', id); onGcalClientIdChange(id); }} />
                   : view === 'briefing' ? <BriefingView />
                   : view === 'partenaires' ? (
                     <PartenairesView
@@ -365,9 +366,11 @@ function PlannerApp() {
 }
 
 export default function App() {
+  const [clientId, setClientId] = useState<string>(() => load<string>('gcalClientId', ''));
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || 'placeholder'}>
-      <PlannerApp />
+    // key forces GoogleOAuthProvider to remount when clientId changes (new login context)
+    <GoogleOAuthProvider key={clientId || 'placeholder'} clientId={clientId || 'placeholder'}>
+      <PlannerApp onGcalClientIdChange={setClientId} />
     </GoogleOAuthProvider>
   );
 }
