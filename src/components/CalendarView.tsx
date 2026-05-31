@@ -227,7 +227,7 @@ export function CalendarView() {
 
       {isOver && (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 bg-blue-600 text-white text-xs px-4 py-1.5 rounded-full shadow-lg pointer-events-none">
-          Déposer pour planifier demain (1 jour)
+          Déposer sur un créneau horaire pour planifier
         </div>
       )}
 

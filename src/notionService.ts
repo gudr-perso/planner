@@ -62,6 +62,20 @@ async function nPatch(token: string, path: string, body: unknown) {
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+// Convert schedule-x format to Notion ISO 8601.
+// "2026-05-29"       → "2026-05-29"                    (date-only, Notion accepts it)
+// "2026-05-29 09:00" → "2026-05-29T09:00:00.000+HH:MM" (with browser local timezone)
+function sxDateToNotion(sx: string): string {
+  if (!sx.includes(' ')) return sx; // already date-only
+  const [datePart, timePart] = sx.split(' ');
+  const tzOffset = -new Date().getTimezoneOffset(); // minutes
+  const sign = tzOffset >= 0 ? '+' : '-';
+  const abs = Math.abs(tzOffset);
+  const tzHH = String(Math.floor(abs / 60)).padStart(2, '0');
+  const tzMM = String(abs % 60).padStart(2, '0');
+  return `${datePart}T${timePart}:00.000${sign}${tzHH}:${tzMM}`;
+}
+
 export async function patchNotionDates(
   token: string,
   pageId: string,
@@ -71,7 +85,7 @@ export async function patchNotionDates(
 ): Promise<void> {
   await nPatch(token, `/pages/${pageId}`, {
     properties: {
-      [dateFieldName]: { date: { start, end } },
+      [dateFieldName]: { date: { start: sxDateToNotion(start), end: sxDateToNotion(end) } },
     },
   });
 }
@@ -140,12 +154,23 @@ function assigneeList(prop: PropVal): Array<{ id: string; name: string }> {
   return [];
 }
 
+// Convert a Notion ISO date string to schedule-x format.
+// "2026-05-29"                    → "2026-05-29"          (date-only, keep as-is)
+// "2026-05-29T09:00:00.000+02:00" → "2026-05-29 09:00"   (preserve HH:MM from stored value)
+function notionDateToSx(iso: string): string {
+  const tIdx = iso.indexOf('T');
+  if (tIdx === -1) return iso.slice(0, 10); // date-only
+  const datePart = iso.slice(0, 10);
+  const timePart = iso.slice(tIdx + 1, tIdx + 6); // "HH:MM"
+  return `${datePart} ${timePart}`;
+}
+
 function dateRange(prop: PropVal): { start: string | null; end: string | null } {
   const d = (prop?.date ?? null) as { start?: string; end?: string } | null;
   if (!d?.start) return { start: null, end: null };
   return {
-    start: d.start.slice(0, 10),
-    end: d.end ? d.end.slice(0, 10) : d.start.slice(0, 10),
+    start: notionDateToSx(d.start),
+    end: d.end ? notionDateToSx(d.end) : notionDateToSx(d.start),
   };
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, type DragEndEvent, type DragMoveEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import { StoreContext, type StoreCtx } from './store';
 import { loadDemoData } from './loadData';
@@ -245,17 +245,66 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
   } : null;
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const dragPos = useRef<{ x: number; y: number } | null>(null);
 
   const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over || !store) return;
     const taskId = (e.active.data.current as { taskId?: string })?.taskId;
     if (!taskId) return;
-    const tomorrow = new Date('2026-05-29');
-    const days = e.over.id === 'drop-gantt' ? 5 : 1;
-    const endDate = new Date(tomorrow);
-    endDate.setDate(endDate.getDate() + days - 1);
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
-    store.planTask(taskId, iso(tomorrow), iso(endDate));
+
+    const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+    const today = new Date();
+
+    if (e.over.id === 'drop-gantt') {
+      const start = new Date(today);
+      start.setDate(start.getDate() + 1);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 4);
+      store.planTask(taskId, isoDate(start), isoDate(end));
+      return;
+    }
+
+    if (e.over.id === 'drop-calendar') {
+      const { x, y } = dragPos.current ?? { x: 0, y: 0 };
+
+      // --- Detect date from the day column under the cursor ---
+      // schedule-x uses: data-time-grid-date (week/day view), data-date (month grid)
+      let dateStr = isoDate(today);
+      let node: Element | null = document.elementFromPoint(x, y);
+      while (node) {
+        const d = node.getAttribute('data-time-grid-date') ?? node.getAttribute('data-date');
+        if (d && /^\d{4}-\d{2}-\d{2}/.test(d)) { dateStr = d.slice(0, 10); break; }
+        node = node.parentElement;
+      }
+
+      // --- Detect hour from Y position in the time grid ---
+      // .sx__week-grid is the timed area (height = gridHeight prop)
+      // .sx__view-container is the scrollable container
+      const timeGrid = document.querySelector('.sx__week-grid') as HTMLElement | null;
+      const scrollContainer = document.querySelector('.sx__view-container') as HTMLElement | null;
+      let hour = 9; // fallback default
+      if (timeGrid && scrollContainer) {
+        const rect = timeGrid.getBoundingClientRect();
+        const relY = (y - rect.top) + scrollContainer.scrollTop;
+        const totalHeight = timeGrid.scrollHeight; // = gridHeight prop (900 default)
+        const dayStartHour = parseInt(load<string>('calDayStart', '08:00'));
+        const dayEndHour = parseInt(load<string>('calDayEnd', '20:00'));
+        const totalHours = dayEndHour - dayStartHour;
+        hour = Math.floor(dayStartHour + (relY / totalHeight) * totalHours);
+        hour = Math.max(dayStartHour, Math.min(dayEndHour - 1, hour));
+      }
+
+      const hh = (h: number) => String(h).padStart(2, '0');
+      const startStr = `${dateStr} ${hh(hour)}:00`;
+      const endStr = `${dateStr} ${hh(hour + 1)}:00`;
+      store.planTask(taskId, startStr, endStr);
+      return;
+    }
+
+    // Fallback for other drop zones
+    const start = new Date(today);
+    start.setDate(start.getDate() + 1);
+    store.planTask(taskId, isoDate(start), isoDate(start));
   };
 
   if (error) return <div className="p-6 text-red-400 h-screen" style={{ background: 'var(--bg-deep)' }}>Erreur : {error}</div>;
@@ -273,7 +322,14 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
 
   return (
     <StoreContext.Provider value={store}>
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        onDragMove={(e: DragMoveEvent) => {
+          const ae = e.activatorEvent as PointerEvent;
+          dragPos.current = { x: ae.clientX + e.delta.x, y: ae.clientY + e.delta.y };
+        }}
+        onDragEnd={handleDragEnd}
+      >
         {modalTaskId && (
           <TaskModal taskId={modalTaskId} onClose={() => setModalTaskId(null)} />
         )}
