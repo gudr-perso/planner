@@ -1,9 +1,39 @@
+import { useState } from 'react';
 import { useStore } from '../store';
 import { STATUS_LABELS, STATUS_COLORS } from '../types';
+
+// schedule-x format: "YYYY-MM-DD HH:MM"  or  "YYYY-MM-DD" (date-only)
+// datetime-local input: "YYYY-MM-DDTHH:MM"
+function sxToInput(sx: string | null): string {
+  if (!sx) return '';
+  if (sx.includes(' ')) return sx.replace(' ', 'T'); // "2026-05-29 09:00" → "2026-05-29T09:00"
+  return sx + 'T00:00'; // date-only → add midnight for the input
+}
+
+function inputToSx(val: string): string {
+  if (!val) return '';
+  // "2026-05-29T09:00" → "2026-05-29 09:00"
+  // If time is midnight we could keep date-only, but always store with time for precision
+  return val.replace('T', ' ');
+}
+
+// Pretty display
+function fmtDisplay(sx: string | null): string {
+  if (!sx) return '—';
+  const [datePart, timePart] = sx.includes(' ') ? sx.split(' ') : [sx, null];
+  const d = new Date(datePart + 'T00:00:00');
+  const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  return timePart ? `${dateStr} · ${timePart}` : dateStr;
+}
 
 export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => void }) {
   const store = useStore();
   const task = store.data.tasks.find(t => t.id === taskId);
+
+  const [startVal, setStartVal] = useState(() => sxToInput(task?.start_date ?? null));
+  const [endVal, setEndVal] = useState(() => sxToInput(task?.end_date ?? null));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   if (!task) return null;
 
@@ -14,13 +44,30 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
   const person = store.personById.get(task.assignee_id);
   const statusColor = STATUS_COLORS[task.status];
 
-  const fmt = (iso: string | null) => {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    const datePart = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-    if (!iso.includes('T')) return datePart;
-    const timePart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    return `${datePart} ${timePart}`;
+  const originalStart = sxToInput(task.start_date);
+  const originalEnd = sxToInput(task.end_date);
+  const dirty = startVal !== originalStart || endVal !== originalEnd;
+
+  const handleSave = async () => {
+    const newStart = inputToSx(startVal);
+    const newEnd = inputToSx(endVal);
+    if (!newStart || !newEnd) return;
+    setSaving(true);
+    store.updateTaskDates(task.id, newStart, newEnd);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const inputStyle: React.CSSProperties = {
+    background: 'var(--bg-deep)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    padding: '3px 8px',
+    fontSize: 11,
+    outline: 'none',
+    colorScheme: 'dark',
   };
 
   return (
@@ -85,9 +132,63 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
             </Row>
           )}
 
-          {/* Dates */}
-          <Row label="Début">{task.start_date ? <Val>{fmt(task.start_date)}</Val> : <Dash />}</Row>
-          <Row label="Fin">{task.end_date ? <Val>{fmt(task.end_date)}</Val> : <Dash />}</Row>
+          {/* ── Dates éditables ── */}
+          <div className="pt-1 pb-1 space-y-2" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', paddingTop: 10, paddingBottom: 10 }}>
+            <Row label="Début">
+              <div className="flex flex-col gap-0.5">
+                <input
+                  type="datetime-local"
+                  value={startVal}
+                  onChange={e => {
+                    setStartVal(e.target.value);
+                    setSaved(false);
+                    // Auto-adjust end if it's before new start
+                    if (endVal && e.target.value > endVal) {
+                      // push end by 1h
+                      const d = new Date(e.target.value);
+                      d.setHours(d.getHours() + 1);
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      setEndVal(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                    }
+                  }}
+                  style={inputStyle}
+                />
+                {task.start_date && <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{fmtDisplay(task.start_date)}</span>}
+              </div>
+            </Row>
+
+            <Row label="Fin">
+              <div className="flex flex-col gap-0.5">
+                <input
+                  type="datetime-local"
+                  value={endVal}
+                  min={startVal}
+                  onChange={e => { setEndVal(e.target.value); setSaved(false); }}
+                  style={inputStyle}
+                />
+                {task.end_date && <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{fmtDisplay(task.end_date)}</span>}
+              </div>
+            </Row>
+
+            {/* Save button */}
+            {(dirty || saved) && (
+              <div className="flex items-center gap-2 pt-1">
+                {dirty && (
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium transition hover:opacity-90 disabled:opacity-50"
+                    style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+                  >
+                    {saving ? 'Enregistrement…' : 'Enregistrer'}
+                  </button>
+                )}
+                {saved && !dirty && (
+                  <span className="text-xs" style={{ color: 'var(--color-success)' }}>✓ Mis à jour dans Notion</span>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Planned */}
           <Row label="Planifiée">
@@ -137,9 +238,9 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs w-24 shrink-0 text-right" style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span className="text-xs" style={{ color: 'var(--text)' }}>{children}</span>
+    <div className="flex items-start gap-3">
+      <span className="text-xs w-24 shrink-0 text-right pt-1" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="text-xs flex-1" style={{ color: 'var(--text)' }}>{children}</span>
     </div>
   );
 }
