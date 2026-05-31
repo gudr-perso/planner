@@ -28,14 +28,6 @@ function formatDateTime(iso: string | null): string {
   } catch { return iso; }
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso.includes(' ') ? iso.replace(' ', 'T') : iso)
-      .toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  } catch { return iso; }
-}
-
 function parseH(val: string): number {
   const n = parseFloat(val.replace(',', '.'));
   return isNaN(n) ? 0 : n;
