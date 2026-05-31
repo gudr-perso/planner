@@ -74,7 +74,10 @@ function useResizablePanel(storageKey: string, initialWidth: number, min = 180, 
 function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: string) => void }) {
   const [data, setData] = useState<DataBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<ViewKey>(() => load<ViewKey>('view', 'home'));
+  const [view, setView] = useState<ViewKey>(() => {
+    if (localStorage.getItem('planner:_justImported')) return 'settings';
+    return load<ViewKey>('view', 'home');
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => load<boolean>('sidebarCollapsed', false));
   const [gcalToken, setGcalToken] = useState<string | null>(loadToken);
   const [modalTaskId, setModalTaskId] = useState<string | null>(null);
@@ -161,9 +164,15 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
 
   const toggleTheme = () => setTheme((t) => (t === 'default' ? 'forge' : 'default'));
 
-  // Fetch Google Calendar events when token is available
+  // Fetch Google Calendar events when token is available and data is loaded.
+  // lastGcalFetchToken tracks which token was last used so we don't re-fetch on
+  // every task update (data changes), but DO fetch when data first becomes available
+  // after a token was already stored (e.g. on app startup with a cached token).
+  const lastGcalFetchToken = useRef<string | null>(null);
   useEffect(() => {
     if (!gcalToken || !data) return;
+    if (lastGcalFetchToken.current === gcalToken) return;
+    lastGcalFetchToken.current = gcalToken;
     const now = new Date();
     const sixMonths = new Date(now);
     sixMonths.setMonth(sixMonths.getMonth() + 6);
@@ -182,7 +191,7 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
           save('gcalToken', null);
         }
       });
-  }, [gcalToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gcalToken, data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useGoogleLogin({
     scope: 'https://www.googleapis.com/auth/calendar.readonly',

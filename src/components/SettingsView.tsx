@@ -1,6 +1,7 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { fetchDatabaseSchema, syncFromNotion } from '../notionService';
 import { save, load } from '../persistence';
+import { downloadConfig, importConfig } from '../configIO';
 import type {
   BriefingConfig,
   DataBundle,
@@ -307,6 +308,40 @@ export function SettingsView({
     }));
   };
 
+  const [importBanner, setImportBanner] = useState<boolean>(() => {
+    const flag = localStorage.getItem('planner:_justImported');
+    if (flag) {
+      localStorage.removeItem('planner:_justImported');
+      return true;
+    }
+    return false;
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (importBanner && config.integrationToken && config.databaseId && schema.length === 0) {
+      fetchDatabaseSchema(config.integrationToken, config.databaseId)
+        .then(setSchema)
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importBanner]);
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        importConfig(ev.target!.result as string);
+      } catch {
+        setError('Fichier invalide — vérifiez le format JSON.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const hasConfig = !!(config.fieldMap.title || config.fieldMap.status);
 
   return (
@@ -321,6 +356,58 @@ export function SettingsView({
         </div>
 
         <div className="space-y-8">
+
+          {/* ── Bannière post-import ── */}
+          {importBanner && (
+            <div
+              className="flex items-start gap-3 rounded-lg px-4 py-3 text-xs"
+              style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', border: '1px solid var(--accent)', color: 'var(--text)' }}
+            >
+              <span className="text-base leading-none mt-0.5">✓</span>
+              <div>
+                <p className="font-medium mb-0.5">Configuration importée avec succès.</p>
+                <p style={{ color: 'var(--text-muted)' }}>
+                  Saisissez votre token d'intégration Notion ci-dessous puis cliquez <strong>Charger le schéma</strong> pour finaliser.
+                </p>
+              </div>
+              <button
+                onClick={() => setImportBanner(false)}
+                className="ml-auto text-base leading-none opacity-50 hover:opacity-100"
+                style={{ color: 'var(--text)' }}
+              >×</button>
+            </div>
+          )}
+
+          {/* ── Export / Import ── */}
+          <section>
+            <SectionTitle>Export / Import de configuration</SectionTitle>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={downloadConfig}
+                className="text-xs px-3 py-1.5 rounded font-medium transition"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              >
+                ↓ Exporter la config
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs px-3 py-1.5 rounded font-medium transition"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              >
+                ↑ Importer…
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+            </div>
+            <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Les clefs API (tokens Notion et Google) ne sont pas exportées.
+            </p>
+          </section>
 
           {/* ── Connexion Notion ── */}
           <section>
