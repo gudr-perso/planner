@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchTemps } from '../notionService';
 import type { NotionConfig, TempsConfig, TempsEntry } from '../types';
@@ -33,11 +33,21 @@ function parseH(val: string): number {
   return isNaN(n) ? 0 : n;
 }
 
-/** ISO date string → Monday of that week (Monday-based) */
+function fmtDec(val: string): string {
+  if (!val) return '—';
+  const n = parseFloat(val.replace(',', '.'));
+  if (isNaN(n)) return val;
+  return n.toFixed(2);
+}
+
+function fmtDecNum(n: number): string {
+  return n.toFixed(2);
+}
+
 function mondayOf(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso.includes(' ') ? iso.replace(' ', 'T') : iso);
-  const day = d.getDay(); // 0=Sun
+  const day = d.getDay();
   const diff = (day === 0 ? -6 : 1 - day);
   d.setDate(d.getDate() + diff);
   return d.toISOString().slice(0, 10);
@@ -78,6 +88,10 @@ function sumH(entries: TempsEntry[]): number {
   return entries.reduce((acc, e) => acc + parseH(e.dureeH), 0);
 }
 
+function sumMin(entries: TempsEntry[]): number {
+  return entries.reduce((acc, e) => acc + parseH(e.dureeMin), 0);
+}
+
 function formatHM(h: number): string {
   const hh = Math.floor(h);
   const mm = Math.round((h - hh) * 60);
@@ -85,9 +99,19 @@ function formatHM(h: number): string {
   return `${hh} h ${mm.toString().padStart(2, '0')}`;
 }
 
+function formatDayLabel(iso: string): string {
+  try {
+    const d = new Date(iso + 'T12:00:00');
+    const s = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  } catch { return iso; }
+}
+
 type SortKey = keyof Pick<TempsEntry, 'title' | 'start' | 'end' | 'dureeH' | 'dureeMin' | 'commentaire'> | 'projets' | 'sousProjets';
+type GroupBy = 'none' | 'projet' | 'jour';
 
 const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const COL_COUNT = 8;
 
 // ── Onglet Liste ──────────────────────────────────────────────────────────────
 
@@ -99,6 +123,16 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
   const [filterDateTo, setFilterDateTo] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('start');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [groupBy, setGroupBy] = useState<GroupBy>('none');
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const toggleCollapse = (key: string) => {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   const allProjets = useMemo(() => {
     const s = new Set<string>();
@@ -135,6 +169,49 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
     });
   }, [entries, search, filterProjet, filterSousProjet, filterDateFrom, filterDateTo, sortKey, sortDir]);
 
+  // Grouped data
+  const projGroups = useMemo(() => {
+    if (groupBy !== 'projet') return [];
+    const map = new Map<string, Map<string, TempsEntry[]>>();
+    for (const e of filtered) {
+      const proj = e.projets[0] ?? '(Sans projet)';
+      const sp = e.sousProjets[0] ?? '(Sans sous-projet)';
+      if (!map.has(proj)) map.set(proj, new Map());
+      const spMap = map.get(proj)!;
+      if (!spMap.has(sp)) spMap.set(sp, []);
+      spMap.get(sp)!.push(e);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'fr'))
+      .map(([projet, spMap]) => ({
+        projet,
+        sousGroups: Array.from(spMap.entries())
+          .sort(([a], [b]) => a.localeCompare(b, 'fr'))
+          .map(([sousProjet, items]) => ({ sousProjet, items })),
+      }));
+  }, [filtered, groupBy]);
+
+  const dayGroups = useMemo(() => {
+    if (groupBy !== 'jour') return [];
+    const map = new Map<string, TempsEntry[]>();
+    for (const e of filtered) {
+      const d = entryDate(e);
+      if (!map.has(d)) map.set(d, []);
+      map.get(d)!.push(e);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, items]) => ({ date, items }));
+  }, [filtered, groupBy]);
+
+  const grandTotalH = groupBy !== 'none' ? sumH(filtered) : 0;
+  const grandTotalMin = groupBy !== 'none' ? sumMin(filtered) : 0;
+
+  const inputStyle: React.CSSProperties = {
+    background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)',
+    borderRadius: 6, padding: '4px 8px', fontSize: 12, outline: 'none',
+  };
+
   const SortTh = ({ col, label }: { col: SortKey; label: string }) => (
     <th
       onClick={() => toggleSort(col)}
@@ -147,9 +224,106 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
     </th>
   );
 
-  const inputStyle = {
-    background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)',
-    borderRadius: 6, padding: '4px 8px', fontSize: 12, outline: 'none',
+  const EntryRow = ({ e, i, indent = 0 }: { e: TempsEntry; i: number; indent?: number }) => (
+    <tr style={{ background: i % 2 === 0 ? 'transparent' : 'color-mix(in srgb, var(--bg-deep) 40%, transparent)' }}>
+      <td style={{ padding: `5px 10px 5px ${10 + indent * 18}px`, color: 'var(--text)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(e.start)}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(e.end)}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtDec(e.dureeH)}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtDec(e.dureeMin)}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.commentaire || '—'}</td>
+      <td style={{ padding: '5px 10px' }}>
+        {e.projets.map(p => (
+          <span key={p} style={{ ...badgeStyle('blue'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block' }}>{p}</span>
+        ))}
+      </td>
+      <td style={{ padding: '5px 10px' }}>
+        {e.sousProjets.map(p => (
+          <span key={p} style={{ ...badgeStyle('purple'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block' }}>{p}</span>
+        ))}
+      </td>
+    </tr>
+  );
+
+  const GroupHeaderRow = ({ label, totalH, totalMin, groupKey, indent = 0, shade = 12 }: {
+    label: string; totalH: number; totalMin: number; groupKey: string; indent?: number; shade?: number;
+  }) => {
+    const isCollapsed = collapsed.has(groupKey);
+    return (
+      <tr
+        onClick={() => toggleCollapse(groupKey)}
+        style={{ background: `color-mix(in srgb, var(--accent) ${shade}%, transparent)`, cursor: 'pointer', userSelect: 'none' }}
+      >
+        <td colSpan={3} style={{ padding: `6px 10px 6px ${10 + indent * 18}px`, fontWeight: 700, fontSize: 12, color: 'var(--text)' }}>
+          <span style={{ marginRight: 6, fontSize: 9, color: 'var(--text-muted)', display: 'inline-block', width: 10 }}>
+            {isCollapsed ? '▶' : '▼'}
+          </span>
+          {label}
+        </td>
+        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(totalH)}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(totalMin)}</td>
+        <td colSpan={3} />
+      </tr>
+    );
+  };
+
+  const renderGrouped = () => {
+    if (groupBy === 'projet') {
+      return projGroups.map(({ projet, sousGroups }) => {
+        const projKey = `proj-${projet}`;
+        const allProjEntries = sousGroups.flatMap(sg => sg.items);
+        const isProjCollapsed = collapsed.has(projKey);
+        return (
+          <Fragment key={projKey}>
+            <GroupHeaderRow
+              label={projet}
+              totalH={sumH(allProjEntries)}
+              totalMin={sumMin(allProjEntries)}
+              groupKey={projKey}
+              shade={12}
+            />
+            {!isProjCollapsed && sousGroups.map(({ sousProjet, items }) => {
+              const spKey = `sp-${projet}|${sousProjet}`;
+              const isSpCollapsed = collapsed.has(spKey);
+              return (
+                <Fragment key={spKey}>
+                  <GroupHeaderRow
+                    label={sousProjet}
+                    totalH={sumH(items)}
+                    totalMin={sumMin(items)}
+                    groupKey={spKey}
+                    indent={1}
+                    shade={6}
+                  />
+                  {!isSpCollapsed && items.map((e, i) => <EntryRow key={e.id} e={e} i={i} indent={2} />)}
+                </Fragment>
+              );
+            })}
+          </Fragment>
+        );
+      });
+    }
+
+    if (groupBy === 'jour') {
+      return dayGroups.map(({ date, items }) => {
+        const dayKey = `day-${date}`;
+        const isDayCollapsed = collapsed.has(dayKey);
+        return (
+          <Fragment key={dayKey}>
+            <GroupHeaderRow
+              label={formatDayLabel(date)}
+              totalH={sumH(items)}
+              totalMin={sumMin(items)}
+              groupKey={dayKey}
+              shade={10}
+            />
+            {!isDayCollapsed && items.map((e, i) => <EntryRow key={e.id} e={e} i={i} indent={1} />)}
+          </Fragment>
+        );
+      });
+    }
+
+    return null;
   };
 
   return (
@@ -173,6 +347,27 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
             style={{ ...inputStyle, cursor: 'pointer', color: 'var(--text-muted)' }}
           >✕ Effacer</button>
         )}
+
+        {/* Groupement */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Grouper :</span>
+          {(['none', 'projet', 'jour'] as GroupBy[]).map(g => (
+            <button
+              key={g}
+              onClick={() => { setGroupBy(g); setCollapsed(new Set()); }}
+              style={{
+                ...inputStyle, cursor: 'pointer', padding: '3px 10px',
+                background: groupBy === g ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--bg-deep)',
+                color: groupBy === g ? 'var(--accent)' : 'var(--text-muted)',
+                border: groupBy === g ? '1px solid color-mix(in srgb, var(--accent) 40%, transparent)' : '1px solid var(--border)',
+                fontWeight: groupBy === g ? 600 : 400,
+              }}
+            >
+              {g === 'none' ? 'Aucun' : g === 'projet' ? 'Projet' : 'Jour'}
+            </button>
+          ))}
+        </div>
+
         <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>{filtered.length} entrée{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
@@ -192,28 +387,21 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((e, i) => (
-              <tr key={e.id} style={{ background: i % 2 === 0 ? 'transparent' : 'color-mix(in srgb, var(--bg-deep) 40%, transparent)' }}>
-                <td style={{ padding: '5px 10px', color: 'var(--text)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(e.start)}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(e.end)}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right' }}>{e.dureeH || '—'}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right' }}>{e.dureeMin || '—'}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.commentaire || '—'}</td>
-                <td style={{ padding: '5px 10px' }}>
-                  {e.projets.map(p => (
-                    <span key={p} style={{ ...badgeStyle('blue'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block' }}>{p}</span>
-                  ))}
-                </td>
-                <td style={{ padding: '5px 10px' }}>
-                  {e.sousProjets.map(p => (
-                    <span key={p} style={{ ...badgeStyle('purple'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block' }}>{p}</span>
-                  ))}
-                </td>
+            {groupBy === 'none'
+              ? filtered.map((e, i) => <EntryRow key={e.id} e={e} i={i} />)
+              : renderGrouped()
+            }
+            {/* Grand total */}
+            {groupBy !== 'none' && filtered.length > 0 && (
+              <tr style={{ background: 'color-mix(in srgb, var(--accent) 18%, transparent)', borderTop: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                <td colSpan={3} style={{ padding: '7px 10px', fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>Total</td>
+                <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(grandTotalH)}</td>
+                <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(grandTotalMin)}</td>
+                <td colSpan={3} />
               </tr>
-            ))}
+            )}
             {filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)' }}>Aucune entrée</td></tr>
+              <tr><td colSpan={COL_COUNT} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)' }}>Aucune entrée</td></tr>
             )}
           </tbody>
         </table>
@@ -247,7 +435,6 @@ function StatView({ entries, objectifH }: { entries: TempsEntry[]; objectifH: nu
   const prevWeekH = sumH(prevWeekEntries);
   const progress = Math.min(100, objectifH > 0 ? (curWeekH / objectifH) * 100 : 0);
 
-  // Temps par jour cette semaine et semaine écoulée
   const dayTotals = (mon: string, weekEntries: TempsEntry[]) =>
     Array.from({ length: 7 }, (_, i) => {
       const dayIso = addDays(mon, i);
@@ -257,7 +444,6 @@ function StatView({ entries, objectifH }: { entries: TempsEntry[]; objectifH: nu
   const curDays = dayTotals(curMon, curWeekEntries);
   const prevDays = dayTotals(prevMon, prevWeekEntries);
 
-  // Temps par projet
   const allProjets = Array.from(new Set(entries.flatMap(e => e.projets))).sort();
 
   const projTotals = (proj: string, list: TempsEntry[]) =>

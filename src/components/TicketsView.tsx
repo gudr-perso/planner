@@ -18,8 +18,35 @@ const NOTION_COLOR: Record<string, { bg: string; fg: string }> = {
   red:     { bg: '#e03e3e22', fg: '#e03e3e' },
 };
 
+function colorForStatut(text: string): string {
+  const t = text.toLowerCase();
+  if (/termin|clos|fait|résolu|done|valid|résolv/.test(t)) return 'green';
+  if (/cours|traitement|progress|actif|ouvert|en cours/.test(t)) return 'blue';
+  if (/annul|rejet|abandon|refus/.test(t)) return 'gray';
+  if (/bloqu|erreur/.test(t)) return 'red';
+  if (/attente|pending|suspen/.test(t)) return 'yellow';
+  return 'gray';
+}
+
+function colorForPriorite(text: string): string {
+  const t = text.toLowerCase();
+  if (/urgent|critic|haute|élevé|high|p0|p1/.test(t)) return 'red';
+  if (/moyen|normal|medium|p2/.test(t)) return 'orange';
+  if (/basse|faible|low|mineur|p3|p4/.test(t)) return 'blue';
+  return 'gray';
+}
+
+function colorForNiveau(text: string): string {
+  const t = text.toLowerCase();
+  if (/critic/.test(t)) return 'red';
+  if (/major|élevé|haut|high/.test(t)) return 'orange';
+  if (/minor|faible|bas|low/.test(t)) return 'blue';
+  return 'gray';
+}
+
 function badge(text: string, color?: string) {
-  const c = NOTION_COLOR[color ?? ''];
+  const key = color ?? '';
+  const c = NOTION_COLOR[key];
   const style = c
     ? { background: c.bg, color: c.fg }
     : { background: 'color-mix(in srgb, var(--text-muted) 12%, transparent)', color: 'var(--text-muted)' };
@@ -313,9 +340,9 @@ function TicketsTab({
                 <td style={{ padding: '5px 10px', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{e.ticketId || '—'}</td>
                 <td style={{ padding: '5px 10px', color: 'var(--text)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</td>
                 <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.codeAssoc || '—'}</td>
-                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.statut ? badge(e.statut) : '—'}</td>
-                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.priorite ? badge(e.priorite, 'orange') : '—'}</td>
-                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.niveau ? badge(e.niveau, 'purple') : '—'}</td>
+                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.statut ? badge(e.statut, colorForStatut(e.statut)) : '—'}</td>
+                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.priorite ? badge(e.priorite, colorForPriorite(e.priorite)) : '—'}</td>
+                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.niveau ? badge(e.niveau, colorForNiveau(e.niveau)) : '—'}</td>
                 <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDate(e.dateModif)}</td>
                 <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.demandeur || '—'}</td>
                 <td style={{ padding: '5px 10px' }}>
@@ -513,8 +540,8 @@ function AssociationsTab({
                 >
                   <td style={{ padding: '5px 10px', color: 'var(--text)', fontWeight: 500 }}>{e.nom}</td>
                   <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.code || '—'}</td>
-                  <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.statut ? badge(e.statut) : '—'}</td>
-                  <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.priorite ? badge(e.priorite, 'orange') : '—'}</td>
+                  <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.statut ? badge(e.statut, colorForStatut(e.statut)) : '—'}</td>
+                  <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.priorite ? badge(e.priorite, colorForPriorite(e.priorite)) : '—'}</td>
                   <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.solution || '—'}</td>
                   <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.suivi || '—'}</td>
                 </tr>
@@ -552,12 +579,12 @@ function AssociationsTab({
           {/* Propriétés */}
           <div style={{ padding: '12px 16px', flex: 1, overflow: 'auto' }}>
             {[
-              { label: 'Statut', value: selectedEntry.statut },
-              { label: 'Priorité', value: selectedEntry.priorite },
+              { label: 'Statut', value: selectedEntry.statut, color: colorForStatut(selectedEntry.statut) },
+              { label: 'Priorité', value: selectedEntry.priorite, color: colorForPriorite(selectedEntry.priorite) },
             ].filter(r => r.value).map(r => (
               <div key={r.label} style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 12 }}>
                 <span style={{ width: 80, flexShrink: 0, color: 'var(--text-muted)', textAlign: 'right' }}>{r.label}</span>
-                <span>{badge(r.value)}</span>
+                <span>{badge(r.value, r.color)}</span>
               </div>
             ))}
 
