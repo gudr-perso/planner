@@ -16,11 +16,11 @@ type CalEvent = { id: string; title: string; start: string; end: string; calenda
 type CalendarsCfg = Record<string, { colorName: string; lightColors: { main: string; container: string; onContainer: string } }>;
 
 const STATUS_CALENDARS: CalendarsCfg = {
-  todo:        { colorName: 'todo',        lightColors: { main: '#64748b', container: '#f1f5f9', onContainer: '#1e293b' } },
-  in_progress: { colorName: 'in_progress', lightColors: { main: '#2563eb', container: '#dbeafe', onContainer: '#1e3a8a' } },
-  to_process:  { colorName: 'to_process',  lightColors: { main: '#ea580c', container: '#ffedd5', onContainer: '#7c2d12' } },
-  blocked:     { colorName: 'blocked',     lightColors: { main: '#dc2626', container: '#fee2e2', onContainer: '#7f1d1d' } },
-  done:        { colorName: 'done',        lightColors: { main: '#059669', container: '#d1fae5', onContainer: '#064e3b' } },
+  todo:        { colorName: 'todo',        lightColors: { main: '#64748b', container: '#64748bcc', onContainer: '#ffffff' } },
+  in_progress: { colorName: 'in_progress', lightColors: { main: '#2563eb', container: '#2563ebcc', onContainer: '#ffffff' } },
+  to_process:  { colorName: 'to_process',  lightColors: { main: '#ea580c', container: '#ea580ccc', onContainer: '#ffffff' } },
+  blocked:     { colorName: 'blocked',     lightColors: { main: '#dc2626', container: '#dc2626cc', onContainer: '#ffffff' } },
+  done:        { colorName: 'done',        lightColors: { main: '#059669', container: '#059669cc', onContainer: '#ffffff' } },
   gcal:        { colorName: 'gcal',        lightColors: { main: '#B1DCE2', container: '#0D1E2E', onContainer: '#B1DCE2' } },
 };
 
@@ -101,7 +101,7 @@ export function CalendarView() {
       const cfg: CalendarsCfg = {};
       for (const [id, proj] of store.projectById) {
         const key = calId(id);
-        cfg[key] = { colorName: key, lightColors: { main: proj.color, container: proj.color + '20', onContainer: '#1e293b' } };
+        cfg[key] = { colorName: key, lightColors: { main: proj.color, container: proj.color + 'cc', onContainer: '#ffffff' } };
       }
       cfg.gcal = STATUS_CALENDARS.gcal;
       return cfg;
@@ -110,7 +110,7 @@ export function CalendarView() {
       const cfg: CalendarsCfg = {};
       for (const [id, person] of store.personById) {
         const key = calId(id);
-        cfg[key] = { colorName: key, lightColors: { main: person.color, container: person.color + '20', onContainer: '#1e293b' } };
+        cfg[key] = { colorName: key, lightColors: { main: person.color, container: person.color + 'cc', onContainer: '#ffffff' } };
       }
       cfg.gcal = STATUS_CALENDARS.gcal;
       return cfg;
