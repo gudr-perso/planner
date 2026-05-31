@@ -901,7 +901,7 @@ export async function fetchTickets(
     if (includeTermines || !config.statutField || config.statutsTerminesValues.length === 0) return undefined;
     const conditions = config.statutsTerminesValues.map(v => ({
       property: config.statutField,
-      multi_select: { does_not_contain: v },
+      select: { does_not_equal: v },
     }));
     return conditions.length === 1 ? conditions[0] : { and: conditions };
   };

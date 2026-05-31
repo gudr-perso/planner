@@ -188,6 +188,14 @@ export function SettingsView({
   const [assocSchema, setAssocSchema] = useState<NotionPropertySchema[]>([]);
   const [assocLoading, setAssocLoading] = useState(false);
 
+  // Local string states for comma-separated inputs (controlled inputs that split on comma break mid-typing)
+  const [ticketsStatutsStr, setTicketsStatutsStr] = useState(() =>
+    load<TicketsConfig>('ticketsConfig', DEFAULT_TICKETS).statutsTerminesValues.join(', ')
+  );
+  const [assocStatutsStr, setAssocStatutsStr] = useState(() =>
+    load<AssociationsConfig>('associationsConfig', DEFAULT_ASSOCIATIONS).statutsTerminesValues.join(', ')
+  );
+
   const flash = (msg: string) => {
     setStatusMsg(msg);
     setTimeout(() => setStatusMsg(null), 3000);
@@ -1057,8 +1065,9 @@ export function SettingsView({
                 <FieldRow label="Statuts terminés">
                   <input
                     type="text"
-                    value={ticketsConfig.statutsTerminesValues.join(', ')}
-                    onChange={e => setTicketsConfig(prev => ({ ...prev, statutsTerminesValues: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+                    value={ticketsStatutsStr}
+                    onChange={e => setTicketsStatutsStr(e.target.value)}
+                    onBlur={e => setTicketsConfig(prev => ({ ...prev, statutsTerminesValues: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
                     placeholder="Annulé, Clos"
                     className="flex-1 text-xs rounded px-2 py-1.5 outline-none"
                     style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
@@ -1129,8 +1138,9 @@ export function SettingsView({
                 <FieldRow label="Statuts terminés">
                   <input
                     type="text"
-                    value={assocConfig.statutsTerminesValues.join(', ')}
-                    onChange={e => setAssocConfig(prev => ({ ...prev, statutsTerminesValues: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+                    value={assocStatutsStr}
+                    onChange={e => setAssocStatutsStr(e.target.value)}
+                    onBlur={e => setAssocConfig(prev => ({ ...prev, statutsTerminesValues: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
                     placeholder="Annulé, Clos"
                     className="flex-1 text-xs rounded px-2 py-1.5 outline-none"
                     style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}

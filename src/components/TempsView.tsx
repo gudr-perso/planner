@@ -153,9 +153,9 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Filtres */}
-      <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
         <input style={{ ...inputStyle, width: 160 }} placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)} />
         <input style={{ ...inputStyle, width: 140 }} type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} title="Date début (depuis)" />
         <input style={{ ...inputStyle, width: 140 }} type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} title="Date début (jusqu'à)" />
@@ -271,7 +271,7 @@ function StatView({ entries, objectifH }: { entries: TempsEntry[]; objectifH: nu
   const bigStyle: React.CSSProperties = { fontSize: 28, fontWeight: 700, color: 'var(--text)' };
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px', background: 'var(--bg)' }}>
       {/* Totaux semaine */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ ...cardStyle, flex: 1, minWidth: 160 }}>
@@ -399,7 +399,7 @@ export function TempsView() {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 0, padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-deep)', flexShrink: 0 }}>
         <button style={tabStyle(tab === 'liste')} onClick={() => setTab('liste')}>Liste</button>

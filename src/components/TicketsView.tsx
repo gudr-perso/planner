@@ -256,9 +256,9 @@ function TicketsTab({
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Filtres */}
-      <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
         <input style={{ ...inputStyle, width: 160 }} placeholder="ID / Sujet…" value={search} onChange={e => setSearch(e.target.value)} />
         <select style={{ ...inputStyle, width: 140 }} value={filterStatut} onChange={e => setFilterStatut(e.target.value)}>
           <option value="">Statut</option>{allStatuts.map(v => <option key={v} value={v}>{v}</option>)}
@@ -465,11 +465,11 @@ function AssociationsTab({
   );
 
   return (
-    <div ref={containerRef} style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Liste */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         {/* Filtres */}
-        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
           <input style={{ ...inputStyle, width: 180 }} placeholder="Nom / Code…" value={search} onChange={e => setSearch(e.target.value)} />
           <select style={{ ...inputStyle, width: 140 }} value={filterStatut} onChange={e => setFilterStatut(e.target.value)}>
             <option value="">Statut</option>{allStatuts.map(v => <option key={v} value={v}>{v}</option>)}
@@ -637,7 +637,7 @@ export function TicketsView() {
       </div>
 
       {/* Contenu */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'hidden', background: 'var(--bg)' }}>
         {tab === 'tickets' ? (
           ticketsCfg ? (
             <TicketsTab token={token} cfg={ticketsCfg} onAssocClick={handleAssocClick} />
