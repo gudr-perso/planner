@@ -226,7 +226,7 @@ export function RollingWeeksView() {
       )}
 
       {/* Scrollable content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div ref={scrollRef} className="themed-scroll flex-1 overflow-y-auto overflow-x-hidden">
 
         {/* Sticky day-name header */}
         <div

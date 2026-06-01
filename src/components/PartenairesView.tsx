@@ -218,7 +218,7 @@ function CardView({
   onOpenSuivis: (p: PartenaireEntry) => void;
 }) {
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-4" style={{ background: 'var(--bg)' }}>
+    <div className="themed-scroll flex-1 overflow-y-auto px-5 py-4" style={{ background: 'var(--bg)' }}>
       {groups.map(([type, entries]) => {
         const collapsed = collapsedTypes.has(type);
         return (
@@ -382,7 +382,7 @@ function ListView({
   );
 
   return (
-    <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
+    <div className="themed-scroll flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
       <table className="w-full" style={{ borderCollapse: 'collapse', fontSize: 12 }}>
         <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg)' }}>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>

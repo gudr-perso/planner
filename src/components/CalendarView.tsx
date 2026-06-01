@@ -69,7 +69,7 @@ function CalendarInstance({
     events,
     calendars,
     plugins: [eventsService],
-    selectedDate: '2026-05-28',
+    selectedDate: new Date().toISOString().slice(0, 10),
     dayBoundaries: { start: dayStart, end: dayEnd },
     weekOptions: { gridHeight, nDays: showWeekends ? 7 : 5 },
     callbacks: {

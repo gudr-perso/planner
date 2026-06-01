@@ -478,7 +478,7 @@ export function SettingsView({
 
   return (
     <div
-      className="h-full overflow-y-auto"
+      className="themed-scroll h-full overflow-y-auto"
       style={{ background: 'var(--bg)' }}
     >
       <div className="w-full max-w-3xl mx-auto px-6 py-6">

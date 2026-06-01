@@ -174,7 +174,7 @@ export function GanttView() {
       </div>
       <div
         ref={setNodeRef}
-        className={`flex-1 overflow-auto relative transition ${isOver ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
+        className={`themed-scroll flex-1 overflow-auto relative transition ${isOver ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
         style={{ background: 'var(--surface)' }}
       >
         {isOver && (

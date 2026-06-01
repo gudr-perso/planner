@@ -261,7 +261,7 @@ export function UnplannedPanel({ width }: { width: number }) {
       </div>
 
       {/* Task list */}
-      <div className="flex-1 overflow-y-auto p-2 mt-1">
+      <div className="themed-scroll flex-1 overflow-y-auto p-2 mt-1">
         {visible.length === 0 && (
           <p className="text-[11px] text-center py-8" style={{ color: 'var(--border)' }}>Aucune tâche</p>
         )}

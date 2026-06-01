@@ -172,7 +172,7 @@ export function PostItsView({ refreshKey }: { refreshKey?: number }) {
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Aucun post-it actif.</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto">
+          <div className="themed-scroll flex-1 overflow-y-auto">
             <table className="w-full" style={{ borderCollapse: 'collapse', fontSize: 12 }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg)' }}>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -305,7 +305,7 @@ export function PostItsView({ refreshKey }: { refreshKey?: number }) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="themed-scroll flex-1 overflow-y-auto px-6 py-5">
             {blocksLoading ? (
               <p className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement du contenu…</p>
             ) : blocksError ? (

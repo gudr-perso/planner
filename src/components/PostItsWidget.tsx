@@ -42,12 +42,14 @@ function formatShortDate(iso: string | null): string {
 function PostItPopup({
   entry,
   statusOptions,
+  doneValue,
   token,
   onClose,
   onStatusChange,
 }: {
   entry: PostItEntry;
   statusOptions: string[];
+  doneValue: string | null;
   token: string;
   onClose: () => void;
   onStatusChange: (newStatus: string) => void;
@@ -134,6 +136,27 @@ function PostItPopup({
               }}>
                 {entry.status || '—'}
               </span>
+              {doneValue && entry.status !== doneValue && (
+                <button
+                  disabled={updating}
+                  onClick={() => handleStatus(doneValue)}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: 'color-mix(in srgb, #059669 15%, transparent)',
+                    color: '#059669',
+                    border: '1px solid color-mix(in srgb, #059669 35%, transparent)',
+                    borderRadius: 6,
+                    padding: '2px 10px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  ✓ Terminé
+                </button>
+              )}
               {statusOptions.length > 0 && (
                 <select
                   disabled={updating}
@@ -531,6 +554,9 @@ export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
         <PostItPopup
           entry={selectedEntry}
           statusOptions={statusOptions}
+          doneValue={postitsCfg?.statusDoneValue
+            ?? statusOptions.find(o => /termin/i.test(o))
+            ?? null}
           token={token}
           onClose={() => setSelectedEntry(null)}
           onStatusChange={val => handleStatusChange(selectedEntry, val)}

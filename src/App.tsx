@@ -183,11 +183,15 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     if (lastGcalFetchToken.current === gcalToken) return;
     lastGcalFetchToken.current = gcalToken;
     const now = new Date();
+    const startOfLastWeek = new Date(now);
+    const dayOfWeek = now.getDay(); // 0=Sun
+    startOfLastWeek.setDate(now.getDate() - dayOfWeek - 7); // go back to last Sunday
+    startOfLastWeek.setHours(0, 0, 0, 0);
     const sixMonths = new Date(now);
     sixMonths.setMonth(sixMonths.getMonth() + 6);
     setGcalLoading(true);
     setGcalError(null);
-    fetchGoogleCalendarEvents(gcalToken, now.toISOString(), sixMonths.toISOString())
+    fetchGoogleCalendarEvents(gcalToken, startOfLastWeek.toISOString(), sixMonths.toISOString())
       .then((events: GoogleEvent[]) => {
         setData((prev) => prev ? { ...prev, googleEvents: events } : prev);
         setGcalLoading(false);

@@ -73,7 +73,7 @@ export function ProjectDropdown({
             </span>
             Tous
           </button>
-          <div className="max-h-64 overflow-y-auto">
+          <div className="themed-scroll max-h-64 overflow-y-auto">
             {projects.map((p) => {
               const checked = !allActive && selected.has(p.id);
               return (
@@ -183,7 +183,7 @@ export function SubprojectDropdown({
           </button>
 
           {/* Per-project groups */}
-          <div className="max-h-64 overflow-y-auto">
+          <div className="themed-scroll max-h-64 overflow-y-auto">
             {Array.from(grouped.entries()).map(([projId, sps]) => {
               const proj = projectById.get(projId);
               return (
