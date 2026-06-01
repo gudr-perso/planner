@@ -5,7 +5,7 @@ const CORS = {
 };
 
 const ALLOWED_FEEDS = new Set([
-  'https://www.numerama.com/feed/',
+  'https://www.actuia.com/feed/',
   'https://siecledigital.fr/feed/',
   'https://www.journaldunet.com/rss/',
   'https://www.journaldunet.com/solutions/dsi/rss/',

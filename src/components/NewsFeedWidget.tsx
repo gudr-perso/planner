@@ -5,8 +5,8 @@ type FeedCache = { items: RssItem[]; cachedAt: number };
 type Tab = 'ai' | 'erp' | 'compta';
 
 const FEED_CONFIGS: { id: string; label: string; url: string; category: Tab }[] = [
-  { id: 'numerama',  label: 'Numerama',       url: 'https://www.numerama.com/feed/',                          category: 'ai'    },
-  { id: 'siecle',    label: 'Siècle Digital', url: 'https://siecledigital.fr/feed/',                          category: 'ai'    },
+  { id: 'actuia',    label: 'Actu IA',        url: 'https://www.actuia.com/feed/',                           category: 'ai'    },
+  { id: 'siecle',   label: 'Siècle Digital', url: 'https://siecledigital.fr/feed/',                          category: 'ai'    },
   { id: 'jdn',       label: 'Journal du Net', url: 'https://www.journaldunet.com/rss/',                       category: 'erp'   },
   { id: 'jdnsi',     label: 'JDN Solutions',  url: 'https://www.journaldunet.com/solutions/dsi/rss/',         category: 'erp'   },
   { id: 'compta',    label: 'Compta Online',  url: 'https://www.compta-online.com/rss-actualites-pcg-78-1.html', category: 'compta' },
@@ -26,7 +26,7 @@ function parseRss(xml: string): RssItem[] {
     ? Array.from(doc.querySelectorAll('entry'))
     : Array.from(doc.querySelectorAll('item'));
 
-  return entries.slice(0, 8).map(el => {
+  return entries.slice(0, 10).map(el => {
     const title = el.querySelector('title')?.textContent?.trim() ?? '';
     const link = isAtom
       ? (el.querySelector('link')?.getAttribute('href') ?? el.querySelector('link')?.textContent ?? '')
@@ -94,7 +94,10 @@ export function NewsFeedWidget() {
   }, [activeTab]);
 
   const feeds = FEED_CONFIGS.filter(f => f.category === activeTab);
-  const allItems = feeds.flatMap(f => (items[f.id] ?? []).map(item => ({ ...item, feedId: f.id })));
+  const allItems = feeds
+    .flatMap(f => (items[f.id] ?? []).map(item => ({ ...item, feedId: f.id })))
+    .sort((a, b) => (b.pubDate ?? '').localeCompare(a.pubDate ?? ''))
+    .slice(0, 10);
   const isLoading = feeds.some(f => loading[f.id]);
 
   return (
@@ -128,8 +131,8 @@ export function NewsFeedWidget() {
         </div>
       </div>
 
-      {/* Articles — hauteur fixe pour éviter les sauts de position */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {/* Articles — scrollable, hauteur max fixe pour stabiliser la position */}
+      <div style={{ overflowY: 'auto', maxHeight: 380, display: 'flex', flexDirection: 'column' }}>
         {isLoading && allItems.length === 0 && (
           <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, padding: '8px 0' }}>Chargement…</p>
         )}
