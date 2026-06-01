@@ -222,19 +222,19 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
 
   const EntryRow = ({ e, i, indent = 0 }: { e: TempsEntry; i: number; indent?: number }) => (
     <tr style={{ background: i % 2 === 0 ? 'transparent' : 'color-mix(in srgb, var(--bg-deep) 40%, transparent)' }}>
-      <td style={{ padding: `5px 10px 5px ${10 + indent * 18}px`, color: 'var(--text)', width: 220, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</td>
-      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(e.start)}</td>
-      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(e.end)}</td>
-      <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtDec(e.dureeH)}</td>
-      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', width: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.commentaire || '—'}</td>
-      <td style={{ padding: '5px 10px', width: 120, maxWidth: 120, overflow: 'hidden' }}>
+      <td style={{ padding: `5px 10px 5px ${10 + indent * 18}px`, color: 'var(--text)', width: 308, maxWidth: 308, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', width: 1 }}>{formatDateTime(e.start)}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', width: 1 }}>{formatDateTime(e.end)}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', width: 1 }}>{fmtDec(e.dureeH)}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.commentaire || '—'}</td>
+      <td style={{ padding: '5px 10px', width: 240, maxWidth: 240, overflow: 'hidden' }}>
         {e.projets.map(p => (
-          <span key={p} style={{ ...badgeStyle('blue'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{p}</span>
+          <span key={p} style={{ ...badgeStyle('blue'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{p}</span>
         ))}
       </td>
-      <td style={{ padding: '5px 10px', width: 120, maxWidth: 120, overflow: 'hidden' }}>
+      <td style={{ padding: '5px 10px', width: 240, maxWidth: 240, overflow: 'hidden' }}>
         {e.sousProjets.map(p => (
-          <span key={p} style={{ ...badgeStyle('purple'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{p}</span>
+          <span key={p} style={{ ...badgeStyle('purple'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{p}</span>
         ))}
       </td>
     </tr>
