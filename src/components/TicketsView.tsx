@@ -273,7 +273,7 @@ function TicketsTab({
       const cmp = va.localeCompare(vb, 'fr', { sensitivity: 'base', numeric: true });
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [entries, search, filterStatut, filterPriorite, filterNiveau, filterZone, filterCodeDossier, sortKey, sortDir]);
+  }, [entries, search, filterStatut, filterPriorite, filterNiveau, filterZone, filterCodeDossier, sortKey, sortDir, subTab]);
 
   const SortTh = ({ col, label, align = 'left' }: { col: TicketSortKey; label: string; align?: string }) => (
     <th
