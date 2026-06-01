@@ -415,8 +415,7 @@ export function PostItsWidget() {
     fetchDatabaseSchema(token, postitsCfg.databaseId).then(schema => {
       const prop = schema.find((p: NotionPropertySchema) => p.name === postitsCfg.statusField);
       if (prop?.options) {
-        const doneVal = postitsCfg.statusDoneValue || 'Terminé';
-        setStatusOptions(prop.options.filter((o: { name: string }) => o.name !== doneVal).map((o: { name: string }) => o.name));
+        setStatusOptions(prop.options.map((o: { name: string }) => o.name));
       }
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
