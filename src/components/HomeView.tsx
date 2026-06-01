@@ -285,7 +285,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
           </p>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(2, 200px)',
+            gridTemplateColumns: 'repeat(3, 180px)',
             gap: 14,
           }}>
             {CARDS.map(card => (
@@ -298,7 +298,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
         <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(100,160,255,0.1)', flexShrink: 0 }} />
 
         {/* Colonne droite — Post-its */}
-        <div style={{ flex: 1, minWidth: 0, maxWidth: 520 }}>
+        <div style={{ flex: 1, minWidth: 0, maxWidth: 340 }}>
           <PostItsWidget />
         </div>
 

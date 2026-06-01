@@ -472,8 +472,8 @@ export function PostItsWidget() {
         )}
 
         {!loading && entries.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-            {entries.slice(0, 6).map(e => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {entries.slice(0, 4).map(e => (
               <PostItCard key={e.id} entry={e} onClick={() => setSelectedEntry(e)} />
             ))}
           </div>
