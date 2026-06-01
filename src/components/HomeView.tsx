@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlarmClock, ArrowUpRight, CalendarDays, FileText, Users } from 'lucide-react';
+import { AlarmClock, ArrowUpRight, CalendarDays, Clock, FileText, StickyNote, Ticket, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { PostItsWidget } from './PostItsWidget';
 
@@ -144,6 +144,27 @@ const CARDS: CardDef[] = [
     icon: <FileText size={20} />,
     color: '#10B981',
   },
+  {
+    viewKey: 'postits',
+    title: 'Post-its',
+    description: 'Notes rapides & mémos',
+    icon: <StickyNote size={20} />,
+    color: '#FBBF24',
+  },
+  {
+    viewKey: 'temps',
+    title: 'Temps',
+    description: 'Suivi du temps par projet',
+    icon: <Clock size={20} />,
+    color: '#06B6D4',
+  },
+  {
+    viewKey: 'tickets',
+    title: 'Tickets',
+    description: 'PRB, SF, CHN & demandes',
+    icon: <Ticket size={20} />,
+    color: '#EC4899',
+  },
 ];
 
 function HomeCard({ card, onClick }: { card: CardDef; onClick: () => void }) {
@@ -248,7 +269,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
             Bonjour, Guillaume
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-            Votre poste de commande. 4 espaces, tout à portée de main.
+            Votre poste de commande. 7 espaces, tout à portée de main.
           </p>
         </div>
         <WeatherWidget />
