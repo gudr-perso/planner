@@ -73,7 +73,7 @@ function PostItPopup({
       }}
     >
       <div style={{
-        background: 'var(--surface)',
+        background: 'var(--bg)',
         borderRadius: 14,
         boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
         width: '100%',
@@ -212,7 +212,7 @@ function PostItCreatePopup({
       }}
     >
       <div style={{
-        background: 'var(--surface)',
+        background: 'var(--bg)',
         borderRadius: 14,
         boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
         width: '100%',

@@ -699,16 +699,21 @@ export async function createPostIt(
     properties[config.dueDateField] = { date: { start: data.dueDate } };
   }
 
-  // Statut
-  if (data.status && config.statusField) {
-    // On essaie status puis select — en cas d'erreur au POST Notion retournera une erreur lisible
-    properties[config.statusField] = { status: { name: data.status } };
-  }
+  // Statut — essaie le type "status" puis "select" en fallback
+  const buildPageBody = (statusType: 'status' | 'select') => {
+    const props = { ...properties };
+    if (data.status && config.statusField) {
+      props[config.statusField] = { [statusType]: { name: data.status } };
+    }
+    return { parent: { database_id: config.databaseId }, properties: props };
+  };
 
-  const page = await nPost(token, '/pages', {
-    parent: { database_id: config.databaseId },
-    properties,
-  }) as { id: string };
+  let page: { id: string };
+  try {
+    page = await nPost(token, '/pages', buildPageBody('status')) as { id: string };
+  } catch {
+    page = await nPost(token, '/pages', buildPageBody('select')) as { id: string };
+  }
 
   if (data.content.trim() && page.id) {
     await nPost(token, `/blocks/${page.id}/children`, {
