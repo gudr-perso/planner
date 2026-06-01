@@ -3,6 +3,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { Gantt, ViewMode, TitleColumn, type Task as GanttTask, type TaskOrEmpty, type Column } from '@wamra/gantt-task-react';
 import '@wamra/gantt-task-react/dist/style.css';
 import { useStore, colorForTask } from '../store';
+import { useIsMobile } from '../hooks/useBreakpoint';
 
 const VIEW_OPTIONS: { label: string; value: ViewMode }[] = [
   { label: 'Jour', value: ViewMode.Day },
@@ -153,7 +154,109 @@ export function GanttView() {
     return out;
   }, [store.data.tasks, store.data.projects, store.data.subprojects, store.filters.projectIds, store.filters.assigneeIds, store.filters.subprojectIds, store.filters.colorBy, store.personById, store.projectById]);
 
+  const isMobile = useIsMobile();
   const { setNodeRef, isOver } = useDroppable({ id: 'drop-gantt' });
+
+  // ── Fallback mobile : liste tâches par projet ────────────────────────────
+  if (isMobile) {
+    const filteredTasks = store.data.tasks.filter(t => {
+      if (!t.planned || !t.start_date || !t.end_date) return false;
+      const projOk = store.filters.projectIds.size === 0 || store.filters.projectIds.has(t.project_id);
+      const persOk = store.filters.assigneeIds.size === 0 || store.filters.assigneeIds.has(t.assignee_id);
+      return projOk && persOk;
+    });
+
+    // Group by project
+    const byProject = new Map<string, typeof filteredTasks>();
+    for (const t of filteredTasks) {
+      if (!byProject.has(t.project_id)) byProject.set(t.project_id, []);
+      byProject.get(t.project_id)!.push(t);
+    }
+
+    const STATUS_LABEL: Record<string, string> = {
+      todo: 'À faire', in_progress: 'En cours', done: 'Terminé',
+      blocked: 'Bloqué', to_process: 'À traiter',
+    };
+
+    return (
+      <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--surface)' }}>
+        <div className="px-3 py-2 border-b shrink-0 text-xs" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+          {filteredTasks.length} tâche{filteredTasks.length !== 1 ? 's' : ''} planifiée{filteredTasks.length !== 1 ? 's' : ''}
+          <span className="ml-2 opacity-60">— Vue Gantt disponible sur desktop</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {byProject.size === 0 ? (
+            <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--text-dim)' }}>
+              Aucune tâche planifiée
+            </div>
+          ) : (
+            Array.from(byProject.entries()).map(([projId, tasks]) => {
+              const proj = store.projectById.get(projId);
+              return (
+                <div key={projId}>
+                  {/* Entête projet */}
+                  <div
+                    className="px-3 py-2 sticky top-0 z-10 flex items-center gap-2"
+                    style={{
+                      background: 'var(--bg)',
+                      borderBottom: '1px solid var(--border)',
+                      borderLeft: `3px solid ${proj?.color ?? 'var(--accent)'}`,
+                    }}
+                  >
+                    <span className="text-xs font-semibold" style={{ color: proj?.color ?? 'var(--accent)' }}>
+                      {proj?.name ?? projId}
+                    </span>
+                    <span className="text-[10px] ml-auto" style={{ color: 'var(--text-dim)' }}>{tasks.length} tâche{tasks.length > 1 ? 's' : ''}</span>
+                  </div>
+
+                  {tasks.map(task => {
+                    const startFmt = task.start_date ? new Date(task.start_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+                    const endFmt = task.end_date ? new Date(task.end_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+                    const color = colorForTask(task, store);
+                    const person = store.personById.get(task.assignee_id);
+
+                    // Progress bar width based on status
+                    const progress = task.status === 'done' ? 100 : task.status === 'in_progress' ? 50 : task.status === 'blocked' ? 20 : 0;
+
+                    return (
+                      <button
+                        key={task.id}
+                        onClick={() => store.openTaskModal(task.id)}
+                        className="w-full text-left px-3 py-2.5 border-b transition"
+                        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="w-1 rounded-full shrink-0 mt-1" style={{ height: 40, background: color }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium truncate" style={{ color: 'var(--text)' }}>{task.title}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{startFmt} → {endFmt}</span>
+                              {person && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: person.color + '20', color: person.color }}>
+                                  {person.name.slice(0, 3)}
+                                </span>
+                              )}
+                            </div>
+                            {/* Barre de progression */}
+                            <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                              <div className="h-full rounded-full" style={{ width: `${progress}%`, background: color }} />
+                            </div>
+                            <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-dim)' }}>
+                              {STATUS_LABEL[task.status] ?? task.status}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">

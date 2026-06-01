@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, Home, LogOut, Pin, Settings, TicketCheck, UserCog, Users } from 'lucide-react';
+import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, Home, LogOut, Menu, Pin, Settings, TicketCheck, UserCog, Users, X } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { useAuth } from '../store/useAuthStore';
+import { useIsTablet } from '../hooks/useBreakpoint';
 
 const PLANNING_VIEWS: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt'];
 
@@ -81,14 +82,18 @@ function NavItem({
 
 export function SideNav({
   view, onView, collapsed, onToggle, onLogout,
+  mobileOpen, onMobileClose,
 }: {
   view: ViewKey;
   onView: (v: ViewKey) => void;
   collapsed: boolean;
   onToggle: () => void;
   onLogout: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }) {
   const { user } = useAuth();
+  const isTablet = useIsTablet();
   const lastPlanningView = useRef<ViewKey>('calendar');
 
   useEffect(() => {
@@ -99,6 +104,124 @@ export function SideNav({
 
   const isPlanningActive = PLANNING_VIEWS.includes(view);
 
+  function handleNavClick(key: ViewKey) {
+    onView(key);
+    if (isTablet && onMobileClose) onMobileClose();
+  }
+
+  // ─── Mode tablette/mobile : drawer ───────────────────────────────────────
+  if (isTablet) {
+    return (
+      <>
+        {/* Overlay */}
+        {mobileOpen && (
+          <div
+            onClick={onMobileClose}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 40,
+            }}
+          />
+        )}
+
+        {/* Drawer */}
+        <nav
+          role="menu"
+          aria-label="Navigation principale"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: 220,
+            zIndex: 50,
+            background: 'var(--bg-deep)',
+            borderRight: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 220ms ease',
+          }}
+        >
+          {/* Header du drawer */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 14px',
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>CAP Planner</span>
+            <button
+              onClick={onMobileClose}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Main sections */}
+          <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
+            {MAIN_ITEMS.map((item) => {
+              const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
+              const key = item.key === 'planning' ? lastPlanningView.current : item.key as ViewKey;
+              return (
+                <NavItem
+                  key={item.key}
+                  item={item}
+                  isActive={isActive}
+                  collapsed={false}
+                  onClick={() => handleNavClick(key)}
+                />
+              );
+            })}
+          </div>
+
+          {/* Bottom */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 4, paddingBottom: 4 }}>
+            {BOTTOM_ITEMS.map((item) => (
+              <NavItem
+                key={item.key}
+                item={item}
+                isActive={view === item.key}
+                collapsed={false}
+                onClick={() => handleNavClick(item.key as ViewKey)}
+              />
+            ))}
+            {user?.role === 'admin' && (
+              <NavItem
+                item={{ key: 'users', icon: <UserCog size={17} />, label: 'Utilisateurs' }}
+                isActive={view === 'users'}
+                collapsed={false}
+                onClick={() => handleNavClick('users')}
+              />
+            )}
+            <NavItem
+              item={{ key: '__logout', icon: <LogOut size={17} />, label: 'Déconnexion' }}
+              isActive={false}
+              collapsed={false}
+              onClick={onLogout}
+            />
+          </div>
+        </nav>
+
+        {/* Bouton hamburger flottant */}
+        {!mobileOpen && (
+          <button
+            onClick={onMobileClose === undefined ? undefined : () => { /* géré dans App */ }}
+            aria-label="Ouvrir le menu"
+            style={{ display: 'none' }} // géré dans Toolbar sur mobile
+          />
+        )}
+      </>
+    );
+  }
+
+  // ─── Mode desktop : comportement original ────────────────────────────────
   return (
     <nav
       role="menu"
@@ -184,5 +307,28 @@ export function SideNav({
         </button>
       </div>
     </nav>
+  );
+}
+
+/** Bouton hamburger à placer dans la Toolbar sur tablette/mobile */
+export function HamburgerButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Ouvrir le menu"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '6px 8px',
+        background: 'transparent',
+        border: '1px solid var(--border)',
+        borderRadius: 6,
+        cursor: 'pointer',
+        color: 'var(--text-muted)',
+      }}
+    >
+      <Menu size={18} />
+    </button>
   );
 }

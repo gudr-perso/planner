@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
+import { HamburgerButton } from './SideNav';
+import { useIsMobile, useIsTablet } from '../hooks/useBreakpoint';
 
 export type ViewKey = 'home' | 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'partenaires' | 'suivis' | 'temps' | 'tickets' | 'postits' | 'users';
 
@@ -262,6 +264,7 @@ export function Toolbar({
   onClearSuivisFilter,
   onRefresh,
   refreshing,
+  onOpenMobileNav,
 }: {
   view: ViewKey;
   onView: (v: ViewKey) => void;
@@ -275,9 +278,13 @@ export function Toolbar({
   onClearSuivisFilter?: () => void;
   onRefresh?: () => void;
   refreshing?: boolean;
+  onOpenMobileNav?: () => void;
 }) {
   const store = useStore();
   const { filters, setFilters, gcal } = store;
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const toggleSet = <T,>(set: Set<T>, value: T): Set<T> => {
     const next = new Set(set);
@@ -289,6 +296,266 @@ export function Toolbar({
   // Vues sans planning (pas de filtres projet/personnes)
   const isNonPlanningView = view === 'home' || view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis' || view === 'tickets' || view === 'temps' || view === 'postits' || view === 'users';
 
+  // ─── Barre de filtres planification (partagée desktop & mobile dropdown) ───
+  const planningFilters = !isNonPlanningView ? (
+    <>
+      <ProjectDropdown
+        projects={store.data.projects}
+        selected={filters.projectIds}
+        onChange={(next) => setFilters({ projectIds: next })}
+      />
+      {(store.data.subprojects?.length ?? 0) > 0 && (
+        <SubprojectDropdown
+          subprojects={store.data.subprojects!}
+          projectById={store.projectById}
+          selected={filters.subprojectIds}
+          onChange={(next) => setFilters({ subprojectIds: next })}
+        />
+      )}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Personnes :</span>
+        {store.data.people.map((p) => {
+          const active = filters.assigneeIds.size === 0 || filters.assigneeIds.has(p.id);
+          return (
+            <button
+              key={p.id}
+              onClick={() => setFilters({ assigneeIds: toggleSet(filters.assigneeIds, p.id) })}
+              className={`text-[11px] px-2 py-0.5 rounded-full border transition flex items-center gap-1 ${active ? 'opacity-100' : 'opacity-30'}`}
+              style={{
+                borderColor: p.color,
+                color: active ? p.color : 'var(--text-dim)',
+                background: active ? p.color + '20' : 'transparent',
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: p.color }} />
+              {p.name}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Couleur :</span>
+        {(['status', 'project', 'assignee'] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setFilters({ colorBy: mode })}
+            className="text-[11px] px-2 py-0.5 rounded transition"
+            style={filters.colorBy === mode
+              ? { background: 'var(--accent)', color: 'var(--accent-fg)', fontWeight: 600 }
+              : { color: 'var(--text-muted)' }}
+          >
+            {mode === 'status' ? 'Statut' : mode === 'project' ? 'Projet' : 'Personne'}
+          </button>
+        ))}
+      </div>
+    </>
+  ) : null;
+
+  // ─── Vue mobile (<768px) ──────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <header className="border-b shrink-0" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
+        {/* Ligne principale */}
+        <div className="flex items-center gap-2 px-3 py-2">
+          <HamburgerButton onClick={() => onOpenMobileNav?.()} />
+          <span className="text-sm font-bold tracking-tight flex-1" style={{ color: 'var(--text)' }}>CAP Planner</span>
+
+          {/* Vue selector compact pour vues planning */}
+          {!isNonPlanningView && (
+            <select
+              value={view}
+              onChange={e => onView(e.target.value as ViewKey)}
+              className="text-xs px-2 py-1 rounded border outline-none"
+              style={{ background: 'var(--bg-deep)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            >
+              <option value="calendar">📅 Calendrier</option>
+              <option value="rolling">📆 Sem. ①</option>
+              <option value="rolling2">📆 Sem. ②</option>
+              <option value="gantt">📊 Gantt</option>
+            </select>
+          )}
+
+          {/* Bouton filtres (planning seulement) */}
+          {!isNonPlanningView && (
+            <button
+              onClick={() => setFiltersOpen(o => !o)}
+              className="text-xs px-2 py-1 rounded border transition"
+              style={filtersOpen
+                ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--accent)' }
+                : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+            >
+              ⚙ Filtres
+            </button>
+          )}
+
+          {/* Theme */}
+          <button
+            onClick={onToggleTheme}
+            className="flex items-center text-[11px] px-1.5 py-1 rounded border transition"
+            style={theme === 'forge'
+              ? { background: 'var(--bg-elev)', color: 'var(--accent)', borderColor: 'var(--accent)' }
+              : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+          >
+            {theme === 'forge' ? '🔥' : '🌙'}
+          </button>
+
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="flex items-center text-[11px] px-1.5 py-1 rounded border transition disabled:opacity-50"
+              style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+            >
+              <span className={refreshing ? 'animate-spin' : ''}>⟳</span>
+            </button>
+          )}
+        </div>
+
+        {/* Panneau filtres dépliable */}
+        {filtersOpen && !isNonPlanningView && (
+          <div
+            className="flex flex-col gap-3 px-3 pb-3"
+            style={{ borderTop: '1px solid var(--border)' }}
+          >
+            <div className="pt-2 flex flex-col gap-2">
+              {planningFilters}
+            </div>
+          </div>
+        )}
+
+        {/* Suivis */}
+        {view === 'suivis' && (
+          <div className="flex items-center gap-2 px-3 pb-2 flex-wrap">
+            {suivisPartenaireFilterLabel && (
+              <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
+                style={{ background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                <span>🤝 {suivisPartenaireFilterLabel}</span>
+                <button onClick={onClearSuivisFilter} style={{ fontSize: 12 }}>✕</button>
+              </div>
+            )}
+            <input
+              type="text"
+              value={suivisSearch ?? ''}
+              onChange={e => onSuivisSearch?.(e.target.value)}
+              placeholder="Rechercher un suivi…"
+              className="text-xs rounded px-2.5 py-1.5 outline-none flex-1"
+              style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+            />
+          </div>
+        )}
+      </header>
+    );
+  }
+
+  // ─── Vue tablette (768–1023px) ────────────────────────────────────────────
+  if (isTablet) {
+    return (
+      <header className="border-b shrink-0" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-3 px-3 py-2 flex-wrap">
+          <HamburgerButton onClick={() => onOpenMobileNav?.()} />
+          <span className="text-sm font-bold tracking-tight" style={{ color: 'var(--text)' }}>CAP Planner</span>
+          <button
+            onClick={onToggleDataSource}
+            className="text-[10px] rounded px-1.5 py-0.5 border transition-colors"
+            style={dataSource === 'notion'
+              ? { color: 'var(--accent)', background: 'var(--bg-elev)', borderColor: 'var(--accent)' }
+              : { color: 'var(--text-muted)', background: 'var(--bg-deep)', borderColor: 'var(--border)' }}
+          >
+            {dataSource === 'notion' ? 'Notion' : 'démo'}
+          </button>
+
+          {/* Suivis */}
+          {view === 'suivis' && (
+            <>
+              {suivisPartenaireFilterLabel && (
+                <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
+                  style={{ background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                  <span>🤝 {suivisPartenaireFilterLabel}</span>
+                  <button onClick={onClearSuivisFilter} style={{ fontSize: 12 }}>✕</button>
+                </div>
+              )}
+              <input
+                type="text"
+                value={suivisSearch ?? ''}
+                onChange={e => onSuivisSearch?.(e.target.value)}
+                placeholder="Rechercher un suivi…"
+                className="text-xs rounded px-2.5 py-1.5 outline-none w-48"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </>
+          )}
+
+          {/* View toggle icônes seules */}
+          {!isNonPlanningView && (
+            <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+              {([
+                { key: 'calendar', icon: '📅' },
+                { key: 'rolling', icon: '📆①' },
+                { key: 'rolling2', icon: '📆②' },
+                { key: 'gantt', icon: '📊' },
+              ] as const).map((btn, i) => (
+                <button
+                  key={btn.key}
+                  onClick={() => onView(btn.key)}
+                  title={btn.key}
+                  className={`px-2.5 py-1.5 text-xs font-medium transition${i > 0 ? ' border-l' : ''}`}
+                  style={view === btn.key
+                    ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--border)' }
+                    : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+                >
+                  {btn.icon}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Filtres en dropdown sur tablette */}
+          {!isNonPlanningView && (
+            <button
+              onClick={() => setFiltersOpen(o => !o)}
+              className="text-xs px-2.5 py-1.5 rounded border transition"
+              style={filtersOpen
+                ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--accent)' }
+                : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+            >
+              ⚙ Filtres
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 ml-auto">
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-1 text-[11px] px-2 py-1 rounded border transition disabled:opacity-50"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+              >
+                <span className={refreshing ? 'animate-spin' : ''}>⟳</span>
+              </button>
+            )}
+            <button
+              onClick={onToggleTheme}
+              className="flex items-center text-[11px] px-2 py-1 rounded border transition"
+              style={theme === 'forge'
+                ? { background: 'var(--bg-elev)', color: 'var(--accent)', borderColor: 'var(--accent)' }
+                : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+            >
+              {theme === 'forge' ? '🔥' : '🌙'}
+            </button>
+          </div>
+        </div>
+
+        {/* Panneau filtres dépliable tablette */}
+        {filtersOpen && !isNonPlanningView && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 pb-2 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+            {planningFilters}
+          </div>
+        )}
+      </header>
+    );
+  }
+
+  // ─── Vue desktop (≥1024px) : comportement original ───────────────────────
   return (
     <header className="border-b px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-2 shrink-0" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
       {/* Brand */}
@@ -309,7 +576,6 @@ export function Toolbar({
       {/* ── Suivis toolbar ── */}
       {view === 'suivis' && (
         <>
-          {/* Chip filtre partenaire actif */}
           {suivisPartenaireFilterLabel && (
             <div
               className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
@@ -324,7 +590,6 @@ export function Toolbar({
               >✕</button>
             </div>
           )}
-          {/* Recherche */}
           <input
             type="text"
             value={suivisSearch ?? ''}
@@ -385,7 +650,7 @@ export function Toolbar({
         />
       )}
 
-      {/* Subproject filters — dropdown checklist, only when subprojects exist + planning view */}
+      {/* Subproject filters */}
       {!isNonPlanningView && (store.data.subprojects?.length ?? 0) > 0 && (
         <SubprojectDropdown
           subprojects={store.data.subprojects!}
@@ -404,9 +669,7 @@ export function Toolbar({
             <button
               key={p.id}
               onClick={() => setFilters({ assigneeIds: toggleSet(filters.assigneeIds, p.id) })}
-              className={`text-[11px] px-2 py-0.5 rounded-full border transition flex items-center gap-1 ${
-                active ? 'opacity-100' : 'opacity-30'
-              }`}
+              className={`text-[11px] px-2 py-0.5 rounded-full border transition flex items-center gap-1 ${active ? 'opacity-100' : 'opacity-30'}`}
               style={{
                 borderColor: p.color,
                 color: active ? p.color : 'var(--text-dim)',

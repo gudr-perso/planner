@@ -18,6 +18,7 @@ import { RollingWeeksView } from './components/RollingWeeksView';
 import { RollingWeeksView2 } from './components/RollingWeeksView2';
 import { Toolbar, type ViewKey } from './components/Toolbar';
 import { SideNav } from './components/SideNav';
+import { useIsTablet } from './hooks/useBreakpoint';
 import { SettingsView } from './components/SettingsView';
 import { TaskModal } from './components/TaskModal';
 import { GcalModal } from './components/GcalModal';
@@ -107,6 +108,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   }));
 
   const { width: panelWidth, onMouseDown: onPanelResize } = useResizablePanel('panelWidth', 280);
+  const isTablet = useIsTablet();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
   const [postitsRefreshKey, setPostitsRefreshKey] = useState(0);
@@ -370,6 +373,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
             collapsed={sidebarCollapsed}
             onToggle={() => setSidebarCollapsed((c) => !c)}
             onLogout={handleLogout}
+            mobileOpen={mobileNavOpen}
+            onMobileClose={() => setMobileNavOpen(false)}
           />
           <div className="flex-1 flex flex-col min-w-0">
             <Toolbar
@@ -385,10 +390,11 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               onClearSuivisFilter={() => setPartenaireFilter(null)}
               onRefresh={refreshData}
               refreshing={refreshing}
+              onOpenMobileNav={() => setMobileNavOpen(true)}
             />
             <div className="flex-1 flex min-h-0 relative">
-              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && <UnplannedPanel width={panelWidth} />}
-              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && (
+              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && <UnplannedPanel width={panelWidth} />}
+              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
                   style={{ background: 'var(--border)' }}

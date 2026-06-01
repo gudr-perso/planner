@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { ScheduleXCalendar, useNextCalendarApp } from '@schedule-x/react';
+import { useIsMobile } from '../hooks/useBreakpoint';
 import {
   createViewDay,
   createViewWeek,
@@ -86,8 +87,159 @@ function CalendarInstance({
   return <ScheduleXCalendar calendarApp={calendar} />;
 }
 
+// ─── Fallback mobile : liste semaine ─────────────────────────────────────────
+function getWeekDays(refDate: Date, showWeekends: boolean): Date[] {
+  const monday = new Date(refDate);
+  monday.setDate(refDate.getDate() - ((refDate.getDay() + 6) % 7));
+  const days: Date[] = [];
+  for (let i = 0; i < (showWeekends ? 7 : 5); i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function isoDateStr(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function MobileCalendarList({ events, onEventClick }: {
+  events: CalEvent[];
+  onEventClick: (id: string) => void;
+}) {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [showWeekends, setShowWeekends] = useState(false);
+
+  const refDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + weekOffset * 7);
+    return d;
+  }, [weekOffset]);
+
+  const days = useMemo(() => getWeekDays(refDate, showWeekends), [refDate, showWeekends]);
+
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CalEvent[]>();
+    for (const day of days) map.set(isoDateStr(day), []);
+    for (const ev of events) {
+      const evStart = ev.start.slice(0, 10);
+      if (map.has(evStart)) map.get(evStart)!.push(ev);
+    }
+    return map;
+  }, [days, events]);
+
+  const weekLabel = useMemo(() => {
+    const first = days[0];
+    const last = days[days.length - 1];
+    return `${first.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${last.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  }, [days]);
+
+  const todayStr = isoDateStr(new Date());
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--surface)' }}>
+      {/* Header navigation */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
+        <button
+          onClick={() => setWeekOffset(o => o - 1)}
+          className="text-sm px-2 py-1 rounded border"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+        >‹</button>
+        <span className="flex-1 text-center text-xs font-medium" style={{ color: 'var(--text)' }}>{weekLabel}</span>
+        <button
+          onClick={() => setWeekOffset(o => o + 1)}
+          className="text-sm px-2 py-1 rounded border"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+        >›</button>
+        <button
+          onClick={() => setWeekOffset(0)}
+          className="text-xs px-2 py-1 rounded border"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+        >Auj.</button>
+        <button
+          onClick={() => setShowWeekends(s => !s)}
+          className="text-xs px-2 py-1 rounded border"
+          style={showWeekends
+            ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--accent)' }
+            : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+        >W-E</button>
+      </div>
+
+      {/* Liste des jours */}
+      <div className="flex-1 overflow-y-auto">
+        {days.map(day => {
+          const key = isoDateStr(day);
+          const dayEvents = eventsByDay.get(key) ?? [];
+          const isToday = key === todayStr;
+          return (
+            <div key={key}>
+              {/* Entête jour */}
+              <div
+                className="px-3 py-1.5 sticky top-0 z-10"
+                style={{
+                  background: isToday ? 'color-mix(in srgb, var(--accent) 15%, var(--bg))' : 'var(--bg)',
+                  borderBottom: '1px solid var(--border)',
+                  color: isToday ? 'var(--accent)' : 'var(--text-muted)',
+                  fontSize: 12,
+                  fontWeight: isToday ? 700 : 500,
+                }}
+              >
+                {day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                {isToday && ' · Aujourd\'hui'}
+              </div>
+
+              {dayEvents.length === 0 ? (
+                <div className="px-3 py-2 text-xs" style={{ color: 'var(--text-dim)' }}>Aucun événement</div>
+              ) : (
+                dayEvents.map(ev => {
+                  const timeStr = ev.start.length > 10 ? ev.start.slice(11, 16) : '';
+                  const isGcal = ev.calendarId === 'gcal';
+                  return (
+                    <button
+                      key={ev.id}
+                      onClick={() => onEventClick(ev.id)}
+                      className="w-full text-left px-3 py-2 border-b transition"
+                      style={{
+                        background: 'var(--surface)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--text)',
+                      }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div
+                          className="w-1 rounded-full shrink-0 mt-0.5"
+                          style={{
+                            height: 36,
+                            background: isGcal
+                              ? STATUS_CALENDARS.gcal.lightColors.main
+                              : (STATUS_CALENDARS[ev.calendarId as keyof typeof STATUS_CALENDARS]?.lightColors.main ?? 'var(--accent)'),
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium truncate">{ev.title.replace(/\s*\{[^}]+\}$/, '')}</div>
+                          {timeStr && <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{timeStr}</div>}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="px-3 py-2 text-center text-[10px]" style={{ color: 'var(--text-dim)', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+        Vue calendrier complète disponible sur desktop
+      </div>
+    </div>
+  );
+}
+
 export function CalendarView() {
   const store = useStore();
+  const isMobile = useIsMobile();
   const { tasks, googleEvents } = store.data;
   const { showGcal, colorBy } = store.filters;
 
@@ -166,6 +318,11 @@ export function CalendarView() {
   const handleWeekends = () => { setShowWeekends(prev => { save('calWeekends', !prev); return !prev; }); };
 
   const { setNodeRef, isOver } = useDroppable({ id: 'drop-calendar' });
+
+  // ── Fallback mobile ──────────────────────────────────────────────────────
+  if (isMobile) {
+    return <MobileCalendarList events={events} onEventClick={handleEventClick} />;
+  }
 
   const selectStyle = {
     background: 'var(--bg-deep)',

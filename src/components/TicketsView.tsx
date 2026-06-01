@@ -3,6 +3,7 @@ import { load, save } from '../persistence';
 import { fetchAssociations, fetchTickets, patchRichTextField } from '../notionService';
 import type { AssociationEntry, AssociationsConfig, NotionConfig, TicketEntry, TicketsConfig } from '../types';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
+import { useIsMobile } from '../hooks/useBreakpoint';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -336,6 +337,65 @@ function TicketsTab({
     border: 'none', background: active ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'transparent',
     color: active ? 'var(--accent)' : 'var(--text-muted)', borderRadius: 6, transition: 'color 120ms',
   });
+
+  const isMobile = useIsMobile();
+
+  // ── Mode mobile : vue cards ─────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
+        {/* Recherche + compteur */}
+        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
+          <input style={{ ...inputStyle, flex: 1 }} placeholder="ID / Sujet…" value={search} onChange={e => setSearch(e.target.value)} />
+          <button onClick={toggleTermines} style={btnStyle(showTermines)} title="Terminés">
+            {showTermines ? '🔓' : '🔒'}
+          </button>
+          {loading && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>…</span>}
+          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{filtered.length}</span>
+        </div>
+
+        {/* Cards */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {filtered.map(e => {
+            const statutColor = colorForStatut(e.statut);
+            const prioColor = colorForPriorite(e.priorite);
+            return (
+              <button
+                key={e.id}
+                onClick={() => setModalTicket(e)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '10px 12px', borderBottom: '1px solid var(--border)',
+                  background: 'transparent', cursor: 'pointer',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{e.ticketId || '—'}</div>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    {e.statut && badge(e.statut, statutColor)}
+                    {e.priorite && badge(e.priorite, prioColor)}
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3, display: 'flex', gap: 8 }}>
+                  {e.codeAssoc && <span>{e.codeAssoc}</span>}
+                  {e.demandeur && <span>{e.demandeur}</span>}
+                  {e.dateModif && <span>{formatDate(e.dateModif)}</span>}
+                </div>
+              </button>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)', fontSize: 12 }}>Aucun ticket</div>
+          )}
+        </div>
+
+        {modalTicket && (
+          <TicketModal ticket={modalTicket} token={token} memoField={cfg.memoField} onClose={() => setModalTicket(null)} onAssocClick={onAssocClick} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
