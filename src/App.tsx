@@ -383,7 +383,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               refreshing={refreshing}
             />
             <div className="flex-1 flex min-h-0 relative">
-              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && <UnplannedPanel width={panelWidth} />}
+              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && <UnplannedPanel width={panelWidth} />}
               {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
@@ -394,7 +394,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                   title="Redimensionner"
                 />
               )}
-              <main className="flex-1 min-w-0 overflow-hidden" style={{ background: view === 'home' ? 'var(--bg-deep, #02071f)' : 'var(--surface)' }}>
+              <main className="flex-1 min-w-0 overflow-hidden" style={{ background: view === 'home' ? 'var(--bg-deep, #02071f)' : view === 'users' ? 'var(--bg)' : 'var(--surface)' }}>
                 {view === 'users' ? <UsersView />
                   : view === 'home' ? <HomeView onNavigate={setView} postitsRefreshKey={postitsRefreshKey} />
                   : view === 'calendar' ? <CalendarView />
