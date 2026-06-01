@@ -131,6 +131,13 @@ const CARDS: CardDef[] = [
     color: '#F97316',
   },
   {
+    viewKey: 'postits',
+    title: 'Post-its',
+    description: 'Notes rapides & mémos',
+    icon: <StickyNote size={20} />,
+    color: '#FBBF24',
+  },
+  {
     viewKey: 'partenaires',
     title: 'Partenaires',
     description: 'Réseau & contacts clés',
@@ -143,13 +150,6 @@ const CARDS: CardDef[] = [
     description: 'Dossiers & relances en cours',
     icon: <FileText size={20} />,
     color: '#10B981',
-  },
-  {
-    viewKey: 'postits',
-    title: 'Post-its',
-    description: 'Notes rapides & mémos',
-    icon: <StickyNote size={20} />,
-    color: '#FBBF24',
   },
   {
     viewKey: 'temps',
