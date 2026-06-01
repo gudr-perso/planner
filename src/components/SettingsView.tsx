@@ -12,6 +12,7 @@ import type {
   NotionPropertySchema,
   NotionStatusMapping,
   PartenairesConfig,
+  PostItsConfig,
   Status,
   SuivisConfig,
   TempsConfig,
@@ -188,6 +189,13 @@ export function SettingsView({
   const [assocSchema, setAssocSchema] = useState<NotionPropertySchema[]>([]);
   const [assocLoading, setAssocLoading] = useState(false);
 
+  const DEFAULT_POSTITS: PostItsConfig = { databaseId: '', titleField: '', createdTimeField: '', dueDateField: '', statusField: '' };
+  const [postitsConfig, setPostitsConfig] = useState<PostItsConfig>(() =>
+    load<PostItsConfig>('postitsConfig', DEFAULT_POSTITS)
+  );
+  const [postitsSchema, setPostitsSchema] = useState<NotionPropertySchema[]>([]);
+  const [postitsLoading, setPostitsLoading] = useState(false);
+
   // Local string states for comma-separated inputs (controlled inputs that split on comma break mid-typing)
   const [ticketsStatutsStr, setTicketsStatutsStr] = useState(() =>
     load<TicketsConfig>('ticketsConfig', DEFAULT_TICKETS).statutsTerminesValues.join(', ')
@@ -337,6 +345,28 @@ export function SettingsView({
   const handleSaveAssoc = () => {
     save('associationsConfig', assocConfig);
     flash('Configuration Associations sauvegardée');
+  };
+
+  const handleLoadPostitsSchema = async () => {
+    if (!config.integrationToken || !postitsConfig.databaseId) {
+      setError('Token d\'intégration et ID base Post-its requis');
+      return;
+    }
+    setPostitsLoading(true);
+    try {
+      const s = await fetchDatabaseSchema(config.integrationToken, postitsConfig.databaseId);
+      setPostitsSchema(s);
+      flash(`Schéma Post-its chargé — ${s.length} propriétés`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPostitsLoading(false);
+    }
+  };
+
+  const handleSavePostits = () => {
+    save('postitsConfig', postitsConfig);
+    flash('Configuration Post-its sauvegardée');
   };
 
   const handleLoadSchema = async () => {
@@ -1151,6 +1181,66 @@ export function SettingsView({
             <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
               <button
                 onClick={handleSaveAssoc}
+                className="text-xs px-4 py-2 rounded font-medium transition"
+                style={{ background: 'var(--border)', color: 'var(--text)' }}
+              >
+                Sauvegarder
+              </button>
+            </div>
+          </section>
+
+          {/* ── Post-its ── */}
+          <section>
+            <SectionTitle>Post-its</SectionTitle>
+            <FieldRow label="ID Base Notion">
+              <input
+                type="text"
+                value={postitsConfig.databaseId}
+                onChange={e => setPostitsConfig(prev => ({ ...prev, databaseId: e.target.value }))}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              />
+            </FieldRow>
+            <div className="flex items-center gap-3 mt-1 mb-4 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleLoadPostitsSchema}
+                disabled={postitsLoading}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
+                {postitsLoading ? '…' : 'Charger le schéma'}
+              </button>
+            </div>
+            {(postitsSchema.length > 0 || postitsConfig.titleField) && (
+              <>
+                <FieldRow label="Champ Sujet">
+                  <PropCombo value={postitsConfig.titleField} onChange={v => setPostitsConfig(prev => ({ ...prev, titleField: v }))} schema={postitsSchema} />
+                </FieldRow>
+                <FieldRow label="Champ Créé le">
+                  <PropCombo value={postitsConfig.createdTimeField} onChange={v => setPostitsConfig(prev => ({ ...prev, createdTimeField: v }))} schema={postitsSchema} placeholder="(optionnel, ex. created_time)" />
+                </FieldRow>
+                <FieldRow label="Champ Échéance">
+                  <PropCombo value={postitsConfig.dueDateField} onChange={v => setPostitsConfig(prev => ({ ...prev, dueDateField: v }))} schema={postitsSchema} />
+                </FieldRow>
+                <FieldRow label="Champ Statut">
+                  <PropCombo value={postitsConfig.statusField} onChange={v => setPostitsConfig(prev => ({ ...prev, statusField: v }))} schema={postitsSchema} />
+                </FieldRow>
+                <FieldRow label="Valeur Terminé">
+                  <input
+                    type="text"
+                    value={postitsConfig.statusDoneValue ?? ''}
+                    onChange={e => setPostitsConfig(prev => ({ ...prev, statusDoneValue: e.target.value }))}
+                    placeholder="Terminé"
+                    className="flex-1 text-xs rounded px-2 py-1.5 outline-none"
+                    style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  />
+                </FieldRow>
+              </>
+            )}
+            <div className="flex items-center gap-3 mt-3 ml-[calc(9rem+0.75rem)]">
+              <button
+                onClick={handleSavePostits}
                 className="text-xs px-4 py-2 rounded font-medium transition"
                 style={{ background: 'var(--border)', color: 'var(--text)' }}
               >

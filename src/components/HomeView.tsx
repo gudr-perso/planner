@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlarmClock, ArrowUpRight, CalendarDays, FileText, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
+import { PostItsWidget } from './PostItsWidget';
 
 // ── Weather ────────────────────────────────────────────────────────────────────
 
@@ -253,21 +254,33 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
         <WeatherWidget />
       </div>
 
-      {/* Section label */}
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 14, marginTop: 48, textTransform: 'uppercase' }}>
-        Accès rapide
-      </p>
+      {/* Contenu principal : accès rapide + widget post-its */}
+      <div style={{ display: 'flex', gap: 40, alignItems: 'flex-start' }}>
 
-      {/* Cards grid — 4 colonnes */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        maxWidth: 900,
-        gap: 16,
-      }}>
-        {CARDS.map(card => (
-          <HomeCard key={card.viewKey} card={card} onClick={() => onNavigate(card.viewKey)} />
-        ))}
+        {/* Colonne gauche */}
+        <div style={{ flex: '0 0 auto' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 14, textTransform: 'uppercase' }}>
+            Accès rapide
+          </p>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 200px)',
+            gap: 14,
+          }}>
+            {CARDS.map(card => (
+              <HomeCard key={card.viewKey} card={card} onClick={() => onNavigate(card.viewKey)} />
+            ))}
+          </div>
+        </div>
+
+        {/* Séparateur vertical */}
+        <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(100,160,255,0.1)', flexShrink: 0 }} />
+
+        {/* Colonne droite — Post-its */}
+        <div style={{ flex: 1, minWidth: 0, maxWidth: 520 }}>
+          <PostItsWidget />
+        </div>
+
       </div>
     </div>
   );

@@ -10,6 +10,8 @@ import type {
   PartenairesConfig,
   PartenaireEntry,
   Person,
+  PostItEntry,
+  PostItsConfig,
   Project,
   Status,
   SubProject,
@@ -568,6 +570,153 @@ export async function patchRichTextField(token: string, pageId: string, fieldNam
       [fieldName]: { rich_text: [{ type: 'text', text: { content: value } }] },
     },
   });
+}
+
+// ── Post-its ───────────────────────────────────────────────────────────────────
+
+export async function fetchPostIts(token: string, config: PostItsConfig): Promise<PostItEntry[]> {
+  const entries: PostItEntry[] = [];
+  let cursor: string | undefined;
+
+  const doneValue = config.statusDoneValue || 'Terminé';
+  const buildFilter = (type: 'status' | 'select'): Record<string, unknown> | undefined =>
+    config.statusField
+      ? { property: config.statusField, [type]: { does_not_equal: doneValue } }
+      : undefined;
+
+  let activeFilter = buildFilter('status');
+
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    if (activeFilter) body.filter = activeFilter;
+    body.sorts = config.dueDateField
+      ? [{ property: config.dueDateField, direction: 'ascending' }]
+      : [{ timestamp: 'created_time', direction: 'descending' }];
+
+    let res: Record<string, unknown>;
+    try {
+      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    } catch (e) {
+      if (activeFilter && !cursor) {
+        activeFilter = buildFilter('select');
+        if (activeFilter) {
+          body.filter = activeFilter;
+          try {
+            res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+          } catch {
+            delete body.filter;
+            activeFilter = undefined;
+            res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+          }
+        } else {
+          throw e;
+        }
+      } else {
+        throw e;
+      }
+    }
+
+    const pages = (res!.results ?? []) as Array<{
+      id: string;
+      created_time?: string;
+      url?: string;
+      properties: Record<string, PropVal>;
+    }>;
+
+    for (const page of pages) {
+      const props = page.properties;
+      const titleProp = config.titleField
+        ? props[config.titleField]
+        : Object.values(props).find(p => p?.type === 'title');
+      const title = plainText(titleProp) || '(sans titre)';
+
+      // Date de création
+      let createdTime: string | null = page.created_time ?? null;
+      if (config.createdTimeField && props[config.createdTimeField]) {
+        const cp = props[config.createdTimeField];
+        if (cp) {
+          if (cp.type === 'created_time') createdTime = cp.created_time as string ?? createdTime;
+          else createdTime = dateRange(cp).start;
+        }
+      }
+
+      // Date d'échéance
+      const dueProp = config.dueDateField ? props[config.dueDateField] : null;
+      const dueDate = dueProp ? dateRange(dueProp).start : null;
+
+      // Statut
+      const statusProp = config.statusField ? props[config.statusField] : null;
+      const status = selectName(statusProp) || '';
+      const statusColor = selectColor(statusProp);
+
+      entries.push({
+        id: page.id,
+        title,
+        createdTime,
+        dueDate,
+        status,
+        statusColor,
+        notion_url: page.url,
+      });
+    }
+
+    cursor = res!.has_more ? String(res!.next_cursor) : undefined;
+  } while (cursor);
+
+  return entries;
+}
+
+export async function patchPostItStatus(
+  token: string,
+  pageId: string,
+  statusFieldName: string,
+  value: string,
+  fieldType: 'status' | 'select' = 'status',
+): Promise<void> {
+  await nPatch(token, `/pages/${pageId}`, {
+    properties: {
+      [statusFieldName]: fieldType === 'status'
+        ? { status: { name: value } }
+        : { select: { name: value } },
+    },
+  });
+}
+
+export async function createPostIt(
+  token: string,
+  config: PostItsConfig,
+  data: { title: string; dueDate: string; status: string; content: string },
+): Promise<void> {
+  const properties: Record<string, unknown> = {};
+
+  // Titre
+  const titleFieldName = config.titleField || 'Name';
+  properties[titleFieldName] = { title: [{ type: 'text', text: { content: data.title } }] };
+
+  // Échéance
+  if (data.dueDate && config.dueDateField) {
+    properties[config.dueDateField] = { date: { start: data.dueDate } };
+  }
+
+  // Statut
+  if (data.status && config.statusField) {
+    // On essaie status puis select — en cas d'erreur au POST Notion retournera une erreur lisible
+    properties[config.statusField] = { status: { name: data.status } };
+  }
+
+  const page = await nPost(token, '/pages', {
+    parent: { database_id: config.databaseId },
+    properties,
+  }) as { id: string };
+
+  if (data.content.trim() && page.id) {
+    await nPost(token, `/blocks/${page.id}/children`, {
+      children: [
+        { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: data.content } }] } },
+      ],
+    });
+  }
 }
 
 // ── Partenaires ───────────────────────────────────────────────────────────────

@@ -176,6 +176,27 @@ export type BriefingEntry = {
   createdTime?: string;
 };
 
+// ── Post-its ───────────────────────────────────────────────────────────────────
+
+export type PostItsConfig = {
+  databaseId: string;
+  titleField: string;
+  createdTimeField: string;
+  dueDateField: string;
+  statusField: string;
+  statusDoneValue?: string;
+};
+
+export type PostItEntry = {
+  id: string;
+  title: string;
+  createdTime: string | null;
+  dueDate: string | null;
+  status: string;
+  statusColor?: string;
+  notion_url?: string;
+};
+
 export type NotionRichText = {
   plain_text: string;
   href?: string | null;

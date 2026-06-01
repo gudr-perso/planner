@@ -23,6 +23,7 @@ import { SuivisView } from './components/SuivisView';
 import { HomeView } from './components/HomeView';
 import { TempsView } from './components/TempsView';
 import { TicketsView } from './components/TicketsView';
+import { PostItsView } from './components/PostItsView';
 import type { PartenaireEntry } from './types';
 
 // Google Client ID stored in localStorage (configured via Settings), never baked into the bundle.
@@ -370,8 +371,8 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
               refreshing={refreshing}
             />
             <div className="flex-1 flex min-h-0 relative">
-              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && <UnplannedPanel width={panelWidth} />}
-              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && (
+              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && <UnplannedPanel width={panelWidth} />}
+              {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
                   style={{ background: 'var(--border)' }}
@@ -401,6 +402,7 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
                   )
                   : view === 'temps' ? <TempsView />
                   : view === 'tickets' ? <TicketsView />
+                  : view === 'postits' ? <PostItsView />
                   : <GanttView />}
               </main>
             </div>
