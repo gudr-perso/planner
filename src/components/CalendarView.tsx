@@ -64,7 +64,7 @@ function CalendarInstance({
 
   const calendar = useNextCalendarApp({
     views: [createViewDay(), createViewWeek(), createViewMonthGrid(), createViewMonthAgenda()],
-    defaultView: 'month-grid',
+    defaultView: 'week',
     isResponsive: false,
     events,
     calendars,
