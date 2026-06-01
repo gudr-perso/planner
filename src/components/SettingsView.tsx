@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { fetchDatabaseSchema, syncFromNotion } from '../notionService';
 import { save, load } from '../persistence';
-import { downloadConfig, importConfig } from '../configIO';
+import { downloadConfig, importConfig, uploadConfigToCloud, downloadConfigFromCloud, fetchCloudConfigMeta } from '../configIO';
 import type {
   AssociationsConfig,
   BriefingConfig,
@@ -449,6 +449,34 @@ export function SettingsView({
     return false;
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cloudStatus, setCloudStatus] = useState<{ saving: boolean; loading: boolean; savedAt: string | null; error: string | null }>({
+    saving: false, loading: false, savedAt: null, error: null,
+  });
+
+  useEffect(() => {
+    fetchCloudConfigMeta()
+      .then(meta => meta && setCloudStatus(s => ({ ...s, savedAt: meta.saved_at })))
+      .catch(() => {});
+  }, []);
+
+  const handleCloudUpload = async () => {
+    setCloudStatus(s => ({ ...s, saving: true, error: null }));
+    try {
+      const { saved_at } = await uploadConfigToCloud();
+      setCloudStatus(s => ({ ...s, saving: false, savedAt: saved_at }));
+    } catch (e) {
+      setCloudStatus(s => ({ ...s, saving: false, error: String(e) }));
+    }
+  };
+
+  const handleCloudDownload = async () => {
+    setCloudStatus(s => ({ ...s, loading: true, error: null }));
+    try {
+      await downloadConfigFromCloud();
+    } catch (e) {
+      setCloudStatus(s => ({ ...s, loading: false, error: String(e) }));
+    }
+  };
 
   useEffect(() => {
     if (importBanner && config.integrationToken && config.databaseId && schema.length === 0) {
@@ -538,6 +566,42 @@ export function SettingsView({
             </div>
             <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
               Les clefs API (tokens Notion et Google) ne sont pas exportées.
+            </p>
+          </section>
+
+          {/* ── Sync Cloud ── */}
+          <section>
+            <SectionTitle>Sync Cloud</SectionTitle>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCloudUpload}
+                disabled={cloudStatus.saving}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              >
+                {cloudStatus.saving ? '…' : '↑ Envoyer vers le cloud'}
+              </button>
+              <button
+                onClick={handleCloudDownload}
+                disabled={cloudStatus.loading}
+                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              >
+                {cloudStatus.loading ? '…' : '↓ Télécharger depuis le cloud'}
+              </button>
+            </div>
+            {cloudStatus.savedAt && (
+              <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                Dernière sauvegarde : {cloudStatus.savedAt}
+              </p>
+            )}
+            {cloudStatus.error && (
+              <p className="mt-1.5 text-[11px]" style={{ color: 'var(--color-error, #e53e3e)' }}>
+                {cloudStatus.error}
+              </p>
+            )}
+            <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Les clefs API (tokens Notion et Google) ne sont pas incluses.
             </p>
           </section>
 

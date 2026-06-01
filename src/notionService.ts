@@ -118,6 +118,32 @@ export async function patchNotionDates(
   });
 }
 
+export interface NotionSearchResult {
+  id: string;
+  title: string;
+  url: string;
+}
+
+export async function searchNotionDatabase(
+  token: string,
+  databaseId: string,
+  query: string,
+  titlePropName: string,
+): Promise<NotionSearchResult[]> {
+  const body = {
+    filter: { property: titlePropName, title: { contains: query } },
+    page_size: 20,
+  };
+  const res = await nPost(token, `/databases/${databaseId}/query`, body);
+  const results = (res.results ?? []) as Array<Record<string, unknown>>;
+  return results.map((page) => {
+    const props = page.properties as Record<string, Record<string, unknown>>;
+    const titleProp = props[titlePropName] ?? Object.values(props).find(p => p.type === 'title');
+    const title = plainText(titleProp as PropVal);
+    return { id: page.id as string, title: title || '(sans titre)', url: page.url as string };
+  });
+}
+
 export async function fetchDatabaseSchema(token: string, databaseId: string): Promise<NotionPropertySchema[]> {
   const data = await nGet(token, `/databases/${databaseId}`);
   const props = data.properties as Record<string, Record<string, unknown>>;

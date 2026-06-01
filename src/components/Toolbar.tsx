@@ -1,9 +1,177 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStore } from '../store';
 import { HamburgerButton } from './SideNav';
 import { useIsMobile, useIsTablet } from '../hooks/useBreakpoint';
+import { load } from '../persistence';
+import { fetchDatabaseSchema, searchNotionDatabase, type NotionSearchResult } from '../notionService';
 
 export type ViewKey = 'home' | 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'partenaires' | 'suivis' | 'temps' | 'tickets' | 'postits' | 'users';
+
+// ── Types internes pour la config des bases disponibles ───────────────────────
+interface DbOption { key: string; label: string; databaseId: string }
+
+function getAvailableDbs(): DbOption[] {
+  const entries: Array<[string, string]> = [
+    ['notionConfig',       'Tâches'],
+    ['briefingConfig',     'Briefings'],
+    ['partenairesConfig',  'Partenaires'],
+    ['suivisConfig',       'Suivis'],
+    ['tempsConfig',        'Temps'],
+    ['ticketsConfig',      'Tickets'],
+    ['associationsConfig', 'Associations'],
+    ['postItsConfig',      'Post-its'],
+  ];
+  return entries.flatMap(([key, label]) => {
+    const cfg = load<{ databaseId?: string }>(key, {});
+    return cfg.databaseId ? [{ key, label, databaseId: cfg.databaseId }] : [];
+  });
+}
+
+function GlobalSearch() {
+  const [query, setQuery] = useState('');
+  const [selectedDb, setSelectedDb] = useState<DbOption | null>(null);
+  const [results, setResults] = useState<NotionSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [titlePropCache, setTitlePropCache] = useState<Record<string, string>>({});
+  const ref = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dbs = getAvailableDbs();
+
+  // Initialise la base par défaut au premier rendu
+  useEffect(() => {
+    if (dbs.length > 0 && !selectedDb) setSelectedDb(dbs[0]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fermeture au clic extérieur / Escape
+  useEffect(() => {
+    if (!open) return;
+    const onMouse = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onMouse);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onMouse);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const doSearch = useCallback(async (q: string, db: DbOption) => {
+    const token = load<{ integrationToken?: string }>('notionConfig', {}).integrationToken;
+    if (!token) { setError('Token Notion manquant'); setLoading(false); return; }
+
+    let titleProp = titlePropCache[db.databaseId];
+    if (!titleProp) {
+      try {
+        const schema = await fetchDatabaseSchema(token, db.databaseId);
+        const found = schema.find(p => p.type === 'title');
+        titleProp = found?.name ?? 'Name';
+        setTitlePropCache(prev => ({ ...prev, [db.databaseId]: titleProp! }));
+      } catch {
+        titleProp = 'Name';
+      }
+    }
+
+    try {
+      const res = await searchNotionDatabase(token, db.databaseId, q, titleProp);
+      setResults(res);
+      setOpen(true);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message ?? 'Erreur');
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [titlePropCache]);
+
+  const handleInput = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.length < 2) { setOpen(false); setResults([]); return; }
+    if (!selectedDb) return;
+    setLoading(true);
+    debounceRef.current = setTimeout(() => doSearch(value, selectedDb), 400);
+  };
+
+  if (dbs.length === 0) return null;
+
+  return (
+    <div ref={ref} className="relative flex items-center gap-1">
+      {/* Sélecteur de base */}
+      <select
+        value={selectedDb?.key ?? ''}
+        onChange={e => {
+          const db = dbs.find(d => d.key === e.target.value) ?? null;
+          setSelectedDb(db);
+          setResults([]);
+          setOpen(false);
+          setQuery('');
+        }}
+        className="text-[11px] rounded px-1.5 py-1 outline-none border shrink-0"
+        style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)', maxWidth: 110 }}
+      >
+        {dbs.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
+      </select>
+
+      {/* Champ de recherche */}
+      <div className="relative flex items-center">
+        <span className="absolute left-2 pointer-events-none text-[12px]" style={{ color: 'var(--text-muted)' }}>
+          {loading ? <span className="animate-spin inline-block">⟳</span> : '🔍'}
+        </span>
+        <input
+          type="text"
+          value={query}
+          onChange={e => handleInput(e.target.value)}
+          placeholder="Rechercher…"
+          className="text-[11px] rounded pl-6 pr-2 py-1 outline-none border w-44 transition-all focus:w-56"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text)', borderColor: 'var(--border)' }}
+        />
+      </div>
+
+      {/* Popup résultats */}
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1 z-50 rounded-lg shadow-xl overflow-hidden"
+          style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', minWidth: 320, maxWidth: 420 }}
+        >
+          {error && (
+            <div className="px-3 py-2 text-[11px]" style={{ color: 'var(--color-error)' }}>⚠ {error}</div>
+          )}
+          {!error && results.length === 0 && (
+            <div className="px-3 py-2.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>Aucun résultat</div>
+          )}
+          <div className="themed-scroll max-h-72 overflow-y-auto">
+            {results.map(r => (
+              <div
+                key={r.id}
+                className="flex items-center justify-between gap-2 px-3 py-2 border-b last:border-0 hover:opacity-80 transition"
+                style={{ borderColor: 'var(--border-soft)' }}
+              >
+                <span className="text-[12px] truncate flex-1" style={{ color: 'var(--text)' }} title={r.title}>
+                  {r.title}
+                </span>
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 text-[11px] px-2 py-0.5 rounded border transition hover:opacity-80"
+                  style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 40%, transparent)', background: 'color-mix(in srgb, var(--accent) 10%, transparent)', whiteSpace: 'nowrap' }}
+                >
+                  Ouvrir ↗
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ProjectDropdown({
   projects,
@@ -572,6 +740,9 @@ export function Toolbar({
           {dataSource === 'notion' ? 'Notion' : 'démo'}
         </button>
       </div>
+
+      {/* Recherche globale Notion */}
+      <GlobalSearch />
 
       {/* ── Suivis toolbar ── */}
       {view === 'suivis' && (

@@ -43,3 +43,30 @@ export function importConfig(json: string): void {
   localStorage.setItem(PREFIX + '_justImported', 'true');
   window.location.reload();
 }
+
+export async function uploadConfigToCloud(): Promise<{ saved_at: string }> {
+  const json = exportConfig();
+  const res = await fetch('/api/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: json,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<{ saved_at: string }>;
+}
+
+export async function fetchCloudConfigMeta(): Promise<{ saved_at: string } | null> {
+  const res = await fetch('/api/config');
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json() as { config: unknown; saved_at: string };
+  return { saved_at: data.saved_at };
+}
+
+export async function downloadConfigFromCloud(): Promise<void> {
+  const res = await fetch('/api/config');
+  if (res.status === 404) throw new Error('Aucune config sauvegardée dans le cloud');
+  if (!res.ok) throw new Error(await res.text());
+  const { config } = await res.json() as { config: Record<string, unknown>; saved_at: string };
+  importConfig(JSON.stringify(config));
+}
