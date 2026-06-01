@@ -62,7 +62,13 @@ function GlobalSearch({ dataSource }: { dataSource: 'demo' | 'notion' }) {
 
   const doSearch = useCallback(async (q: string, db: DbOption) => {
     const token = load<{ integrationToken?: string }>('notionConfig', {}).integrationToken;
-    if (!token) { setError('Token Notion manquant'); setLoading(false); return; }
+    if (!token) {
+      setError('Token Notion manquant (configurer dans Paramètres)');
+      setResults([]);
+      setOpen(true);
+      setLoading(false);
+      return;
+    }
 
     let titleProp = titlePropCache[db.databaseId];
     if (!titleProp) {
@@ -79,12 +85,12 @@ function GlobalSearch({ dataSource }: { dataSource: 'demo' | 'notion' }) {
     try {
       const res = await searchNotionDatabase(token, db.databaseId, q, titleProp);
       setResults(res);
-      setOpen(true);
       setError(null);
     } catch (err) {
-      setError((err as Error).message ?? 'Erreur');
+      setError((err as Error).message ?? 'Erreur de recherche');
       setResults([]);
     } finally {
+      setOpen(true);
       setLoading(false);
     }
   }, [titlePropCache]);
