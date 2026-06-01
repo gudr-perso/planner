@@ -293,7 +293,7 @@ export function Toolbar({
     <header className="border-b px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-2 shrink-0" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
       {/* Brand */}
       <div className="flex items-center gap-2 mr-1">
-        <span className="text-base font-bold tracking-tight" style={{ color: 'var(--text)' }}>Planner</span>
+        <span className="text-base font-bold tracking-tight" style={{ color: 'var(--text)' }}>CAP Planner</span>
         <button
           onClick={onToggleDataSource}
           title={dataSource === 'demo' ? 'Passer en mode Notion' : 'Revenir aux données de démo'}
@@ -439,7 +439,8 @@ export function Toolbar({
           ))}
         </div>}
 
-        {/* Gcal toggle */}
+        {/* Gcal toggle — Planning uniquement */}
+        {!isNonPlanningView && (
         <div className="flex items-center gap-2 border-l pl-4" style={{ borderColor: 'var(--border)' }}>
           {gcal.accessToken ? (
             <>
@@ -479,6 +480,7 @@ export function Toolbar({
             </span>
           )}
         </div>
+        )}
 
         {/* Refresh */}
         {onRefresh && (
