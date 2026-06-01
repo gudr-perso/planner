@@ -220,7 +220,8 @@ function TicketsTab({
   const [filterZone, setFilterZone] = useState('');
   const [filterCodeDossier, setFilterCodeDossier] = useState('');
   const [sortKey, setSortKey] = useState<TicketSortKey>('ticketId');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [subTab, setSubTab] = useState<'all' | 'noassoc' | 'arepondu' | 'zoneneo' | 'prb' | 'sf' | 'chn'>('all');
   const [modalTicket, setModalTicket] = useState<TicketEntry | null>(null);
 
   const load_ = useCallback((inclTermines: boolean) => {
@@ -260,6 +261,12 @@ function TicketsTab({
     if (filterNiveau) list = list.filter(e => e.niveau.includes(filterNiveau));
     if (filterZone) list = list.filter(e => e.zone.includes(filterZone));
     if (filterCodeDossier) list = list.filter(e => e.codeDossier.toLowerCase().includes(filterCodeDossier.toLowerCase()));
+    if (subTab === 'noassoc') list = list.filter(e => !e.codeAssoc);
+    else if (subTab === 'arepondu') list = list.filter(e => e.statut.toLowerCase().includes('a répondu') || e.statut.toLowerCase().includes('répondu'));
+    else if (subTab === 'zoneneo') list = list.filter(e => !!e.zone);
+    else if (subTab === 'prb') list = list.filter(e => e.codeAssoc.toUpperCase().startsWith('PRB'));
+    else if (subTab === 'sf') list = list.filter(e => e.codeAssoc.toUpperCase().startsWith('SF'));
+    else if (subTab === 'chn') list = list.filter(e => e.codeAssoc.toUpperCase().startsWith('CHN'));
     return [...list].sort((a, b) => {
       const va = String(a[sortKey] ?? '');
       const vb = String(b[sortKey] ?? '');
@@ -282,8 +289,24 @@ function TicketsTab({
     </th>
   );
 
+  const subTabStyle = (active: boolean): React.CSSProperties => ({
+    padding: '4px 12px', fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer',
+    border: 'none', background: active ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'transparent',
+    color: active ? 'var(--accent)' : 'var(--text-muted)', borderRadius: 6, transition: 'color 120ms',
+  });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
+      {/* Sous-onglets */}
+      <div style={{ display: 'flex', gap: 4, padding: '6px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-deep)', flexShrink: 0 }}>
+        <button style={subTabStyle(subTab === 'all')} onClick={() => setSubTab('all')}>Tous</button>
+        <button style={subTabStyle(subTab === 'noassoc')} onClick={() => setSubTab('noassoc')}>Sans code assoc.</button>
+        <button style={subTabStyle(subTab === 'arepondu')} onClick={() => setSubTab('arepondu')}>A répondu</button>
+        <button style={subTabStyle(subTab === 'zoneneo')} onClick={() => setSubTab('zoneneo')}>Zone Néo</button>
+        <button style={subTabStyle(subTab === 'prb')} onClick={() => setSubTab('prb')}>Problèmes</button>
+        <button style={subTabStyle(subTab === 'sf')} onClick={() => setSubTab('sf')}>Correctifs</button>
+        <button style={subTabStyle(subTab === 'chn')} onClick={() => setSubTab('chn')}>Changements</button>
+      </div>
       {/* Filtres */}
       <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
         <input style={{ ...inputStyle, width: 160 }} placeholder="ID / Sujet…" value={search} onChange={e => setSearch(e.target.value)} />
@@ -322,7 +345,6 @@ function TicketsTab({
               <SortTh col="dateModif" label="Modif." />
               <SortTh col="demandeur" label="Demandeur" />
               <th style={{ padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, background: 'var(--bg-deep)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0 }}>Lien</th>
-              <SortTh col="zone" label="Zone" />
               <SortTh col="memo" label="Mémo" />
             </tr>
           </thead>
@@ -338,7 +360,7 @@ function TicketsTab({
                 title="Double-cliquez pour le détail"
               >
                 <td style={{ padding: '5px 10px', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{e.ticketId || '—'}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</td>
+                <td style={{ padding: '5px 10px', color: 'var(--text)', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</td>
                 <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.codeAssoc || '—'}</td>
                 <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.statut ? badge(e.statut, colorForStatut(e.statut)) : '—'}</td>
                 <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.priorite ? badge(e.priorite, colorForPriorite(e.priorite)) : '—'}</td>
@@ -346,16 +368,16 @@ function TicketsTab({
                 <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDate(e.dateModif)}</td>
                 <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.demandeur || '—'}</td>
                 <td style={{ padding: '5px 10px' }}>
-                  {e.lien ? (
-                    <a href={e.lien} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontSize: 11 }} onClick={ev => ev.stopPropagation()}>↗ Ouvrir</a>
-                  ) : '—'}
+                  {e.ticketId ? (() => {
+                    const num = e.ticketId.replace(/^[A-Za-z]+-/, '');
+                    return <a href={`https://cuma.freshservice.com/a/tickets/${num}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontSize: 11 }} onClick={ev => ev.stopPropagation()}>↗ Ouvrir</a>;
+                  })() : '—'}
                 </td>
-                <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.zone || '—'}</td>
                 <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.memo || '—'}</td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={11} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)' }}>Aucun ticket</td></tr>
+              <tr><td colSpan={10} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)' }}>Aucun ticket</td></tr>
             )}
           </tbody>
         </table>

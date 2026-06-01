@@ -954,7 +954,15 @@ export async function fetchTickets(
         statut: multiSelectNames(config.statutField ? props[config.statutField] : null).join(', '),
         priorite: multiSelectNames(config.prioriteField ? props[config.prioriteField] : null).join(', '),
         niveau: multiSelectNames(config.niveauField ? props[config.niveauField] : null).join(', '),
-        dateModif: config.dateModifField ? dateRange(props[config.dateModifField]).start : null,
+        dateModif: config.dateModifField
+          ? (() => {
+              const p = props[config.dateModifField];
+              if (!p) return null;
+              if (p.type === 'last_edited_time' || p.type === 'created_time')
+                return notionDateToSx((p as Record<string, unknown>)[p.type] as string);
+              return dateRange(p).start;
+            })()
+          : null,
         demandeur: config.demandeurField ? (extractExtraValue(props[config.demandeurField], new Map()) || '') : '',
         lien: config.lienField ? formulaString(props[config.lienField]) || (extractExtraValue(props[config.lienField], new Map())) : '',
         zone: config.zoneField ? formulaString(props[config.zoneField]) || plainText(props[config.zoneField]) : '',
