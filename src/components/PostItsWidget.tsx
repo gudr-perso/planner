@@ -408,26 +408,24 @@ function PostItCard({ entry, onClick }: { entry: PostItEntry; onClick: () => voi
         {entry.title}
       </p>
 
-      {/* Dates */}
-      <div style={{ display: 'flex', gap: 8, fontSize: 10, color: 'var(--text-muted)', marginBottom: 6 }}>
+      {/* Dates + Statut sur une ligne */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
         {entry.createdTime && <span>🕐 {formatShortDate(entry.createdTime)}</span>}
         {entry.dueDate && <span>📅 {formatShortDate(entry.dueDate)}</span>}
+        {entry.status && (
+          <span style={{
+            padding: '1px 7px',
+            borderRadius: 99,
+            fontSize: 10,
+            fontWeight: 600,
+            background: `color-mix(in srgb, ${color} 20%, transparent)`,
+            color,
+            border: `1px solid color-mix(in srgb, ${color} 38%, transparent)`,
+          }}>
+            {entry.status}
+          </span>
+        )}
       </div>
-
-      {/* Statut */}
-      {entry.status && (
-        <span style={{
-          padding: '1px 7px',
-          borderRadius: 99,
-          fontSize: 10,
-          fontWeight: 600,
-          background: `color-mix(in srgb, ${color} 20%, transparent)`,
-          color,
-          border: `1px solid color-mix(in srgb, ${color} 38%, transparent)`,
-        }}>
-          {entry.status}
-        </span>
-      )}
     </button>
   );
 }

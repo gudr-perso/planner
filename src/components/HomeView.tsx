@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlarmClock, ArrowUpRight, CalendarDays, Clock, FileText, StickyNote, Ticket, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { PostItsWidget } from './PostItsWidget';
+import { NewsFeedWidget } from './NewsFeedWidget';
 
 // ── Weather ────────────────────────────────────────────────────────────────────
 
@@ -101,6 +102,85 @@ function WeatherWidget() {
       ) : (
         <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>Météo indisponible</span>
       )}
+    </div>
+  );
+}
+
+// ── Quote ──────────────────────────────────────────────────────────────────────
+
+const FRENCH_QUOTES = [
+  { q: "La qualité n'est jamais un accident ; c'est toujours le résultat d'un effort intelligent.", a: "John Ruskin" },
+  { q: "Le succès, c'est d'aller d'échec en échec sans perdre son enthousiasme.", a: "Winston Churchill" },
+  { q: "Ce n'est pas parce que les choses sont difficiles que nous n'osons pas, c'est parce que nous n'osons pas qu'elles sont difficiles.", a: "Sénèque" },
+  { q: "La vie, c'est ce qui arrive quand vous êtes occupé à faire d'autres plans.", a: "John Lennon" },
+  { q: "Il ne faut pas attendre d'être parfait pour commencer quelque chose de bien.", a: "Saint François de Sales" },
+  { q: "Le temps est la chose la plus précieuse qu'un homme puisse dépenser.", a: "Théophraste" },
+  { q: "Agis bien maintenant, car tu auras le reste de ta vie pour t'en féliciter.", a: "Proverbe" },
+  { q: "La discipline est le pont entre les objectifs et les accomplissements.", a: "Jim Rohn" },
+  { q: "Chaque journée est une nouvelle chance de changer ta vie.", a: "Proverbe" },
+  { q: "Les grands esprits ont toujours rencontré une opposition farouche des esprits médiocres.", a: "Albert Einstein" },
+  { q: "Commencez par faire ce qui est nécessaire, puis ce qui est possible, et soudainement vous ferez l'impossible.", a: "Saint François d'Assise" },
+  { q: "L'imagination est plus importante que le savoir.", a: "Albert Einstein" },
+  { q: "Il faut toujours viser la lune, car même en cas d'échec, on atterrit dans les étoiles.", a: "Oscar Wilde" },
+  { q: "Le seul endroit où le succès précède le travail, c'est dans le dictionnaire.", a: "Vidal Sassoon" },
+  { q: "Votre temps est limité, ne le gâchez pas à vivre la vie de quelqu'un d'autre.", a: "Steve Jobs" },
+  { q: "Nous devenons ce que nous faisons de manière répétée.", a: "Aristote" },
+  { q: "La meilleure façon de prédire l'avenir, c'est de le créer.", a: "Peter Drucker" },
+  { q: "Celui qui déplace des montagnes commence par enlever de petites pierres.", a: "Confucius" },
+  { q: "Une idée sans action n'est qu'un rêve.", a: "Proverbe" },
+  { q: "Ne remets pas à demain ce que tu peux faire aujourd'hui.", a: "Benjamin Franklin" },
+];
+
+type QuoteData = { q: string; a: string; day: string };
+
+function getQuoteCache(): QuoteData | null {
+  try {
+    const raw = localStorage.getItem('quoteDayCache');
+    if (!raw) return null;
+    const data = JSON.parse(raw) as QuoteData;
+    if (data.day !== new Date().toDateString()) return null;
+    return data;
+  } catch { return null; }
+}
+
+function QuoteWidget() {
+  const [quote, setQuote] = useState<{ q: string; a: string } | null>(() => getQuoteCache());
+
+  useEffect(() => {
+    if (quote) return;
+
+    const dayIndex = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86_400_000);
+    const fallback = FRENCH_QUOTES[dayIndex % FRENCH_QUOTES.length];
+
+    fetch('https://zenquotes.io/api/today')
+      .then(r => r.json())
+      .then((data: { q: string; a: string }[]) => {
+        const item = data[0];
+        if (item?.q) {
+          const cached: QuoteData = { q: item.q, a: item.a, day: new Date().toDateString() };
+          localStorage.setItem('quoteDayCache', JSON.stringify(cached));
+          setQuote({ q: item.q, a: item.a });
+        } else {
+          setQuote(fallback);
+        }
+      })
+      .catch(() => setQuote(fallback));
+  }, [quote]);
+
+  if (!quote) return null;
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, padding: '0 16px' }}>
+      <p style={{
+        fontSize: 13,
+        fontStyle: 'italic',
+        color: 'var(--text-muted)',
+        margin: 0,
+        lineHeight: 1.5,
+      }}>
+        "{quote.q}"
+      </p>
+      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>— {quote.a}</span>
     </div>
   );
 }
@@ -260,23 +340,34 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
       background: 'var(--bg-deep, #050c3f)',
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 36, gap: 24 }}>
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 6 }}>
-            {dateLabel}
-          </p>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, margin: 0 }}>
-            Bonjour, Guillaume
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-            Votre poste de commande. 7 espaces, tout à portée de main.
-          </p>
+      <div style={{ marginBottom: 36 }}>
+        {/* Top row: greeting (left) + citation + météo (right) */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24 }}>
+          {/* Greeting */}
+          <div style={{ flexShrink: 0 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 6 }}>
+              {dateLabel}
+            </p>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, margin: 0 }}>
+              Bonjour, Guillaume
+            </h1>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
+              Votre poste de commande. 7 espaces, tout à portée de main.
+            </p>
+          </div>
+
+          {/* Citation */}
+          <QuoteWidget />
+
+          {/* Météo */}
+          <div style={{ flexShrink: 0 }}>
+            <WeatherWidget />
+          </div>
         </div>
-        <WeatherWidget />
       </div>
 
-      {/* Contenu principal : accès rapide + widget post-its */}
-      <div style={{ display: 'flex', gap: 40, alignItems: 'flex-start' }}>
+      {/* Contenu principal : accès rapide + colonne droite */}
+      <div style={{ display: 'flex', gap: 40, alignItems: 'stretch' }}>
 
         {/* Colonne gauche */}
         <div style={{ flex: '0 0 auto' }}>
@@ -297,9 +388,20 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
         {/* Séparateur vertical */}
         <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(100,160,255,0.1)', flexShrink: 0 }} />
 
-        {/* Colonne droite — Post-its */}
-        <div style={{ flex: 1, minWidth: 0, maxWidth: 340 }}>
-          <PostItsWidget refreshKey={postitsRefreshKey} />
+        {/* Colonne droite — Post-its (2/3) + News (1/3) */}
+        <div style={{ flex: 1, minWidth: 0, maxWidth: 340, display: 'flex', flexDirection: 'column' }}>
+          {/* Post-its — 2/3 */}
+          <div style={{ flex: 2, minHeight: 0, overflowY: 'auto' }}>
+            <PostItsWidget refreshKey={postitsRefreshKey} />
+          </div>
+
+          {/* Séparateur horizontal */}
+          <div style={{ height: 1, background: 'rgba(100,160,255,0.1)', margin: '16px 0', flexShrink: 0 }} />
+
+          {/* News — 1/3 */}
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            <NewsFeedWidget />
+          </div>
         </div>
 
       </div>
