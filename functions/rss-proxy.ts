@@ -8,9 +8,9 @@ const ALLOWED_FEEDS = new Set([
   'https://www.actuia.com/feed/',
   'https://siecledigital.fr/feed/',
   'https://www.journaldunet.com/rss/',
-  'https://www.journaldunet.com/solutions/dsi/rss/',
+  'https://www.zdnet.fr/feeds/rss/actualites/',
   'https://www.compta-online.com/rss-actualites-pcg-78-1.html',
-  'https://www.silicon.fr/feed',
+  'https://www.journaldunet.com/solutions/dsi/rss/',
 ]);
 
 export const onRequest: PagesFunction = async ({ request }) => {
