@@ -716,7 +716,7 @@ export async function createPostIt(
   }
 
   if (data.content.trim() && page.id) {
-    await nPost(token, `/blocks/${page.id}/children`, {
+    await nPatch(token, `/blocks/${page.id}/children`, {
       children: [
         { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: data.content } }] } },
       ],

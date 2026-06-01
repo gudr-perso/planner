@@ -105,9 +105,11 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
   const { width: panelWidth, onMouseDown: onPanelResize } = useResizablePanel('panelWidth', 280);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [postitsRefreshKey, setPostitsRefreshKey] = useState(0);
 
   const refreshData = useCallback(async () => {
     setRefreshing(true);
+    setPostitsRefreshKey(k => k + 1);
     try {
       if (dataSource === 'notion') {
         const cfg = load<NotionConfig | null>('notionConfig', null);
@@ -383,7 +385,7 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
                 />
               )}
               <main className="flex-1 min-w-0 overflow-hidden" style={{ background: view === 'home' ? 'var(--bg-deep, #02071f)' : 'var(--surface)' }}>
-                {view === 'home' ? <HomeView onNavigate={setView} />
+                {view === 'home' ? <HomeView onNavigate={setView} postitsRefreshKey={postitsRefreshKey} />
                   : view === 'calendar' ? <CalendarView />
                   : view === 'rolling'  ? <RollingWeeksView />
                   : view === 'rolling2' ? <RollingWeeksView2 />
@@ -402,7 +404,7 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
                   )
                   : view === 'temps' ? <TempsView />
                   : view === 'tickets' ? <TicketsView />
-                  : view === 'postits' ? <PostItsView />
+                  : view === 'postits' ? <PostItsView refreshKey={postitsRefreshKey} />
                   : <GanttView />}
               </main>
             </div>

@@ -36,7 +36,7 @@ function formatDate(iso: string | null): string {
   return `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`;
 }
 
-export function PostItsView() {
+export function PostItsView({ refreshKey }: { refreshKey?: number }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const postitsCfg = load<PostItsConfig | null>('postitsConfig', null);
   const token = notionCfg?.integrationToken ?? '';
@@ -68,7 +68,7 @@ export function PostItsView() {
 
   useEffect(() => {
     loadEntries();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!token || !postitsCfg?.databaseId || !postitsCfg.statusField) return;

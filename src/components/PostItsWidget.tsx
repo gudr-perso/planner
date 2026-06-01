@@ -386,7 +386,7 @@ function PostItCard({ entry, onClick }: { entry: PostItEntry; onClick: () => voi
 
 // ── Widget principal ───────────────────────────────────────────────────────────
 
-export function PostItsWidget() {
+export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const postitsCfg = load<PostItsConfig | null>('postitsConfig', null);
   const token = notionCfg?.integrationToken ?? '';
@@ -408,7 +408,7 @@ export function PostItsWidget() {
 
   useEffect(() => {
     loadEntries();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!token || !postitsCfg?.databaseId || !postitsCfg.statusField) return;

@@ -246,7 +246,7 @@ function HomeCard({ card, onClick }: { card: CardDef; onClick: () => void }) {
 
 // ── HomeView ───────────────────────────────────────────────────────────────────
 
-export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
+export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: ViewKey) => void; postitsRefreshKey?: number }) {
   const today = new Date();
   const dateLabel = today.toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -299,7 +299,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
 
         {/* Colonne droite — Post-its */}
         <div style={{ flex: 1, minWidth: 0, maxWidth: 340 }}>
-          <PostItsWidget />
+          <PostItsWidget refreshKey={postitsRefreshKey} />
         </div>
 
       </div>
