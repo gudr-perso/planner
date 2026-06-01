@@ -27,7 +27,7 @@ function getAvailableDbs(): DbOption[] {
   });
 }
 
-function GlobalSearch() {
+function GlobalSearch({ dataSource }: { dataSource: 'demo' | 'notion' }) {
   const [query, setQuery] = useState('');
   const [selectedDb, setSelectedDb] = useState<DbOption | null>(null);
   const [results, setResults] = useState<NotionSearchResult[]>([]);
@@ -98,13 +98,14 @@ function GlobalSearch() {
     debounceRef.current = setTimeout(() => doSearch(value, selectedDb), 400);
   };
 
-  if (dbs.length === 0) return null;
+  const noBases = dbs.length === 0;
 
   return (
     <div ref={ref} className="relative flex items-center gap-1">
       {/* Sélecteur de base */}
       <select
         value={selectedDb?.key ?? ''}
+        disabled={noBases}
         onChange={e => {
           const db = dbs.find(d => d.key === e.target.value) ?? null;
           setSelectedDb(db);
@@ -113,9 +114,12 @@ function GlobalSearch() {
           setQuery('');
         }}
         className="text-[11px] rounded px-1.5 py-1 outline-none border shrink-0"
-        style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)', maxWidth: 110 }}
+        style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)', maxWidth: 130, opacity: noBases ? 0.5 : 1 }}
       >
-        {dbs.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
+        {noBases
+          ? <option>Aucune base</option>
+          : dbs.map(d => <option key={d.key} value={d.key}>{d.label}</option>)
+        }
       </select>
 
       {/* Champ de recherche */}
@@ -127,9 +131,10 @@ function GlobalSearch() {
           type="text"
           value={query}
           onChange={e => handleInput(e.target.value)}
-          placeholder="Rechercher…"
+          disabled={noBases}
+          placeholder={noBases ? (dataSource === 'demo' ? 'Mode démo' : 'Configurer les bases…') : 'Rechercher…'}
           className="text-[11px] rounded pl-6 pr-2 py-1 outline-none border w-44 transition-all focus:w-56"
-          style={{ background: 'var(--bg-deep)', color: 'var(--text)', borderColor: 'var(--border)' }}
+          style={{ background: 'var(--bg-deep)', color: 'var(--text)', borderColor: 'var(--border)', opacity: noBases ? 0.5 : 1 }}
         />
       </div>
 
@@ -633,7 +638,7 @@ export function Toolbar({
           </button>
 
           {/* Recherche globale Notion */}
-          <GlobalSearch />
+          <GlobalSearch dataSource={dataSource} />
 
           {/* Suivis */}
           {view === 'suivis' && (
