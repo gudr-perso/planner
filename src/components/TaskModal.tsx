@@ -234,11 +234,14 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
                 const isSaving = extraSaving[label] ?? false;
                 const isSaved = extraSaved[label] ?? false;
 
-                // "Terminé" target: look for an option matching "terminé" or the done status mapping
-                const doneMapping = notionConfig?.statusMappings?.find(m => m.internalStatus === 'done');
+                // "Terminé" target: exact name match first, then statusMappings fallback
+                const exactTermine = options.find(o => /^termin[ée]e?$/i.test(o.name))?.name;
+                const doneMapping = notionConfig?.statusMappings?.find(
+                  m => m.internalStatus === 'done' && /^termin/i.test(m.notionValue)
+                ) ?? notionConfig?.statusMappings?.find(m => m.internalStatus === 'done');
                 const doneValue =
-                  (efConfig.notionField === notionConfig?.fieldMap?.status && doneMapping?.notionValue)
-                  || options.find(o => /termin/i.test(o.name))?.name
+                  exactTermine
+                  || (efConfig.notionField === notionConfig?.fieldMap?.status && doneMapping?.notionValue)
                   || null;
 
                 const handleSaveExtra = async (val: string) => {
