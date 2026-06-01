@@ -2,13 +2,22 @@ import { useEffect, useState } from 'react';
 
 type RssItem = { title: string; link: string; pubDate: string | null };
 type FeedCache = { items: RssItem[]; cachedAt: number };
-type Tab = 'ai' | 'erp';
+type Tab = 'ai' | 'erp' | 'compta';
 
 const FEED_CONFIGS: { id: string; label: string; url: string; category: Tab }[] = [
-  { id: 'mit',      label: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed/',  category: 'ai'  },
-  { id: 'rundown',  label: 'The Rundown AI',  url: 'https://www.therundown.ai/rss',           category: 'ai'  },
-  { id: 'jdn',      label: 'Journal du Net',  url: 'https://www.journaldunet.com/rss/',        category: 'erp' },
+  { id: 'numerama',  label: 'Numerama',       url: 'https://www.numerama.com/feed/',                          category: 'ai'    },
+  { id: 'siecle',    label: 'Siècle Digital', url: 'https://siecledigital.fr/feed/',                          category: 'ai'    },
+  { id: 'jdn',       label: 'Journal du Net', url: 'https://www.journaldunet.com/rss/',                       category: 'erp'   },
+  { id: 'jdnsi',     label: 'JDN Solutions',  url: 'https://www.journaldunet.com/solutions/dsi/rss/',         category: 'erp'   },
+  { id: 'compta',    label: 'Compta Online',  url: 'https://www.compta-online.com/rss-actualites-pcg-78-1.html', category: 'compta' },
+  { id: 'silicon',   label: 'Silicon.fr',     url: 'https://www.silicon.fr/feed',                             category: 'compta' },
 ];
+
+const TAB_LABELS: Record<Tab, string> = {
+  ai:     'IA / Tech',
+  erp:    'Gestion',
+  compta: 'Comptabilité',
+};
 
 function parseRss(xml: string): RssItem[] {
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
@@ -17,7 +26,7 @@ function parseRss(xml: string): RssItem[] {
     ? Array.from(doc.querySelectorAll('entry'))
     : Array.from(doc.querySelectorAll('item'));
 
-  return entries.slice(0, 7).map(el => {
+  return entries.slice(0, 8).map(el => {
     const title = el.querySelector('title')?.textContent?.trim() ?? '';
     const link = isAtom
       ? (el.querySelector('link')?.getAttribute('href') ?? el.querySelector('link')?.textContent ?? '')
@@ -89,14 +98,14 @@ export function NewsFeedWidget() {
   const isLoading = feeds.some(f => loading[f.id]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
       {/* Header + tabs */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', textTransform: 'uppercase', margin: 0 }}>
           Actualités
         </p>
         <div style={{ display: 'flex', gap: 6 }}>
-          {(['ai', 'erp'] as Tab[]).map(tab => (
+          {(['ai', 'erp', 'compta'] as Tab[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -110,16 +119,17 @@ export function NewsFeedWidget() {
                 color: activeTab === tab ? 'var(--accent)' : 'var(--text-dim)',
                 cursor: 'pointer',
                 transition: 'all 150ms',
+                whiteSpace: 'nowrap',
               }}
             >
-              {tab === 'ai' ? 'IA / Tech' : 'Gestion'}
+              {TAB_LABELS[tab]}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Articles */}
-      <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+      {/* Articles — hauteur fixe pour éviter les sauts de position */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {isLoading && allItems.length === 0 && (
           <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, padding: '8px 0' }}>Chargement…</p>
         )}
@@ -137,6 +147,7 @@ export function NewsFeedWidget() {
               padding: '7px 0',
               borderBottom: i < allItems.length - 1 ? '1px solid rgba(100,160,255,0.08)' : 'none',
               textDecoration: 'none',
+              flexShrink: 0,
             }}
           >
             <p style={{

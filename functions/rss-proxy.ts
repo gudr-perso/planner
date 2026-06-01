@@ -5,9 +5,12 @@ const CORS = {
 };
 
 const ALLOWED_FEEDS = new Set([
-  'https://www.technologyreview.com/feed/',
-  'https://www.therundown.ai/rss',
+  'https://www.numerama.com/feed/',
+  'https://siecledigital.fr/feed/',
   'https://www.journaldunet.com/rss/',
+  'https://www.journaldunet.com/solutions/dsi/rss/',
+  'https://www.compta-online.com/rss-actualites-pcg-78-1.html',
+  'https://www.silicon.fr/feed',
 ]);
 
 export const onRequest: PagesFunction = async ({ request }) => {

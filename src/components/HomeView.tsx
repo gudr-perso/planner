@@ -388,18 +388,18 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
         {/* Séparateur vertical */}
         <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(100,160,255,0.1)', flexShrink: 0 }} />
 
-        {/* Colonne droite — Post-its (2/3) + News (1/3) */}
-        <div style={{ flex: 1, minWidth: 0, maxWidth: 340, display: 'flex', flexDirection: 'column' }}>
-          {/* Post-its — 2/3 */}
-          <div style={{ flex: 2, minHeight: 0, overflowY: 'auto' }}>
+        {/* Colonne droite — Post-its (haut, fixe) + News (bas, large) */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          {/* Post-its — hauteur naturelle */}
+          <div style={{ flexShrink: 0 }}>
             <PostItsWidget refreshKey={postitsRefreshKey} />
           </div>
 
           {/* Séparateur horizontal */}
-          <div style={{ height: 1, background: 'rgba(100,160,255,0.1)', margin: '16px 0', flexShrink: 0 }} />
+          <div style={{ height: 1, background: 'rgba(100,160,255,0.1)', margin: '20px 0', flexShrink: 0 }} />
 
-          {/* News — 1/3 */}
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {/* News — prend tout l'espace restant, hauteur min garantie */}
+          <div style={{ flex: 1, minHeight: 280, display: 'flex', flexDirection: 'column' }}>
             <NewsFeedWidget />
           </div>
         </div>
