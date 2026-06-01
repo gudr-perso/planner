@@ -196,6 +196,34 @@ function TicketModal({
   );
 }
 
+// ── Ligne ticket ─────────────────────────────────────────────────────────────
+
+function TicketRow({ e, i, onOpen }: { e: TicketEntry; i: number; onOpen: (t: TicketEntry) => void }) {
+  const num = e.ticketId.replace(/^[A-Za-z]+-/, '');
+  return (
+    <tr
+      onDoubleClick={() => onOpen(e)}
+      style={{ background: i % 2 === 0 ? 'transparent' : 'color-mix(in srgb, var(--bg-deep) 40%, transparent)', cursor: 'default' }}
+      title="Double-cliquez pour le détail"
+    >
+      <td style={{ padding: '5px 10px', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{e.ticketId || '—'}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text)', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.codeAssoc || '—'}</td>
+      <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.statut ? badge(e.statut, colorForStatut(e.statut)) : '—'}</td>
+      <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.priorite ? badge(e.priorite, colorForPriorite(e.priorite)) : '—'}</td>
+      <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.niveau ? badge(e.niveau, colorForNiveau(e.niveau)) : '—'}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDate(e.dateModif)}</td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.demandeur || '—'}</td>
+      <td style={{ padding: '5px 10px' }}>
+        {e.ticketId
+          ? <a href={`https://cuma.freshservice.com/a/tickets/${num}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontSize: 11 }} onClick={ev => ev.stopPropagation()}>↗ Ouvrir</a>
+          : '—'}
+      </td>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.memo || '—'}</td>
+    </tr>
+  );
+}
+
 // ── Onglet Tickets ────────────────────────────────────────────────────────────
 
 type TicketSortKey = keyof Pick<TicketEntry, 'ticketId' | 'sujet' | 'codeAssoc' | 'statut' | 'priorite' | 'niveau' | 'dateModif' | 'demandeur' | 'zone' | 'memo'>;
@@ -222,6 +250,7 @@ function TicketsTab({
   const [sortKey, setSortKey] = useState<TicketSortKey>('ticketId');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [subTab, setSubTab] = useState<'all' | 'noassoc' | 'arepondu' | 'zoneneo' | 'prb' | 'sf' | 'chn'>('all');
+  const [groupByAssoc, setGroupByAssoc] = useState(true);
   const [modalTicket, setModalTicket] = useState<TicketEntry | null>(null);
 
   const load_ = useCallback((inclTermines: boolean) => {
@@ -275,6 +304,19 @@ function TicketsTab({
     });
   }, [entries, search, filterStatut, filterPriorite, filterNiveau, filterZone, filterCodeDossier, sortKey, sortDir, subTab]);
 
+  const isGroupable = subTab === 'prb' || subTab === 'sf' || subTab === 'chn';
+
+  const grouped = useMemo(() => {
+    if (!isGroupable || !groupByAssoc) return null;
+    const map = new Map<string, TicketEntry[]>();
+    for (const e of filtered) {
+      const key = e.codeAssoc || '—';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'fr'));
+  }, [filtered, isGroupable, groupByAssoc]);
+
   const SortTh = ({ col, label, align = 'left' }: { col: TicketSortKey; label: string; align?: string }) => (
     <th
       onClick={() => toggleSort(col)}
@@ -323,6 +365,11 @@ function TicketsTab({
           <option value="">Zone</option>{allZones.map(v => <option key={v} value={v}>{v}</option>)}
         </select>
         <input style={{ ...inputStyle, width: 140 }} placeholder="Code dossier…" value={filterCodeDossier} onChange={e => setFilterCodeDossier(e.target.value)} />
+        {isGroupable && (
+          <button onClick={() => setGroupByAssoc(v => !v)} style={btnStyle(groupByAssoc)} title="Regrouper par code association">
+            ⊞ Regrouper
+          </button>
+        )}
         <button onClick={toggleTermines} style={btnStyle(showTermines)} title="Inclure les tickets terminés">
           {showTermines ? '🔓' : '🔒'} Terminés
         </button>
@@ -349,33 +396,24 @@ function TicketsTab({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((e, i) => (
-              <tr
-                key={e.id}
-                onDoubleClick={() => setModalTicket(e)}
-                style={{
-                  background: i % 2 === 0 ? 'transparent' : 'color-mix(in srgb, var(--bg-deep) 40%, transparent)',
-                  cursor: 'default',
-                }}
-                title="Double-cliquez pour le détail"
-              >
-                <td style={{ padding: '5px 10px', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{e.ticketId || '—'}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text)', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.codeAssoc || '—'}</td>
-                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.statut ? badge(e.statut, colorForStatut(e.statut)) : '—'}</td>
-                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.priorite ? badge(e.priorite, colorForPriorite(e.priorite)) : '—'}</td>
-                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.niveau ? badge(e.niveau, colorForNiveau(e.niveau)) : '—'}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDate(e.dateModif)}</td>
-                <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.demandeur || '—'}</td>
-                <td style={{ padding: '5px 10px' }}>
-                  {e.ticketId ? (() => {
-                    const num = e.ticketId.replace(/^[A-Za-z]+-/, '');
-                    return <a href={`https://cuma.freshservice.com/a/tickets/${num}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontSize: 11 }} onClick={ev => ev.stopPropagation()}>↗ Ouvrir</a>;
-                  })() : '—'}
-                </td>
-                <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.memo || '—'}</td>
-              </tr>
-            ))}
+            {grouped
+              ? grouped.map(([code, rows]) => (
+                  <>
+                    <tr key={`grp-${code}`}>
+                      <td colSpan={10} style={{
+                        padding: '6px 10px', fontWeight: 700, fontSize: 11,
+                        background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                        color: 'var(--accent)', borderTop: '1px solid var(--border)',
+                        position: 'sticky', top: 33,
+                      }}>
+                        {code} <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>{rows.length} ticket{rows.length !== 1 ? 's' : ''}</span>
+                      </td>
+                    </tr>
+                    {rows.map((e, i) => <TicketRow key={e.id} e={e} i={i} onOpen={setModalTicket} />)}
+                  </>
+                ))
+              : filtered.map((e, i) => <TicketRow key={e.id} e={e} i={i} onOpen={setModalTicket} />)
+            }
             {filtered.length === 0 && (
               <tr><td colSpan={10} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)' }}>Aucun ticket</td></tr>
             )}
