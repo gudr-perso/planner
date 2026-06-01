@@ -592,7 +592,7 @@ export function SettingsView({
             </div>
             {cloudStatus.savedAt && (
               <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Dernière sauvegarde : {cloudStatus.savedAt}
+                Dernière sauvegarde : {new Date(cloudStatus.savedAt + 'Z').toLocaleString()}
               </p>
             )}
             {cloudStatus.error && (
