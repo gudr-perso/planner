@@ -287,7 +287,7 @@ export function Toolbar({
   };
 
   // Vues sans planning (pas de filtres projet/personnes)
-  const isNonPlanningView = view === 'home' || view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis' || view === 'tickets' || view === 'temps' || view === 'postits';
+  const isNonPlanningView = view === 'home' || view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis' || view === 'tickets' || view === 'temps' || view === 'postits' || view === 'users';
 
   return (
     <header className="border-b px-4 py-2 flex flex-wrap items-center gap-x-5 gap-y-2 shrink-0" style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
