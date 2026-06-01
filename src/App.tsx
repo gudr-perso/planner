@@ -368,7 +368,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
             onLogout={handleLogout}
           />
           <div className="flex-1 flex flex-col min-w-0">
-            <Toolbar
+            {view !== 'users' && <Toolbar
               view={view}
               onView={setView}
               dataSource={dataSource}
@@ -381,7 +381,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               onClearSuivisFilter={() => setPartenaireFilter(null)}
               onRefresh={refreshData}
               refreshing={refreshing}
-            />
+            />}
             <div className="flex-1 flex min-h-0 relative">
               {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && <UnplannedPanel width={panelWidth} />}
               {view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && (
