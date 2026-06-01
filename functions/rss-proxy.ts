@@ -9,6 +9,8 @@ const ALLOWED_FEEDS = new Set([
   'https://siecledigital.fr/feed/',
   'https://www.journaldunet.com/rss/',
   'https://www.zdnet.fr/feeds/rss/actualites/',
+  'https://www.usine-digitale.fr/rss/tous-les-articles/',
+  'https://www.blogdumoderateur.com/feed/',
   'https://www.compta-online.com/rss-actualites-pcg-78-1.html',
   'https://www.journaldunet.com/solutions/dsi/rss/',
 ]);

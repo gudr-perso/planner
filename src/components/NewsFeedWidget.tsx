@@ -7,8 +7,10 @@ type Tab = 'ai' | 'erp' | 'compta';
 const FEED_CONFIGS: { id: string; label: string; url: string; category: Tab }[] = [
   { id: 'actuia',    label: 'Actu IA',        url: 'https://www.actuia.com/feed/',                           category: 'ai'    },
   { id: 'siecle',   label: 'Siècle Digital', url: 'https://siecledigital.fr/feed/',                          category: 'ai'    },
-  { id: 'jdn',       label: 'Journal du Net', url: 'https://www.journaldunet.com/rss/',                          category: 'erp'   },
-  { id: 'zdnet',     label: 'ZDNet FR',       url: 'https://www.zdnet.fr/feeds/rss/actualites/',               category: 'erp'   },
+  { id: 'jdn',       label: 'Journal du Net',    url: 'https://www.journaldunet.com/rss/',                    category: 'erp'   },
+  { id: 'zdnet',     label: 'ZDNet FR',          url: 'https://www.zdnet.fr/feeds/rss/actualites/',            category: 'erp'   },
+  { id: 'usinedig',  label: "L'Usine Digitale",  url: 'https://www.usine-digitale.fr/rss/tous-les-articles/',  category: 'erp'   },
+  { id: 'blogmod',   label: 'Blog du Modérateur', url: 'https://www.blogdumoderateur.com/feed/',               category: 'erp'   },
   { id: 'compta',    label: 'Compta Online',  url: 'https://www.compta-online.com/rss-actualites-pcg-78-1.html', category: 'compta' },
   { id: 'jdnsi',    label: 'JDN Solutions',  url: 'https://www.journaldunet.com/solutions/dsi/rss/',           category: 'compta' },
 ];
