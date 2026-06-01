@@ -646,25 +646,13 @@ export function Toolbar({
           {/* Recherche globale Notion */}
           <GlobalSearch dataSource={dataSource} />
 
-          {/* Suivis */}
-          {view === 'suivis' && (
-            <>
-              {suivisPartenaireFilterLabel && (
-                <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
-                  style={{ background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
-                  <span>🤝 {suivisPartenaireFilterLabel}</span>
-                  <button onClick={onClearSuivisFilter} style={{ fontSize: 12 }}>✕</button>
-                </div>
-              )}
-              <input
-                type="text"
-                value={suivisSearch ?? ''}
-                onChange={e => onSuivisSearch?.(e.target.value)}
-                placeholder="Rechercher un suivi…"
-                className="text-xs rounded px-2.5 py-1.5 outline-none w-48"
-                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-              />
-            </>
+          {/* Suivis : filtre partenaire actif uniquement */}
+          {view === 'suivis' && suivisPartenaireFilterLabel && (
+            <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
+              style={{ background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+              <span>🤝 {suivisPartenaireFilterLabel}</span>
+              <button onClick={onClearSuivisFilter} style={{ fontSize: 12 }}>✕</button>
+            </div>
           )}
 
           {/* View toggle icônes seules */}
@@ -758,32 +746,20 @@ export function Toolbar({
       {/* Recherche globale Notion */}
       <GlobalSearch />
 
-      {/* ── Suivis toolbar ── */}
-      {view === 'suivis' && (
-        <>
-          {suivisPartenaireFilterLabel && (
-            <div
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
-              style={{ background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}
-            >
-              <span>🤝 {suivisPartenaireFilterLabel}</span>
-              <button
-                onClick={onClearSuivisFilter}
-                className="leading-none transition hover:opacity-70"
-                title="Effacer le filtre partenaire"
-                style={{ fontSize: 12 }}
-              >✕</button>
-            </div>
-          )}
-          <input
-            type="text"
-            value={suivisSearch ?? ''}
-            onChange={e => onSuivisSearch?.(e.target.value)}
-            placeholder="Rechercher un suivi…"
-            className="text-xs rounded px-2.5 py-1.5 outline-none w-56"
-            style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-          />
-        </>
+      {/* ── Suivis toolbar : filtre partenaire actif uniquement ── */}
+      {view === 'suivis' && suivisPartenaireFilterLabel && (
+        <div
+          className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
+          style={{ background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}
+        >
+          <span>🤝 {suivisPartenaireFilterLabel}</span>
+          <button
+            onClick={onClearSuivisFilter}
+            className="leading-none transition hover:opacity-70"
+            title="Effacer le filtre partenaire"
+            style={{ fontSize: 12 }}
+          >✕</button>
+        </div>
       )}
 
       {/* View toggle — Planning uniquement */}
