@@ -4,10 +4,13 @@ import { load } from '../persistence';
 import {
   fetchPostIts,
   fetchDatabaseSchema,
+  fetchPageBlocks,
   patchPostItStatus,
+  patchBlockChecked,
   createPostIt,
 } from '../notionService';
-import type { NotionConfig, NotionPropertySchema, PostItEntry, PostItsConfig } from '../types';
+import type { NotionBlock, NotionConfig, NotionPropertySchema, PostItEntry, PostItsConfig } from '../types';
+import { NotionBlockRenderer } from './NotionBlockRenderer';
 
 const NOTION_COLORS: Record<string, string> = {
   default: '#94a3b8',
@@ -39,16 +42,45 @@ function formatShortDate(iso: string | null): string {
 function PostItPopup({
   entry,
   statusOptions,
+  token,
   onClose,
   onStatusChange,
 }: {
   entry: PostItEntry;
   statusOptions: string[];
+  token: string;
   onClose: () => void;
   onStatusChange: (newStatus: string) => void;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [updating, setUpdating] = useState(false);
+  const [blocks, setBlocks] = useState<NotionBlock[]>([]);
+  const [blocksLoading, setBlocksLoading] = useState(true);
+  const [todoStatus, setTodoStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
+
+  useEffect(() => {
+    setBlocksLoading(true);
+    fetchPageBlocks(token, entry.id)
+      .then(setBlocks)
+      .catch(() => {})
+      .finally(() => setBlocksLoading(false));
+  }, [entry.id, token]);
+
+  const handleToggleTodo = (blockId: string, checked: boolean) => {
+    setBlocks(prev => prev.map(b =>
+      b.id === blockId ? { ...b, to_do: { ...(b.to_do as Record<string, unknown>), checked } } : b
+    ));
+    setTodoStatus('saving');
+    patchBlockChecked(token, blockId, checked)
+      .then(() => { setTodoStatus('ok'); setTimeout(() => setTodoStatus(null), 1500); })
+      .catch(() => {
+        setBlocks(prev => prev.map(b =>
+          b.id === blockId ? { ...b, to_do: { ...(b.to_do as Record<string, unknown>), checked: !checked } } : b
+        ));
+        setTodoStatus('error');
+        setTimeout(() => setTodoStatus(null), 3000);
+      });
+  };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) onClose();
@@ -77,13 +109,16 @@ function PostItPopup({
         borderRadius: 14,
         boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
         width: '100%',
-        maxWidth: 480,
+        maxWidth: 520,
+        maxHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column',
         overflow: 'hidden',
         border: '1px solid var(--border)',
         borderLeft: `4px solid ${notionColor(entry.statusColor)}`,
       }}>
         {/* Header */}
-        <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 12, flexShrink: 0 }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>📌</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3, marginBottom: 8 }}>{entry.title}</p>
@@ -119,6 +154,8 @@ function PostItPopup({
                 </select>
               )}
               {updating && <span style={{ fontSize: 11, color: 'var(--text-muted)' }} className="animate-pulse">⟳</span>}
+              {todoStatus === 'ok' && <span style={{ fontSize: 10, color: 'var(--color-success)' }}>✓ Sauvegardé</span>}
+              {todoStatus === 'error' && <span style={{ fontSize: 10, color: 'var(--color-error)' }}>⚠ Erreur</span>}
             </div>
           </div>
           <button
@@ -129,8 +166,8 @@ function PostItPopup({
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: '14px 20px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Métadonnées */}
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 20, flexShrink: 0 }}>
           <ModalRow label="Créé le">
             <span style={{ fontSize: 12, color: 'var(--text)' }}>{formatShortDate(entry.createdTime) || '—'}</span>
           </ModalRow>
@@ -140,16 +177,27 @@ function PostItPopup({
             </span>
           </ModalRow>
           {entry.notion_url && (
-            <ModalRow label="Notion">
+            <ModalRow label="">
               <a
                 href={entry.notion_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ color: 'var(--accent)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
               >
-                Ouvrir la page <ExternalLink size={11} />
+                Ouvrir <ExternalLink size={11} />
               </a>
             </ModalRow>
+          )}
+        </div>
+
+        {/* Contenu de la page */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px 18px' }}>
+          {blocksLoading ? (
+            <p className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement du contenu…</p>
+          ) : blocks.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>(Page vide)</p>
+          ) : (
+            <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} token={token} />
           )}
         </div>
       </div>
@@ -485,6 +533,7 @@ export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
         <PostItPopup
           entry={selectedEntry}
           statusOptions={statusOptions}
+          token={token}
           onClose={() => setSelectedEntry(null)}
           onStatusChange={val => handleStatusChange(selectedEntry, val)}
         />
