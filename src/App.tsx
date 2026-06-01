@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DndContext, type DragEndEvent, type DragMoveEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import { StoreContext, type StoreCtx } from './store';
+import { AuthContext, type AuthUser, _registerLogout } from './store/useAuthStore';
+import { LoginPage } from './components/LoginPage';
+import { SetupPage } from './components/SetupPage';
+import { UsersView } from './components/UsersView';
 import { loadDemoData } from './loadData';
 import { fetchGoogleCalendarEvents } from './googleCalendar';
 import { syncFromNotion, patchNotionDates } from './notionService';
@@ -74,7 +78,7 @@ function useResizablePanel(storageKey: string, initialWidth: number, min = 180, 
 }
 
 // ── Inner app ─────────────────────────────────────────────────────────────────
-function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: string) => void }) {
+function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: (id: string) => void; onLogout: () => void }) {
   const [data, setData] = useState<DataBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewKey>(() => {
@@ -328,6 +332,11 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
     </div>
   );
 
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    onLogout();
+  }
+
   const handleNotionSync = (notionData: DataBundle) => {
     setData((prev) => ({ ...notionData, googleEvents: prev?.googleEvents ?? [] }));
     setDataSource('notion');
@@ -356,6 +365,7 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
             onView={setView}
             collapsed={sidebarCollapsed}
             onToggle={() => setSidebarCollapsed((c) => !c)}
+            onLogout={handleLogout}
           />
           <div className="flex-1 flex flex-col min-w-0">
             <Toolbar
@@ -385,7 +395,8 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
                 />
               )}
               <main className="flex-1 min-w-0 overflow-hidden" style={{ background: view === 'home' ? 'var(--bg-deep, #02071f)' : 'var(--surface)' }}>
-                {view === 'home' ? <HomeView onNavigate={setView} postitsRefreshKey={postitsRefreshKey} />
+                {view === 'users' ? <UsersView />
+                  : view === 'home' ? <HomeView onNavigate={setView} postitsRefreshKey={postitsRefreshKey} />
                   : view === 'calendar' ? <CalendarView />
                   : view === 'rolling'  ? <RollingWeeksView />
                   : view === 'rolling2' ? <RollingWeeksView2 />
@@ -440,10 +451,64 @@ function PlannerApp({ onGcalClientIdChange }: { onGcalClientIdChange: (id: strin
 
 export default function App() {
   const [clientId, setClientId] = useState<string>(() => load<string>('gcalClientId', ''));
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [needsSetup, setNeedsSetup] = useState(false);
+
+  // Register global logout handler for apiFetch 401 interceptor
+  _registerLogout(() => setAuthUser(null));
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        // Check if setup needed first (no users)
+        const setupRes = await fetch('/api/setup');
+        if (setupRes.ok) {
+          const { hasUsers } = await setupRes.json();
+          if (!hasUsers) { setNeedsSetup(true); setAuthLoading(false); return; }
+        }
+        // Try to restore session
+        const meRes = await fetch('/api/auth/me');
+        if (meRes.ok) {
+          const { user } = await meRes.json();
+          setAuthUser(user);
+        }
+      } catch { /* offline or no API */ }
+      setAuthLoading(false);
+    }
+    checkAuth();
+  }, []);
+
+  if (authLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center" style={{ background: 'var(--bg-deep)' }}>
+        <div className="text-sm animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement…</div>
+      </div>
+    );
+  }
+
+  if (needsSetup) {
+    return (
+      <AuthContext.Provider value={{ user: null, setUser: setAuthUser }}>
+        <SetupPage onDone={(u) => { setAuthUser(u); setNeedsSetup(false); }} />
+      </AuthContext.Provider>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <AuthContext.Provider value={{ user: null, setUser: setAuthUser }}>
+        <LoginPage onLogin={setAuthUser} />
+      </AuthContext.Provider>
+    );
+  }
+
   return (
-    // key forces GoogleOAuthProvider to remount when clientId changes (new login context)
-    <GoogleOAuthProvider key={clientId || 'placeholder'} clientId={clientId || 'placeholder'}>
-      <PlannerApp onGcalClientIdChange={setClientId} />
-    </GoogleOAuthProvider>
+    <AuthContext.Provider value={{ user: authUser, setUser: setAuthUser }}>
+      {/* key forces GoogleOAuthProvider to remount when clientId changes (new login context) */}
+      <GoogleOAuthProvider key={clientId || 'placeholder'} clientId={clientId || 'placeholder'}>
+        <PlannerApp onGcalClientIdChange={setClientId} onLogout={() => setAuthUser(null)} />
+      </GoogleOAuthProvider>
+    </AuthContext.Provider>
   );
 }

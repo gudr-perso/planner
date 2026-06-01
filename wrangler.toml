@@ -4,3 +4,9 @@ compatibility_date = "2026-05-28"
 
 [vars]
 VITE_GOOGLE_CLIENT_ID = "523234988712-f0gnfsik43jaqe0p4e0rn26osenpod48.apps.googleusercontent.com"
+SESSION_DURATION_HOURS = "8"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "planner-users"
+database_id = "4771f99f-1643-4441-a02b-7f5ab31582a6"

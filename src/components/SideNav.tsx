@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, Home, Pin, Settings, TicketCheck, Users } from 'lucide-react';
+import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, Home, LogOut, Pin, Settings, TicketCheck, UserCog, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
+import { useAuth } from '../store/useAuthStore';
 
 const PLANNING_VIEWS: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt'];
 
@@ -79,13 +80,15 @@ function NavItem({
 }
 
 export function SideNav({
-  view, onView, collapsed, onToggle,
+  view, onView, collapsed, onToggle, onLogout,
 }: {
   view: ViewKey;
   onView: (v: ViewKey) => void;
   collapsed: boolean;
   onToggle: () => void;
+  onLogout: () => void;
 }) {
+  const { user } = useAuth();
   const lastPlanningView = useRef<ViewKey>('calendar');
 
   useEffect(() => {
@@ -131,7 +134,7 @@ export function SideNav({
         })}
       </div>
 
-      {/* Bottom: Settings + toggle */}
+      {/* Bottom: Settings + Utilisateurs (admin) + Déconnexion + toggle */}
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: 4, paddingBottom: 4 }}>
         {BOTTOM_ITEMS.map((item) => (
           <NavItem
@@ -142,6 +145,20 @@ export function SideNav({
             onClick={() => onView(item.key as ViewKey)}
           />
         ))}
+        {user?.role === 'admin' && (
+          <NavItem
+            item={{ key: 'users', icon: <UserCog size={17} />, label: 'Utilisateurs' }}
+            isActive={view === 'users'}
+            collapsed={collapsed}
+            onClick={() => onView('users')}
+          />
+        )}
+        <NavItem
+          item={{ key: '__logout', icon: <LogOut size={17} />, label: 'Déconnexion' }}
+          isActive={false}
+          collapsed={collapsed}
+          onClick={onLogout}
+        />
 
         <button
           onClick={onToggle}
