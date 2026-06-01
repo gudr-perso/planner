@@ -19,7 +19,7 @@ function getAvailableDbs(): DbOption[] {
     ['tempsConfig',        'Temps'],
     ['ticketsConfig',      'Tickets'],
     ['associationsConfig', 'Associations'],
-    ['postItsConfig',      'Post-its'],
+    ['postitsConfig',      'Post-its'],
   ];
   return entries.flatMap(([key, label]) => {
     const cfg = load<{ databaseId?: string }>(key, {});
@@ -631,6 +631,9 @@ export function Toolbar({
           >
             {dataSource === 'notion' ? 'Notion' : 'démo'}
           </button>
+
+          {/* Recherche globale Notion */}
+          <GlobalSearch />
 
           {/* Suivis */}
           {view === 'suivis' && (
