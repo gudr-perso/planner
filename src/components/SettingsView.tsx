@@ -379,6 +379,7 @@ export function SettingsView({
     try {
       const props = await fetchDatabaseSchema(config.integrationToken, config.databaseId);
       setSchema(props);
+      save('notionSchema', props);
       flash(`${props.length} propriétés chargées`);
     } catch (e) {
       setError((e as Error).message);
@@ -723,6 +724,19 @@ export function SettingsView({
                         }}
                       />
                     </div>
+                    <label className="flex items-center gap-1 shrink-0 cursor-pointer" title="Afficher un dropdown éditable dans la fiche tâche">
+                      <input
+                        type="checkbox"
+                        checked={ef.editable ?? false}
+                        onChange={e => {
+                          const next: NotionExtraField[] = [...(config.extraFields ?? [])];
+                          next[i] = { ...next[i], editable: e.target.checked };
+                          setConfig(prev => ({ ...prev, extraFields: next }));
+                        }}
+                        className="w-3 h-3"
+                      />
+                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Édit.</span>
+                    </label>
                     <button
                       onClick={() => {
                         const next = (config.extraFields ?? []).filter((_, idx) => idx !== i);

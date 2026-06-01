@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { STATUS_LABELS, STATUS_COLORS } from '../types';
+import type { NotionConfig, NotionPropertySchema } from '../types';
+import { load } from '../persistence';
+import { patchNotionProperty } from '../notionService';
 
 // schedule-x format: "YYYY-MM-DD HH:MM"  or  "YYYY-MM-DD" (date-only)
 // datetime-local input: "YYYY-MM-DDTHH:MM"
@@ -34,6 +37,14 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
   const [endVal, setEndVal] = useState(() => sxToInput(task?.end_date ?? null));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Extra fields editing state: label → current displayed value
+  const [extraEdits, setExtraEdits] = useState<Record<string, string>>(() => task?.extraFields ?? {});
+  const [extraSaving, setExtraSaving] = useState<Record<string, boolean>>({});
+  const [extraSaved, setExtraSaved] = useState<Record<string, boolean>>({});
+
+  const notionConfig = load<NotionConfig | null>('notionConfig', null);
+  const notionSchema = load<NotionPropertySchema[]>('notionSchema', []);
 
   if (!task) return null;
 
@@ -205,11 +216,95 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
           {/* Extra fields */}
           {task.extraFields && Object.keys(task.extraFields).length > 0 && (
             <div className="pt-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
-              {Object.entries(task.extraFields).map(([label, value]) => (
-                <Row key={label} label={label}>
-                  {value ? <Val>{value}</Val> : <Dash />}
-                </Row>
-              ))}
+              {Object.entries(task.extraFields).map(([label, value]) => {
+                const efConfig = notionConfig?.extraFields?.find(ef => ef.label === label);
+                const isEditable = efConfig?.editable && notionConfig?.integrationToken && efConfig.notionField;
+                if (!isEditable) {
+                  return (
+                    <Row key={label} label={label}>
+                      {value ? <Val>{value}</Val> : <Dash />}
+                    </Row>
+                  );
+                }
+
+                // Find schema to get field type & options
+                const schemaProp = notionSchema.find(p => p.name === efConfig.notionField);
+                const options = schemaProp?.options ?? [];
+                const currentVal = extraEdits[label] ?? value;
+                const isSaving = extraSaving[label] ?? false;
+                const isSaved = extraSaved[label] ?? false;
+
+                // "Terminé" target: look for an option matching "terminé" or the done status mapping
+                const doneMapping = notionConfig?.statusMappings?.find(m => m.internalStatus === 'done');
+                const doneValue =
+                  (efConfig.notionField === notionConfig?.fieldMap?.status && doneMapping?.notionValue)
+                  || options.find(o => /termin/i.test(o.name))?.name
+                  || null;
+
+                const handleSaveExtra = async (val: string) => {
+                  if (!notionConfig?.integrationToken) return;
+                  setExtraSaving(prev => ({ ...prev, [label]: true }));
+                  try {
+                    await patchNotionProperty(
+                      notionConfig.integrationToken,
+                      task.id,
+                      efConfig.notionField,
+                      schemaProp?.type ?? 'select',
+                      val,
+                    );
+                    setExtraEdits(prev => ({ ...prev, [label]: val }));
+                    setExtraSaved(prev => ({ ...prev, [label]: true }));
+                    setTimeout(() => setExtraSaved(prev => ({ ...prev, [label]: false })), 2000);
+                  } finally {
+                    setExtraSaving(prev => ({ ...prev, [label]: false }));
+                  }
+                };
+
+                return (
+                  <Row key={label} label={label}>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {options.length > 0 ? (
+                        <select
+                          value={currentVal}
+                          onChange={e => handleSaveExtra(e.target.value)}
+                          disabled={isSaving}
+                          style={{
+                            background: 'var(--bg-deep)',
+                            color: 'var(--text)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 6,
+                            padding: '2px 6px',
+                            fontSize: 11,
+                            outline: 'none',
+                          }}
+                        >
+                          {currentVal && !options.find(o => o.name === currentVal) && (
+                            <option value={currentVal}>{currentVal}</option>
+                          )}
+                          {options.map(o => (
+                            <option key={o.id ?? o.name} value={o.name}>{o.name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'var(--text)' }}>{currentVal || '—'}</span>
+                      )}
+                      {doneValue && currentVal !== doneValue && (
+                        <button
+                          onClick={() => handleSaveExtra(doneValue)}
+                          disabled={isSaving}
+                          className="text-[10px] px-2 py-0.5 rounded-full font-medium transition hover:opacity-80 disabled:opacity-50"
+                          style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: '1px solid var(--color-success)' }}
+                        >
+                          ✓ Terminé
+                        </button>
+                      )}
+                      {isSaved && (
+                        <span className="text-[10px]" style={{ color: 'var(--color-success)' }}>✓ Mis à jour</span>
+                      )}
+                    </div>
+                  </Row>
+                );
+              })}
             </div>
           )}
 

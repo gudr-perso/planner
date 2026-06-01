@@ -97,6 +97,7 @@ export type NotionStatusMapping = {
 export type NotionExtraField = {
   label: string;       // libellé affiché dans la fiche tâche
   notionField: string; // nom exact de la propriété Notion
+  editable?: boolean;  // si true, affiche un dropdown éditable dans la fiche tâche
 };
 
 export type NotionConfig = {

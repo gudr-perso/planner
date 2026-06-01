@@ -84,6 +84,26 @@ function sxDateToNotion(sx: string): string {
   return `${datePart}T${timePart}:00.000${sign}${tzHH}:${tzMM}`;
 }
 
+export async function patchNotionProperty(
+  token: string,
+  pageId: string,
+  fieldName: string,
+  fieldType: string,
+  value: string,
+): Promise<void> {
+  let propValue: unknown;
+  if (fieldType === 'status') {
+    propValue = { status: { name: value } };
+  } else if (fieldType === 'multi_select') {
+    propValue = { multi_select: [{ name: value }] };
+  } else {
+    propValue = { select: { name: value } };
+  }
+  await nPatch(token, `/pages/${pageId}`, {
+    properties: { [fieldName]: propValue },
+  });
+}
+
 export async function patchNotionDates(
   token: string,
   pageId: string,
