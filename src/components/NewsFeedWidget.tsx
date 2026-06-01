@@ -134,7 +134,7 @@ export function NewsFeedWidget() {
       </div>
 
       {/* Articles — scrollable, hauteur max fixe pour stabiliser la position */}
-      <div style={{ overflowY: 'auto', maxHeight: 380, display: 'flex', flexDirection: 'column' }}>
+      <div className="themed-scroll" style={{ overflowY: 'auto', maxHeight: 380, display: 'flex', flexDirection: 'column' }}>
         {isLoading && allItems.length === 0 && (
           <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, padding: '8px 0' }}>Chargement…</p>
         )}
