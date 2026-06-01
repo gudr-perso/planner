@@ -88,9 +88,6 @@ function sumH(entries: TempsEntry[]): number {
   return entries.reduce((acc, e) => acc + parseH(e.dureeH), 0);
 }
 
-function sumMin(entries: TempsEntry[]): number {
-  return entries.reduce((acc, e) => acc + parseH(e.dureeMin), 0);
-}
 
 function formatHM(h: number): string {
   const hh = Math.floor(h);
@@ -107,11 +104,11 @@ function formatDayLabel(iso: string): string {
   } catch { return iso; }
 }
 
-type SortKey = keyof Pick<TempsEntry, 'title' | 'start' | 'end' | 'dureeH' | 'dureeMin' | 'commentaire'> | 'projets' | 'sousProjets';
+type SortKey = keyof Pick<TempsEntry, 'title' | 'start' | 'end' | 'dureeH' | 'commentaire'> | 'projets' | 'sousProjets';
 type GroupBy = 'none' | 'projet' | 'jour';
 
 const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const COL_COUNT = 8;
+const COL_COUNT = 7;
 
 // ── Onglet Liste ──────────────────────────────────────────────────────────────
 
@@ -123,7 +120,7 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
   const [filterDateTo, setFilterDateTo] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('start');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [groupBy, setGroupBy] = useState<GroupBy>('none');
+  const [groupBy, setGroupBy] = useState<GroupBy>('jour');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const toggleCollapse = (key: string) => {
@@ -205,7 +202,6 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
   }, [filtered, groupBy]);
 
   const grandTotalH = groupBy !== 'none' ? sumH(filtered) : 0;
-  const grandTotalMin = groupBy !== 'none' ? sumMin(filtered) : 0;
 
   const inputStyle: React.CSSProperties = {
     background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)',
@@ -226,27 +222,26 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
 
   const EntryRow = ({ e, i, indent = 0 }: { e: TempsEntry; i: number; indent?: number }) => (
     <tr style={{ background: i % 2 === 0 ? 'transparent' : 'color-mix(in srgb, var(--bg-deep) 40%, transparent)' }}>
-      <td style={{ padding: `5px 10px 5px ${10 + indent * 18}px`, color: 'var(--text)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</td>
+      <td style={{ padding: `5px 10px 5px ${10 + indent * 18}px`, color: 'var(--text)', width: 220, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</td>
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(e.start)}</td>
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(e.end)}</td>
       <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtDec(e.dureeH)}</td>
-      <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtDec(e.dureeMin)}</td>
-      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.commentaire || '—'}</td>
-      <td style={{ padding: '5px 10px' }}>
+      <td style={{ padding: '5px 10px', color: 'var(--text-muted)', width: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.commentaire || '—'}</td>
+      <td style={{ padding: '5px 10px', width: 120, maxWidth: 120, overflow: 'hidden' }}>
         {e.projets.map(p => (
-          <span key={p} style={{ ...badgeStyle('blue'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block' }}>{p}</span>
+          <span key={p} style={{ ...badgeStyle('blue'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{p}</span>
         ))}
       </td>
-      <td style={{ padding: '5px 10px' }}>
+      <td style={{ padding: '5px 10px', width: 120, maxWidth: 120, overflow: 'hidden' }}>
         {e.sousProjets.map(p => (
-          <span key={p} style={{ ...badgeStyle('purple'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block' }}>{p}</span>
+          <span key={p} style={{ ...badgeStyle('purple'), fontSize: 10, borderRadius: 4, padding: '1px 6px', marginRight: 3, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{p}</span>
         ))}
       </td>
     </tr>
   );
 
-  const GroupHeaderRow = ({ label, totalH, totalMin, groupKey, indent = 0, shade = 12 }: {
-    label: string; totalH: number; totalMin: number; groupKey: string; indent?: number; shade?: number;
+  const GroupHeaderRow = ({ label, totalH, groupKey, indent = 0, shade = 12 }: {
+    label: string; totalH: number; groupKey: string; indent?: number; shade?: number;
   }) => {
     const isCollapsed = collapsed.has(groupKey);
     return (
@@ -261,7 +256,6 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
           {label}
         </td>
         <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(totalH)}</td>
-        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(totalMin)}</td>
         <td colSpan={3} />
       </tr>
     );
@@ -278,7 +272,6 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
             <GroupHeaderRow
               label={projet}
               totalH={sumH(allProjEntries)}
-              totalMin={sumMin(allProjEntries)}
               groupKey={projKey}
               shade={12}
             />
@@ -290,7 +283,6 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
                   <GroupHeaderRow
                     label={sousProjet}
                     totalH={sumH(items)}
-                    totalMin={sumMin(items)}
                     groupKey={spKey}
                     indent={1}
                     shade={6}
@@ -313,7 +305,6 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
             <GroupHeaderRow
               label={formatDayLabel(date)}
               totalH={sumH(items)}
-              totalMin={sumMin(items)}
               groupKey={dayKey}
               shade={10}
             />
@@ -331,8 +322,14 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
       {/* Filtres */}
       <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
         <input style={{ ...inputStyle, width: 160 }} placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)} />
-        <input style={{ ...inputStyle, width: 140 }} type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} title="Date début (depuis)" />
-        <input style={{ ...inputStyle, width: 140 }} type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} title="Date début (jusqu'à)" />
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <input id="dp-from" style={{ ...inputStyle, width: 130, paddingRight: 28 }} type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} title="Date début (depuis)" />
+          <span onClick={() => (document.getElementById('dp-from') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', pointerEvents: 'all', lineHeight: 1 }}>📅</span>
+        </div>
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <input id="dp-to" style={{ ...inputStyle, width: 130, paddingRight: 28 }} type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} title="Date début (jusqu'à)" />
+          <span onClick={() => (document.getElementById('dp-to') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', pointerEvents: 'all', lineHeight: 1 }}>📅</span>
+        </div>
         <select style={{ ...inputStyle, width: 160 }} value={filterProjet} onChange={e => setFilterProjet(e.target.value)}>
           <option value="">Tous les projets</option>
           {allProjets.map(p => <option key={p} value={p}>{p}</option>)}
@@ -380,7 +377,6 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
               <SortTh col="start" label="Début" />
               <SortTh col="end" label="Fin" />
               <SortTh col="dureeH" label="Temps [h]" />
-              <SortTh col="dureeMin" label="Temps [min]" />
               <SortTh col="commentaire" label="Commentaire" />
               <SortTh col="projets" label="Projets" />
               <SortTh col="sousProjets" label="Sous-projets" />
@@ -396,7 +392,6 @@ function ListView({ entries }: { entries: TempsEntry[] }) {
               <tr style={{ background: 'color-mix(in srgb, var(--accent) 18%, transparent)', borderTop: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
                 <td colSpan={3} style={{ padding: '7px 10px', fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>Total</td>
                 <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(grandTotalH)}</td>
-                <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(grandTotalMin)}</td>
                 <td colSpan={3} />
               </tr>
             )}
