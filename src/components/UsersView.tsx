@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch, useAuth } from '../store/useAuthStore';
+import { useIsMobile } from '../hooks/useBreakpoint';
 
 type User = {
   id: string; email: string; name: string; role: string;
@@ -101,10 +102,11 @@ export function UsersView({ refreshKey = 0 }: { refreshKey?: number }) {
     finally { setPwSaving(false); }
   }
 
+  const isMobile = useIsMobile();
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 
   return (
-    <div style={{ padding: 24, maxWidth: 800, margin: '0 auto', minHeight: '100%', background: 'var(--bg)' }}>
+    <div style={{ padding: isMobile ? '16px 12px' : 24, maxWidth: 800, margin: '0 auto', minHeight: '100%', background: 'var(--bg)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Utilisateurs</h2>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -122,7 +124,44 @@ export function UsersView({ refreshKey = 0 }: { refreshKey?: number }) {
       {error && <p style={{ color: 'var(--color-error, #e05)', fontSize: 13 }}>{error}</p>}
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Chargement…</p>
+      ) : isMobile ? (
+        /* ── Vue mobile : cartes ── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {users.map(u => (
+            <div key={u.id} style={{
+              border: `1px solid ${u.id === me?.id ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--border)'}`,
+              borderRadius: 10, padding: '12px 14px', background: u.id === me?.id ? 'color-mix(in srgb, var(--accent) 5%, transparent)' : 'var(--bg-deep)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{u.name}</span>
+                  {u.id === me?.id && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)' }}>moi</span>}
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{u.email}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, background: u.role === 'admin' ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'color-mix(in srgb, var(--text-muted) 15%, transparent)', color: u.role === 'admin' ? 'var(--accent)' : 'var(--text-muted)' }}>
+                    {u.role === 'admin' ? 'Admin' : 'User'}
+                  </span>
+                  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, background: 'transparent', color: u.is_active ? 'var(--color-success, #0a0)' : 'var(--color-error, #e05)' }}>
+                    {u.is_active ? '✓' : '✗'}
+                  </span>
+                </div>
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: u.id !== me?.id && me?.role === 'admin' ? 8 : 0 }}>
+                Dernière connexion : {formatDate(u.last_login)}
+              </div>
+              {u.id !== me?.id && me?.role === 'admin' && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button onClick={() => toggleActive(u)} style={btnXs}>{u.is_active ? 'Désactiver' : 'Activer'}</button>
+                  <button onClick={() => revokeSessions(u)} style={btnXs}>Révoquer</button>
+                  <button onClick={() => deleteUser(u)} style={{ ...btnXs, color: 'var(--color-error, #e05)' }}>Supprimer</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       ) : (
+        /* ── Vue desktop : tableau ── */
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>

@@ -3,6 +3,7 @@ import { AlarmClock, ArrowUpRight, CalendarDays, Clock, FileText, ListTodo, Stic
 import type { ViewKey } from './Toolbar';
 import { PostItsWidget } from './PostItsWidget';
 import { NewsFeedWidget } from './NewsFeedWidget';
+import { useIsMobile } from '../hooks/useBreakpoint';
 
 // ── Weather ────────────────────────────────────────────────────────────────────
 
@@ -334,11 +335,49 @@ function HomeCard({ card, onClick }: { card: CardDef; onClick: () => void }) {
 // ── HomeView ───────────────────────────────────────────────────────────────────
 
 export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: ViewKey) => void; postitsRefreshKey?: number }) {
+  const isMobile = useIsMobile();
   const today = new Date();
   const dateLabel = today.toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }).toUpperCase();
 
+  // ── Vue mobile : empilement vertical ────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px', background: 'var(--bg-deep, #050c3f)' }}>
+        {/* Header compact */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4 }}>
+            {dateLabel}
+          </p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, margin: '0 0 4px' }}>
+            Bonjour, Guillaume
+          </h1>
+          <WeatherWidget />
+        </div>
+
+        {/* Accès rapide : grille 2 colonnes */}
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 10, textTransform: 'uppercase' }}>
+          Accès rapide
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
+          {CARDS.map(card => (
+            <HomeCard key={card.viewKey} card={card} onClick={() => onNavigate(card.viewKey)} />
+          ))}
+        </div>
+
+        {/* Post-its */}
+        <div style={{ marginBottom: 24 }}>
+          <PostItsWidget refreshKey={postitsRefreshKey} />
+        </div>
+
+        {/* News */}
+        <NewsFeedWidget />
+      </div>
+    );
+  }
+
+  // ── Vue desktop : layout original ───────────────────────────────────────
   return (
     <div style={{
       flex: 1,
@@ -348,9 +387,7 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
     }}>
       {/* Header */}
       <div style={{ marginBottom: 36 }}>
-        {/* Top row: greeting (left) + citation + météo (right) */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24 }}>
-          {/* Greeting */}
           <div style={{ flexShrink: 0 }}>
             <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 6 }}>
               {dateLabel}
@@ -362,55 +399,36 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
               Votre poste de commande. 7 espaces, tout à portée de main.
             </p>
           </div>
-
-          {/* Citation */}
           <QuoteWidget />
-
-          {/* Météo */}
           <div style={{ flexShrink: 0 }}>
             <WeatherWidget />
           </div>
         </div>
       </div>
 
-      {/* Contenu principal : accès rapide + colonne droite */}
       <div style={{ display: 'flex', gap: 40, alignItems: 'stretch' }}>
-
-        {/* Colonne gauche */}
         <div style={{ flex: '0 0 auto' }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 14, textTransform: 'uppercase' }}>
             Accès rapide
           </p>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 180px)',
-            gap: 14,
-          }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 180px)', gap: 14 }}>
             {CARDS.map(card => (
               <HomeCard key={card.viewKey} card={card} onClick={() => onNavigate(card.viewKey)} />
             ))}
           </div>
         </div>
 
-        {/* Séparateur vertical */}
         <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(100,160,255,0.1)', flexShrink: 0 }} />
 
-        {/* Colonne droite — Post-its (haut, fixe) + News (bas, large) */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-          {/* Post-its — hauteur naturelle */}
           <div style={{ flexShrink: 0 }}>
             <PostItsWidget refreshKey={postitsRefreshKey} />
           </div>
-
-          {/* Séparateur horizontal */}
           <div style={{ height: 1, background: 'rgba(100,160,255,0.1)', margin: '20px 0', flexShrink: 0 }} />
-
-          {/* News — prend tout l'espace restant, hauteur min garantie */}
           <div style={{ flex: 1, minHeight: 280, display: 'flex', flexDirection: 'column' }}>
             <NewsFeedWidget />
           </div>
         </div>
-
       </div>
     </div>
   );

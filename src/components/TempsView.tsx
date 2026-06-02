@@ -2,6 +2,8 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchTemps } from '../notionService';
 import type { NotionConfig, TempsConfig, TempsEntry } from '../types';
+import { useIsMobile } from '../hooks/useBreakpoint';
+import { MobileListCard } from './MobileListCard';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -579,7 +581,43 @@ export function TempsView({ refreshKey = 0 }: { refreshKey?: number }) {
       .finally(() => setLoading(false));
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const isMobile = useIsMobile();
   const objectifH = cfg?.objectifHebdoH ?? 39;
+
+  // ── Vue mobile : liste simplifiée lecture seule ──────────────────────────
+  if (isMobile) {
+    // Trier par date décroissante
+    const sorted = [...entries].sort((a, b) => (b.start ?? '').localeCompare(a.start ?? ''));
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-deep)', flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>⏱ Temps</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>{entries.length} entrée{entries.length !== 1 ? 's' : ''}</span>
+          {loading && <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 'auto' }}>Chargement…</span>}
+          {error && <span style={{ fontSize: 11, color: '#ef4444', marginLeft: 'auto' }}>{error}</span>}
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {sorted.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)', fontSize: 12 }}>Aucune entrée</div>
+          ) : (
+            sorted.map(e => (
+              <MobileListCard
+                key={e.id}
+                title={e.title}
+                badges={[{ label: `${fmtDec(e.dureeH)} h` }]}
+                meta={[
+                  ...(e.start ? [{ icon: '📅', text: e.start.slice(0, 10) }] : []),
+                  ...(e.projets.length > 0 ? [{ icon: '📁', text: e.projets.join(', ') }] : []),
+                  ...(e.sousProjets.length > 0 ? [{ text: e.sousProjets.join(', ') }] : []),
+                  ...(e.commentaire ? [{ icon: '💬', text: e.commentaire }] : []),
+                ]}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '6px 16px', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer',

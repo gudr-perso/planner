@@ -19,6 +19,7 @@ import { RollingWeeksView2 } from './components/RollingWeeksView2';
 import { Toolbar, type ViewKey } from './components/Toolbar';
 import { SideNav } from './components/SideNav';
 import { useIsTablet } from './hooks/useBreakpoint';
+import { MobileUnavailable } from './components/MobileUnavailable';
 import { SettingsView } from './components/SettingsView';
 import { TaskModal } from './components/TaskModal';
 import { GcalModal } from './components/GcalModal';
@@ -430,9 +431,9 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               <main className="flex-1 min-w-0 overflow-hidden" style={{ background: view === 'home' ? 'var(--bg-deep, #02071f)' : view === 'users' ? 'var(--bg)' : 'var(--surface)' }}>
                 {view === 'users' ? <UsersView refreshKey={viewRefreshKeys['users'] ?? 0} />
                   : view === 'home' ? <HomeView onNavigate={setView} postitsRefreshKey={viewRefreshKeys['postits'] ?? 0} />
-                  : view === 'calendar' ? <CalendarView />
-                  : view === 'rolling'  ? <RollingWeeksView />
-                  : view === 'rolling2' ? <RollingWeeksView2 />
+                  : view === 'calendar' ? (isTablet ? <MobileUnavailable viewName="Le calendrier" /> : <CalendarView />)
+                  : view === 'rolling'  ? (isTablet ? <MobileUnavailable viewName="Les semaines glissantes" /> : <RollingWeeksView />)
+                  : view === 'rolling2' ? (isTablet ? <MobileUnavailable viewName="Les semaines glissantes" /> : <RollingWeeksView2 />)
                   : view === 'settings' ? <SettingsView onSync={handleNotionSync} onGcalClientIdSave={(id) => { save('gcalClientId', id); onGcalClientIdChange(id); }} />
                   : view === 'briefing' ? <BriefingView refreshKey={viewRefreshKeys['briefing'] ?? 0} />
                   : view === 'partenaires' ? (
@@ -452,7 +453,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                   : view === 'temps' ? <TempsView refreshKey={viewRefreshKeys['temps'] ?? 0} />
                   : view === 'tickets' ? <TicketsView refreshKey={viewRefreshKeys['tickets'] ?? 0} />
                   : view === 'postits' ? <PostItsView refreshKey={viewRefreshKeys['postits'] ?? 0} />
-                  : <GanttView />}
+                  : (isTablet ? <MobileUnavailable viewName="Le Gantt" /> : <GanttView />)}
               </main>
             </div>
           </div>

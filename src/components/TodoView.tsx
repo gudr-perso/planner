@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import type { Task } from '../types';
 import { STATUS_LABELS, STATUS_COLORS } from '../types';
+import { useIsMobile } from '../hooks/useBreakpoint';
+import { MobileListCard } from './MobileListCard';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -239,6 +241,64 @@ export function TodoView() {
           ) : '—'}
         </td>
       </tr>
+    );
+  }
+
+  const isMobile = useIsMobile();
+
+  // ── Vue mobile : cartes empilées ─────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
+        {/* Barre recherche + filtres essentiels */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-deep)', flexShrink: 0, alignItems: 'center' }}>
+          <input
+            placeholder="🔍 Rechercher…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ ...inputStyle, flex: 1, minWidth: 120 }}
+          />
+          <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)} style={{ ...inputStyle, maxWidth: 130 }}>
+            <option value="">État</option>
+            {statutValues.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <button onClick={() => setShowDone(d => !d)} style={btnStyle(showDone)} title="Terminées">
+            {showDone ? '🔓' : '🔒'}
+          </button>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{filtered.length}</span>
+        </div>
+
+        {/* Cards */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)', fontSize: 12 }}>Aucune tâche</div>
+          ) : (
+            filtered.map(task => {
+              const projet = projectById.get(task.project_id);
+              return (
+                <MobileListCard
+                  key={task.id}
+                  title={task.title}
+                  selected={task.id === selectedId}
+                  badges={[{
+                    label: STATUS_LABELS[task.status],
+                    style: { background: `${STATUS_COLORS[task.status]}22`, color: STATUS_COLORS[task.status] },
+                  }]}
+                  meta={[
+                    ...(projet ? [{ icon: '📁', text: projet.name }] : []),
+                    ...(task.extraFields?.['Priorité'] ? [{ icon: '⚡', text: task.extraFields['Priorité'] }] : []),
+                    ...(task.start_date ? [{ icon: '📅', text: formatDate(task.start_date) }] : []),
+                  ]}
+                  onClick={() => {
+                    setSelectedId(task.id);
+                    store.openTaskModal(task.id);
+                  }}
+                />
+              );
+            })
+          )}
+        </div>
+      </div>
     );
   }
 

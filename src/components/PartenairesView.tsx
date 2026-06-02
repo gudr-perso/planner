@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { load, save } from '../persistence';
+import { useIsMobile } from '../hooks/useBreakpoint';
 import { fetchPartenaires } from '../notionService';
 import type { NotionConfig, PartenairesConfig, PartenaireEntry } from '../types';
 
@@ -44,9 +45,12 @@ export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set());
 
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<'card' | 'list'>(() =>
     load<'card' | 'list'>('partenaires-view-mode', 'card')
   );
+  // Sur mobile, toujours vue cartes
+  const effectiveViewMode = isMobile ? 'card' : viewMode;
   const [search, setSearch] = useState('');
 
   useEffect(() => { save('partenaires-view-mode', viewMode); }, [viewMode]);
@@ -146,25 +150,27 @@ export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis
         </h2>
 
         <div className="flex items-center gap-3">
-          {/* Toggle vue cartes/liste */}
-          <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-            <button
-              onClick={() => setViewMode('card')}
-              className="px-2.5 py-1.5 text-xs font-medium transition"
-              style={viewMode === 'card'
-                ? { background: 'var(--accent)', color: 'var(--accent-fg)' }
-                : { background: 'var(--bg-deep)', color: 'var(--text-muted)' }}
-              title="Vue cartes"
-            >⊞</button>
-            <button
-              onClick={() => setViewMode('list')}
-              className="px-2.5 py-1.5 text-xs font-medium transition border-l"
-              style={viewMode === 'list'
-                ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--border)' }
-                : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
-              title="Vue liste"
-            >☰</button>
-          </div>
+          {/* Toggle vue cartes/liste — masqué sur mobile */}
+          {!isMobile && (
+            <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+              <button
+                onClick={() => setViewMode('card')}
+                className="px-2.5 py-1.5 text-xs font-medium transition"
+                style={viewMode === 'card'
+                  ? { background: 'var(--accent)', color: 'var(--accent-fg)' }
+                  : { background: 'var(--bg-deep)', color: 'var(--text-muted)' }}
+                title="Vue cartes"
+              >⊞</button>
+              <button
+                onClick={() => setViewMode('list')}
+                className="px-2.5 py-1.5 text-xs font-medium transition border-l"
+                style={viewMode === 'list'
+                  ? { background: 'var(--accent)', color: 'var(--accent-fg)', borderColor: 'var(--border)' }
+                  : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+                title="Vue liste"
+              >☰</button>
+            </div>
+          )}
           {/* Recherche */}
           <input
             type="text"
@@ -192,7 +198,7 @@ export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis
             {search ? 'Aucun résultat pour cette recherche.' : 'Aucun partenaire trouvé.'}
           </p>
         </div>
-      ) : viewMode === 'card' ? (
+      ) : effectiveViewMode === 'card' ? (
         <CardView
           groups={groups}
           collapsedTypes={collapsedTypes}
