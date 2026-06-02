@@ -744,7 +744,7 @@ export function Toolbar({
       </div>
 
       {/* Recherche globale Notion */}
-      <GlobalSearch />
+      <GlobalSearch dataSource={dataSource} />
 
       {/* ── Suivis toolbar : filtre partenaire actif uniquement ── */}
       {view === 'suivis' && suivisPartenaireFilterLabel && (
