@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, Home, LogOut, Menu, Pin, Settings, TicketCheck, UserCog, Users, X } from 'lucide-react';
+import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, Home, ListTodo, LogOut, Menu, Pin, Settings, TicketCheck, UserCog, Users, X } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { useAuth } from '../store/useAuthStore';
 import { useIsTablet } from '../hooks/useBreakpoint';
@@ -12,6 +12,7 @@ const MAIN_ITEMS: NavItemDef[] = [
   { key: 'home',        icon: <Home size={17} />,         label: 'Accueil' },
   { key: 'planning',    icon: <CalendarDays size={17} />,  label: 'Planning' },
   { key: 'briefing',    icon: <AlarmClock size={17} />,    label: 'Briefing' },
+  { key: 'todo',        icon: <ListTodo size={17} />,      label: 'ToDo' },
   { key: 'postits',     icon: <Pin size={17} />,           label: 'Post-its' },
   { key: 'partenaires', icon: <Users size={17} />,         label: 'Partenaires' },
   { key: 'suivis',      icon: <FileText size={17} />,      label: 'Suivis' },

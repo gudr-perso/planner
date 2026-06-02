@@ -28,6 +28,7 @@ import { SuivisView } from './components/SuivisView';
 import { HomeView } from './components/HomeView';
 import { TempsView } from './components/TempsView';
 import { TicketsView } from './components/TicketsView';
+import { TodoView } from './components/TodoView';
 import { PostItsView } from './components/PostItsView';
 import type { PartenaireEntry } from './types';
 
@@ -423,6 +424,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                       onClearFilter={() => setPartenaireFilter(null)}
                     />
                   )
+                  : view === 'todo' ? <TodoView />
                   : view === 'temps' ? <TempsView />
                   : view === 'tickets' ? <TicketsView />
                   : view === 'postits' ? <PostItsView refreshKey={postitsRefreshKey} />

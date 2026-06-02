@@ -5,7 +5,7 @@ import { useIsMobile, useIsTablet } from '../hooks/useBreakpoint';
 import { load } from '../persistence';
 import { fetchDatabaseSchema, searchNotionDatabase, type NotionSearchResult } from '../notionService';
 
-export type ViewKey = 'home' | 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'partenaires' | 'suivis' | 'temps' | 'tickets' | 'postits' | 'users';
+export type ViewKey = 'home' | 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'todo' | 'partenaires' | 'suivis' | 'temps' | 'tickets' | 'postits' | 'users';
 
 // ── Types internes pour la config des bases disponibles ───────────────────────
 interface DbOption { key: string; label: string; databaseId: string }

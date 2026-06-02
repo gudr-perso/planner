@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlarmClock, ArrowUpRight, CalendarDays, Clock, FileText, StickyNote, Ticket, Users } from 'lucide-react';
+import { AlarmClock, ArrowUpRight, CalendarDays, Clock, FileText, ListTodo, StickyNote, Ticket, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { PostItsWidget } from './PostItsWidget';
 import { NewsFeedWidget } from './NewsFeedWidget';
@@ -209,6 +209,13 @@ const CARDS: CardDef[] = [
     description: 'Centre des briefings du matin',
     icon: <AlarmClock size={20} />,
     color: '#F97316',
+  },
+  {
+    viewKey: 'todo',
+    title: 'ToDo',
+    description: 'Liste de tâches à faire',
+    icon: <ListTodo size={20} />,
+    color: '#84CC16',
   },
   {
     viewKey: 'postits',
