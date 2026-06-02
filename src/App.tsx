@@ -81,7 +81,10 @@ function useResizablePanel(storageKey: string, initialWidth: number, min = 180, 
 
 // ── Inner app ─────────────────────────────────────────────────────────────────
 function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: (id: string) => void; onLogout: () => void }) {
-  const [data, setData] = useState<DataBundle | null>(null);
+  const emptyBundle: DataBundle = { tasks: [], projects: [], people: [], googleEvents: [] };
+  const [data, setData] = useState<DataBundle>(emptyBundle);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewKey>(() => {
     if (localStorage.getItem('planner:_justImported')) return 'settings';
@@ -118,17 +121,20 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const refreshData = useCallback(async () => {
     setRefreshing(true);
     setPostitsRefreshKey(k => k + 1);
+    setDataLoaded(false);
     try {
       if (dataSource === 'notion') {
         const cfg = load<NotionConfig | null>('notionConfig', null);
         if (cfg?.integrationToken && cfg?.databaseId) {
           const d = await syncFromNotion(cfg);
-          setData((prev) => ({ ...d, googleEvents: prev?.googleEvents ?? [] }));
+          setData((prev) => ({ ...d, googleEvents: prev.googleEvents }));
+          setDataLoaded(true);
           return;
         }
       }
       const d = await loadDemoData();
-      setData((prev) => prev ? { ...d, googleEvents: prev.googleEvents } : d);
+      setData((prev) => ({ ...d, googleEvents: prev.googleEvents }));
+      setDataLoaded(true);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -136,34 +142,48 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     }
   }, [dataSource]);
 
-  useEffect(() => {
-    if (dataSource === 'notion') {
-      const cfg = load<NotionConfig | null>('notionConfig', null);
-      if (cfg?.integrationToken && cfg?.databaseId) {
-        syncFromNotion(cfg)
-          .then((d) => setData((prev) => ({ ...d, googleEvents: prev?.googleEvents ?? [] })))
-          .catch(() => loadDemoData().then(setData));
-        return;
+  const PLANNING_VIEWS: ViewKey[] = ['calendar', 'gantt', 'rolling', 'rolling2', 'todo'];
+
+  const loadPlanningData = useCallback(async () => {
+    if (dataLoaded || dataLoading) return;
+    setDataLoading(true);
+    try {
+      if (dataSource === 'notion') {
+        const cfg = load<NotionConfig | null>('notionConfig', null);
+        if (cfg?.integrationToken && cfg?.databaseId) {
+          const d = await syncFromNotion(cfg);
+          setData((prev) => ({ ...d, googleEvents: prev.googleEvents }));
+          setDataLoaded(true);
+          return;
+        }
       }
+      const d = await loadDemoData();
+      setData((prev) => ({ ...d, googleEvents: prev.googleEvents }));
+      setDataLoaded(true);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDataLoading(false);
     }
-    loadDemoData().then(setData).catch((e: Error) => setError(e.message));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dataSource, dataLoaded, dataLoading]);
+
+  useEffect(() => {
+    if (PLANNING_VIEWS.includes(view)) {
+      loadPlanningData();
+    }
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleDataSource = useCallback(async () => {
     if (dataSource === 'demo') {
       const cfg = load<NotionConfig | null>('notionConfig', null);
       if (!cfg?.integrationToken || !cfg?.databaseId) { setView('settings'); return; }
-      try {
-        const d = await syncFromNotion(cfg);
-        setData((prev) => ({ ...d, googleEvents: prev?.googleEvents ?? [] }));
-        setDataSource('notion');
-        save('dataSource', 'notion');
-      } catch (e) { setGcalError((e as Error).message); }
+      setDataSource('notion');
+      save('dataSource', 'notion');
+      setDataLoaded(false);
     } else {
-      const d = await loadDemoData();
-      setData(d);
       setDataSource('demo');
       save('dataSource', 'demo');
+      setDataLoaded(false);
     }
   }, [dataSource]);
   useEffect(() => { save('view', view); }, [view]);
@@ -221,8 +241,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     onError: (e) => setGcalError(String(e.error_description ?? e.error ?? 'OAuth error')),
   });
 
-  const projectById = useMemo(() => new Map(data?.projects.map((p) => [p.id, p]) ?? []), [data]);
-  const personById = useMemo(() => new Map(data?.people.map((p) => [p.id, p]) ?? []), [data]);
+  const projectById = useMemo(() => new Map(data.projects.map((p) => [p.id, p])), [data]);
+  const personById = useMemo(() => new Map(data.people.map((p) => [p.id, p])), [data]);
 
   const setFilters: StoreCtx['setFilters'] = (f) => setFiltersState((prev) => ({ ...prev, ...f }));
 
@@ -256,7 +276,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     writeNotion(taskId, startISO, endISO);
   };
 
-  const store: StoreCtx | null = data ? {
+  const store: StoreCtx = {
     data, projectById, personById, filters, setFilters,
     gcal: {
       accessToken: gcalToken,
@@ -268,7 +288,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     planTask, unplanTask, updateTaskDates,
     openTaskModal: (taskId: string) => setModalTaskId(taskId),
     openGcalModal: (eventId: string) => setGcalModalEventId(eventId),
-  } : null;
+    dataLoading,
+  };
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const dragPos = useRef<{ x: number; y: number } | null>(null);
@@ -334,11 +355,6 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   };
 
   if (error) return <div className="p-6 text-red-400 h-screen" style={{ background: 'var(--bg-deep)' }}>Erreur : {error}</div>;
-  if (!store) return (
-    <div className="h-screen w-screen flex items-center justify-center" style={{ background: 'var(--bg-deep)' }}>
-      <div className="text-sm animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement…</div>
-    </div>
-  );
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
