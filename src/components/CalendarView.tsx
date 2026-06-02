@@ -334,6 +334,12 @@ export function CalendarView() {
     outline: 'none',
   };
 
+  if (store.dataLoading) return (
+    <div className="h-full flex items-center justify-center" style={{ background: 'var(--surface)' }}>
+      <div className="text-sm animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement des tâches…</div>
+    </div>
+  );
+
   return (
     <div
       ref={setNodeRef}

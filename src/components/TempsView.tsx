@@ -547,27 +547,37 @@ function StatView({ entries, objectifH }: { entries: TempsEntry[]; objectifH: nu
   );
 }
 
+// ── Module-level cache ────────────────────────────────────────────────────────
+
+let _tempsCache: TempsEntry[] | null = null;
+let _tempsCacheKey = -1;
+
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function TempsView() {
+export function TempsView({ refreshKey = 0 }: { refreshKey?: number }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const cfg = load<TempsConfig | null>('tempsConfig', null);
   const token = notionCfg?.integrationToken ?? '';
 
-  const [entries, setEntries] = useState<TempsEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState<TempsEntry[]>(_tempsCache ?? []);
+  const [loading, setLoading] = useState(_tempsCache === null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'liste' | 'statistiques'>('liste');
 
   useEffect(() => {
+    if (_tempsCache !== null && _tempsCacheKey === refreshKey) return;
     if (!token || !cfg?.databaseId) return;
     setLoading(true);
     setError(null);
     fetchTemps(token, cfg)
-      .then(setEntries)
+      .then(data => {
+        _tempsCache = data;
+        _tempsCacheKey = refreshKey;
+        setEntries(data);
+      })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const objectifH = cfg?.objectifHebdoH ?? 39;
 

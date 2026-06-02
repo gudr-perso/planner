@@ -40,14 +40,22 @@ function formatDate(iso: string | null): string {
 
 type SortKey = keyof Pick<SuiviEntry, 'title' | 'suivi' | 'createdTime' | 'lastActionDate'> | 'projets' | 'partenaires' | 'contact';
 
+// ── Module-level cache ────────────────────────────────────────────────────────
+
+let _suivisCache: SuiviEntry[] | null = null;
+let _suivisCacheFilterId: string | undefined = undefined;
+let _suivisCacheKey = -1;
+
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export function SuivisView({
   partenaireFilter,
   onClearFilter,
+  refreshKey = 0,
 }: {
   partenaireFilter?: PartenaireEntry | null;
   onClearFilter?: () => void;
+  refreshKey?: number;
 }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const cfg = load<SuivisConfig | null>('suivisConfig', null);
@@ -56,8 +64,8 @@ export function SuivisView({
   const { width: detailWidth, containerRef, onMouseDown: onPanelResize } =
     useResizableRightPanel('suivisDetailWidth', 480);
 
-  const [entries, setEntries] = useState<SuiviEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState<SuiviEntry[]>(_suivisCache ?? []);
+  const [loading, setLoading] = useState(_suivisCache === null);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
@@ -72,17 +80,24 @@ export function SuivisView({
   const [blocksError, setBlocksError] = useState<string | null>(null);
   const [todoStatus, setTodoStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
 
-  // Recharger quand le filtre partenaire change
+  // Recharger quand le filtre partenaire change ou le refreshKey change
   useEffect(() => {
+    const filterId = partenaireFilter?.id;
+    if (_suivisCache !== null && _suivisCacheKey === refreshKey && _suivisCacheFilterId === filterId) return;
     if (!token || !cfg?.databaseId) return;
     setLoading(true);
     setError(null);
     setSelectedId(null);
-    fetchSuivis(token, cfg, partenaireFilter?.id)
-      .then(setEntries)
+    fetchSuivis(token, cfg, filterId)
+      .then(data => {
+        _suivisCache = data;
+        _suivisCacheKey = refreshKey;
+        _suivisCacheFilterId = filterId;
+        setEntries(data);
+      })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [partenaireFilter?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [partenaireFilter?.id, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectEntry = useCallback((id: string) => {
     setSelectedId(id);

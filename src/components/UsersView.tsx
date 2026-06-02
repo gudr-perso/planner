@@ -8,10 +8,14 @@ type User = {
 
 type CreateForm = { name: string; email: string; password: string; role: string };
 
-export function UsersView() {
+// Module-level cache (survit aux démontages)
+let _usersCache: User[] | null = null;
+let _usersCacheKey = -1;
+
+export function UsersView({ refreshKey = 0 }: { refreshKey?: number }) {
   const { user: me } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>(_usersCache ?? []);
+  const [loading, setLoading] = useState(_usersCache === null);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<CreateForm>({ name: '', email: '', password: '', role: 'user' });
@@ -27,13 +31,19 @@ export function UsersView() {
     try {
       const res = await apiFetch('/api/admin/users');
       const data = await res.json();
-      if (res.ok) setUsers(data.users);
-      else setError(data.error || 'Erreur');
+      if (res.ok) {
+        _usersCache = data.users;
+        _usersCacheKey = refreshKey;
+        setUsers(data.users);
+      } else setError(data.error || 'Erreur');
     } catch { setError('Erreur réseau'); }
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (_usersCache !== null && _usersCacheKey === refreshKey) return;
+    load();
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function createUser() {
     setFormError('');

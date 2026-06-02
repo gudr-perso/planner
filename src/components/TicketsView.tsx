@@ -225,6 +225,12 @@ function TicketRow({ e, i, onOpen }: { e: TicketEntry; i: number; onOpen: (t: Ti
   );
 }
 
+// ── Module-level cache ────────────────────────────────────────────────────────
+
+let _ticketsCache: TicketEntry[] | null = null;
+let _ticketsCacheKey = -1;
+let _ticketsCacheTermines = false;
+
 // ── Onglet Tickets ────────────────────────────────────────────────────────────
 
 type TicketSortKey = keyof Pick<TicketEntry, 'ticketId' | 'sujet' | 'codeAssoc' | 'statut' | 'priorite' | 'niveau' | 'dateModif' | 'demandeur' | 'zone' | 'memo'>;
@@ -233,13 +239,15 @@ function TicketsTab({
   token,
   cfg,
   onAssocClick,
+  refreshKey = 0,
 }: {
   token: string;
   cfg: TicketsConfig;
   onAssocClick: (id: string, name: string) => void;
+  refreshKey?: number;
 }) {
-  const [entries, setEntries] = useState<TicketEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState<TicketEntry[]>(_ticketsCache ?? []);
+  const [loading, setLoading] = useState(_ticketsCache === null);
   const [error, setError] = useState<string | null>(null);
   const [showTermines, setShowTermines] = useState(() => load<boolean>('tickets-show-termines', false));
   const [search, setSearch] = useState('');
@@ -258,12 +266,20 @@ function TicketsTab({
     setLoading(true);
     setError(null);
     fetchTickets(token, cfg, inclTermines)
-      .then(setEntries)
+      .then(data => {
+        _ticketsCache = data;
+        _ticketsCacheKey = refreshKey;
+        _ticketsCacheTermines = inclTermines;
+        setEntries(data);
+      })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [token, cfg]);
+  }, [token, cfg, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { load_(showTermines); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (_ticketsCache !== null && _ticketsCacheKey === refreshKey && _ticketsCacheTermines === showTermines) return;
+    load_(showTermines);
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleTermines = () => {
     const next = !showTermines;
@@ -750,7 +766,7 @@ function AssociationsTab({
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function TicketsView() {
+export function TicketsView({ refreshKey = 0 }: { refreshKey?: number }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const ticketsCfg = load<TicketsConfig | null>('ticketsConfig', null);
   const assocCfg = load<AssociationsConfig | null>('associationsConfig', null);
@@ -787,7 +803,7 @@ export function TicketsView() {
       <div style={{ flex: 1, overflow: 'hidden', background: 'var(--bg)' }}>
         {tab === 'tickets' ? (
           ticketsCfg ? (
-            <TicketsTab token={token} cfg={ticketsCfg} onAssocClick={handleAssocClick} />
+            <TicketsTab token={token} cfg={ticketsCfg} onAssocClick={handleAssocClick} refreshKey={refreshKey} />
           ) : (
             <div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>Configurez la base Tickets dans Paramètres</div>
           )

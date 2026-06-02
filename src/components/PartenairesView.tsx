@@ -24,15 +24,20 @@ function parseEtatBadges(raw: string): Array<{ label: string; count?: string }> 
 
 type SortKey = 'title' | 'shortCode' | 'etatSuivis';
 
+// ── Module-level cache ────────────────────────────────────────────────────────
+
+let _partenairesCache: PartenaireEntry[] | null = null;
+let _partenairesCacheKey = -1;
+
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function PartenairesView({ onOpenSuivis }: { onOpenSuivis: (p: PartenaireEntry) => void }) {
+export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis: (p: PartenaireEntry) => void; refreshKey?: number }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const cfg = load<PartenairesConfig | null>('partenairesConfig', null);
   const token = notionCfg?.integrationToken ?? '';
 
-  const [entries, setEntries] = useState<PartenaireEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState<PartenaireEntry[]>(_partenairesCache ?? []);
+  const [loading, setLoading] = useState(_partenairesCache === null);
   const [error, setError] = useState<string | null>(null);
 
   const [sortKey, setSortKey] = useState<SortKey>('title');
@@ -47,14 +52,19 @@ export function PartenairesView({ onOpenSuivis }: { onOpenSuivis: (p: Partenaire
   useEffect(() => { save('partenaires-view-mode', viewMode); }, [viewMode]);
 
   useEffect(() => {
+    if (_partenairesCache !== null && _partenairesCacheKey === refreshKey) return;
     if (!token || !cfg?.databaseId) return;
     setLoading(true);
     setError(null);
     fetchPartenaires(token, cfg)
-      .then(setEntries)
+      .then(data => {
+        _partenairesCache = data;
+        _partenairesCacheKey = refreshKey;
+        setEntries(data);
+      })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filtered + sorted entries
   const filtered = useMemo(() => {

@@ -115,12 +115,11 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const isTablet = useIsTablet();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [postitsRefreshKey, setPostitsRefreshKey] = useState(0);
+  const [planningRefreshing, setPlanningRefreshing] = useState(false);
+  const [viewRefreshKeys, setViewRefreshKeys] = useState<Partial<Record<ViewKey, number>>>({});
 
-  const refreshData = useCallback(async () => {
-    setRefreshing(true);
-    setPostitsRefreshKey(k => k + 1);
+  const refreshPlanningData = useCallback(async () => {
+    setPlanningRefreshing(true);
     setDataLoaded(false);
     try {
       if (dataSource === 'notion') {
@@ -138,11 +137,20 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setRefreshing(false);
+      setPlanningRefreshing(false);
     }
   }, [dataSource]);
 
-  const PLANNING_VIEWS: ViewKey[] = ['calendar', 'gantt', 'rolling', 'rolling2', 'todo'];
+  const handleRefresh = useCallback(() => {
+    const PLANNING: ViewKey[] = ['calendar', 'gantt', 'rolling', 'rolling2', 'todo'];
+    if (PLANNING.includes(view)) {
+      refreshPlanningData();
+    } else {
+      setViewRefreshKeys(prev => ({ ...prev, [view]: (prev[view] ?? 0) + 1 }));
+    }
+  }, [view, refreshPlanningData]);
+
+  const DATA_VIEWS: ViewKey[] = ['calendar', 'gantt', 'rolling', 'rolling2', 'todo'];
 
   const loadPlanningData = useCallback(async () => {
     if (dataLoaded || dataLoading) return;
@@ -168,9 +176,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   }, [dataSource, dataLoaded, dataLoading]);
 
   useEffect(() => {
-    if (PLANNING_VIEWS.includes(view)) {
-      loadPlanningData();
-    }
+    if (DATA_VIEWS.includes(view)) loadPlanningData();
   }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleDataSource = useCallback(async () => {
@@ -405,8 +411,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               onSuivisSearch={setSuivisSearch}
               suivisPartenaireFilterLabel={partenaireFilter?.title}
               onClearSuivisFilter={() => setPartenaireFilter(null)}
-              onRefresh={refreshData}
-              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              refreshing={planningRefreshing && ['calendar','gantt','rolling','rolling2','todo'].includes(view)}
               onOpenMobileNav={() => setMobileNavOpen(true)}
             />
             <div className="flex-1 flex min-h-0 relative">
@@ -422,28 +428,30 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                 />
               )}
               <main className="flex-1 min-w-0 overflow-hidden" style={{ background: view === 'home' ? 'var(--bg-deep, #02071f)' : view === 'users' ? 'var(--bg)' : 'var(--surface)' }}>
-                {view === 'users' ? <UsersView />
-                  : view === 'home' ? <HomeView onNavigate={setView} postitsRefreshKey={postitsRefreshKey} />
+                {view === 'users' ? <UsersView refreshKey={viewRefreshKeys['users'] ?? 0} />
+                  : view === 'home' ? <HomeView onNavigate={setView} postitsRefreshKey={viewRefreshKeys['postits'] ?? 0} />
                   : view === 'calendar' ? <CalendarView />
                   : view === 'rolling'  ? <RollingWeeksView />
                   : view === 'rolling2' ? <RollingWeeksView2 />
                   : view === 'settings' ? <SettingsView onSync={handleNotionSync} onGcalClientIdSave={(id) => { save('gcalClientId', id); onGcalClientIdChange(id); }} />
-                  : view === 'briefing' ? <BriefingView />
+                  : view === 'briefing' ? <BriefingView refreshKey={viewRefreshKeys['briefing'] ?? 0} />
                   : view === 'partenaires' ? (
                     <PartenairesView
+                      refreshKey={viewRefreshKeys['partenaires'] ?? 0}
                       onOpenSuivis={(p) => { setPartenaireFilter(p); setView('suivis'); }}
                     />
                   )
                   : view === 'suivis' ? (
                     <SuivisView
+                      refreshKey={viewRefreshKeys['suivis'] ?? 0}
                       partenaireFilter={partenaireFilter}
                       onClearFilter={() => setPartenaireFilter(null)}
                     />
                   )
                   : view === 'todo' ? <TodoView />
-                  : view === 'temps' ? <TempsView />
-                  : view === 'tickets' ? <TicketsView />
-                  : view === 'postits' ? <PostItsView refreshKey={postitsRefreshKey} />
+                  : view === 'temps' ? <TempsView refreshKey={viewRefreshKeys['temps'] ?? 0} />
+                  : view === 'tickets' ? <TicketsView refreshKey={viewRefreshKeys['tickets'] ?? 0} />
+                  : view === 'postits' ? <PostItsView refreshKey={viewRefreshKeys['postits'] ?? 0} />
                   : <GanttView />}
               </main>
             </div>

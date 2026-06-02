@@ -582,10 +582,18 @@ export function Toolbar({
             <button
               onClick={onRefresh}
               disabled={refreshing}
-              className="flex items-center text-[11px] px-1.5 py-1 rounded border transition disabled:opacity-50"
-              style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+              title="Actualiser les données"
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border font-medium transition-all disabled:opacity-50 active:scale-95"
+              style={refreshing
+                ? { background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 40%, transparent)' }
+                : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
             >
-              <span className={refreshing ? 'animate-spin' : ''}>⟳</span>
+              <svg className={refreshing ? 'animate-spin' : ''} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                <path d="M3 21v-5h5"/>
+              </svg>
             </button>
           )}
         </div>
@@ -697,10 +705,19 @@ export function Toolbar({
               <button
                 onClick={onRefresh}
                 disabled={refreshing}
-                className="flex items-center gap-1 text-[11px] px-2 py-1 rounded border transition disabled:opacity-50"
-                style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+                title="Actualiser les données"
+                className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg border font-medium transition-all disabled:opacity-50 active:scale-95"
+                style={refreshing
+                  ? { background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 40%, transparent)' }
+                  : { background: 'var(--bg-deep)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
               >
-                <span className={refreshing ? 'animate-spin' : ''}>⟳</span>
+                <svg className={refreshing ? 'animate-spin' : ''} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                  <path d="M21 3v5h-5"/>
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                  <path d="M3 21v-5h5"/>
+                </svg>
+                {refreshing ? 'Actualisation…' : 'Actualiser'}
               </button>
             )}
             <button

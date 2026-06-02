@@ -36,15 +36,19 @@ function formatDate(iso: string | null): string {
   return `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`;
 }
 
-export function PostItsView({ refreshKey }: { refreshKey?: number }) {
+// Module-level cache (survit aux démontages)
+let _postitsCache: PostItEntry[] | null = null;
+let _postitsCacheKey = -1;
+
+export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const postitsCfg = load<PostItsConfig | null>('postitsConfig', null);
   const token = notionCfg?.integrationToken ?? '';
 
   const { width: detailWidth, containerRef, onMouseDown: onPanelResize } = useResizableRightPanel('postitsDetailWidth', 480);
 
-  const [entries, setEntries] = useState<PostItEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState<PostItEntry[]>(_postitsCache ?? []);
+  const [loading, setLoading] = useState(_postitsCache === null);
   const [error, setError] = useState<string | null>(null);
 
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
@@ -61,12 +65,17 @@ export function PostItsView({ refreshKey }: { refreshKey?: number }) {
     setLoading(true);
     setError(null);
     fetchPostIts(token, postitsCfg)
-      .then(setEntries)
+      .then(data => {
+        _postitsCache = data;
+        _postitsCacheKey = refreshKey;
+        setEntries(data);
+      })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [token, postitsCfg]);
+  }, [token, postitsCfg, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (_postitsCache !== null && _postitsCacheKey === refreshKey) return;
     loadEntries();
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 

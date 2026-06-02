@@ -23,7 +23,11 @@ function formatFullDate(iso: string): string {
   }
 }
 
-export function BriefingView() {
+// Module-level cache (survit aux démontages)
+let _briefingCache: BriefingEntry[] | null = null;
+let _briefingCacheKey = -1;
+
+export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
   const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const briefingCfg = load<BriefingConfig | null>('briefingConfig', null);
   const token = notionCfg?.integrationToken ?? '';
@@ -31,8 +35,8 @@ export function BriefingView() {
 
   const { width: detailWidth, containerRef, onMouseDown: onPanelResize } = useResizableRightPanel('briefingDetailWidth', 480);
 
-  const [entries, setEntries] = useState<BriefingEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [entries, setEntries] = useState<BriefingEntry[]>(_briefingCache ?? []);
+  const [loading, setLoading] = useState(_briefingCache === null);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -42,14 +46,19 @@ export function BriefingView() {
   const [todoStatus, setTodoStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
 
   useEffect(() => {
+    if (_briefingCache !== null && _briefingCacheKey === refreshKey) return;
     if (!token || !briefingCfg?.databaseId) return;
     setLoading(true);
     setError(null);
     fetchBriefings(token, briefingCfg)
-      .then(setEntries)
+      .then(data => {
+        _briefingCache = data;
+        _briefingCacheKey = refreshKey;
+        setEntries(data);
+      })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectEntry = useCallback((id: string) => {
     setSelectedId(id);
