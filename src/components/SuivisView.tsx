@@ -4,6 +4,8 @@ import { fetchSuivis, fetchPageBlocks, patchBlockChecked } from '../notionServic
 import type { NotionBlock, NotionConfig, PartenaireEntry, SuivisConfig, SuiviEntry } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
+import { useIsMobile } from '../hooks/useBreakpoint';
+import { MobileListCard } from './MobileListCard';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +63,7 @@ export function SuivisView({
   const cfg = load<SuivisConfig | null>('suivisConfig', null);
   const token = notionCfg?.integrationToken ?? '';
 
+  const isMobile = useIsMobile();
   const { width: detailWidth, containerRef, onMouseDown: onPanelResize } =
     useResizableRightPanel('suivisDetailWidth', 480);
 
@@ -170,6 +173,148 @@ export function SuivisView({
             <span style={{ color: 'var(--accent)' }}>Paramètres</span>.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // ── Détail (partagé desktop panel / mobile modal) ──────────────────────────
+  const detailInner = selectedEntry && (
+    <>
+      {/* En-tête */}
+      <div
+        className="px-5 py-4 shrink-0 flex items-start justify-between gap-4"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
+        <div className="flex-1 min-w-0">
+          <h2 className="font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--text)', fontSize: 15, lineHeight: 1.3 }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>📋</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedEntry.title}</span>
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {selectedEntry.suivi && (
+              <PropRow icon="📋" label="Suivi">
+                <span className="text-[11px] px-2 py-0.5 rounded font-medium" style={suiviBadgeStyle(selectedEntry.suiviColor)}>{selectedEntry.suivi}</span>
+              </PropRow>
+            )}
+            {selectedEntry.projets.length > 0 && <PropRow icon="📁" label="Projets">{selectedEntry.projets.join(', ')}</PropRow>}
+            {selectedEntry.partenaires.length > 0 && <PropRow icon="🤝" label="Partenaires">{selectedEntry.partenaires.join(', ')}</PropRow>}
+            {selectedEntry.contact.length > 0 && <PropRow icon="👤" label="Contact">{selectedEntry.contact.join(', ')}</PropRow>}
+            {selectedEntry.createdTime && <PropRow icon="📅" label="Créé le">{formatDate(selectedEntry.createdTime)}</PropRow>}
+            {selectedEntry.lastActionDate && <PropRow icon="🕐" label="Dernière action">{formatDate(selectedEntry.lastActionDate)}</PropRow>}
+            {selectedEntry.notion_url && (
+              <PropRow icon="🔗" label="Notion">
+                <a href={selectedEntry.notion_url} target="_blank" rel="noreferrer" className="hover:underline transition-opacity hover:opacity-80" style={{ color: 'var(--accent)', fontSize: 11 }} onClick={e => e.stopPropagation()}>Ouvrir dans Notion</a>
+              </PropRow>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {todoStatus && (
+            <span className="text-[10px] px-2 py-0.5 rounded"
+              style={todoStatus === 'error' ? { background: 'var(--color-error-bg)', color: 'var(--color-error)' }
+                : todoStatus === 'ok' ? { background: 'var(--color-success-bg)', color: 'var(--color-success)' }
+                  : { color: 'var(--text-muted)' }}>
+              {todoStatus === 'saving' && <span className="animate-spin inline-block">⟳</span>}
+              {todoStatus === 'ok' && '✓ Sauvegardé'}
+              {todoStatus === 'error' && '⚠ Erreur'}
+            </span>
+          )}
+          <button onClick={() => setSelectedId(null)} title="Fermer"
+            style={{ color: 'var(--text-muted)', fontSize: 15, background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
+        </div>
+      </div>
+      {/* Corps : blocs Notion */}
+      <div className="themed-scroll flex-1 overflow-y-auto px-5 py-5">
+        {blocksLoading ? (
+          <p className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement du contenu…</p>
+        ) : blocksError ? (
+          <p className="text-xs" style={{ color: 'var(--color-error)' }}>⚠ {blocksError}</p>
+        ) : blocks.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>(Page vide)</p>
+        ) : (
+          <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} token={token} />
+        )}
+      </div>
+    </>
+  );
+
+  // ── Rendu mobile : cartes empilées + détail en modal plein écran ───────────
+  if (isMobile) {
+    return (
+      <div className="h-full flex flex-col overflow-hidden" style={{ background: 'var(--bg)' }}>
+        {/* En-tête + recherche */}
+        <div className="px-3 py-2 shrink-0 flex flex-col gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
+              <span style={{ fontSize: 16 }}>📋</span> Suivis
+              <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>({filtered.length})</span>
+            </h2>
+            {partenaireFilter && (
+              <div className="flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full"
+                style={{ background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                <span>🤝 {partenaireFilter.title}</span>
+                <button onClick={onClearFilter} style={{ fontSize: 12 }}>✕</button>
+              </div>
+            )}
+            <button
+              onClick={() => { const v = !showClos; setShowClos(v); save('suivis-show-clos', v); }}
+              className="text-xs px-2 py-0.5 rounded ml-auto"
+              style={{
+                background: showClos ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'var(--bg-deep)',
+                color: showClos ? 'var(--accent)' : 'var(--text-muted)',
+                border: `1px solid ${showClos ? 'color-mix(in srgb, var(--accent) 35%, transparent)' : 'var(--border)'}`,
+              }}
+            >{showClos ? '🔓' : '🔒'} Clos</button>
+          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher…"
+            className="text-xs rounded px-2.5 py-1.5 outline-none w-full"
+            style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          />
+        </div>
+
+        {/* Liste des cartes */}
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <span className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement…</span>
+          </div>
+        ) : error ? (
+          <div className="flex-1 flex items-center justify-center px-6">
+            <p className="text-xs text-center" style={{ color: 'var(--color-error)' }}>⚠ {error}</p>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-4 py-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                {search || suivisFilter ? 'Aucun résultat.' : 'Aucun suivi trouvé.'}
+              </div>
+            ) : (
+              filtered.map(entry => (
+                <MobileListCard
+                  key={entry.id}
+                  title={entry.title}
+                  badges={entry.suivi ? [{ label: entry.suivi, style: suiviBadgeStyle(entry.suiviColor) }] : []}
+                  meta={[
+                    ...(entry.partenaires.length > 0 ? [{ icon: '🤝', text: entry.partenaires.join(', ') }] : []),
+                    ...(entry.projets.length > 0 ? [{ icon: '📁', text: entry.projets.join(', ') }] : []),
+                    ...(entry.lastActionDate ? [{ icon: '🕐', text: formatDate(entry.lastActionDate) }] : []),
+                  ]}
+                  onClick={() => selectEntry(entry.id)}
+                />
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Détail en modal plein écran */}
+        {selectedId && selectedEntry && (
+          <div className="fixed inset-0 z-50 flex flex-col overflow-hidden" style={{ background: 'var(--bg)' }}>
+            {detailInner}
+          </div>
+        )}
       </div>
     );
   }
@@ -306,98 +451,7 @@ export function SuivisView({
       {/* ── Panneau détail ── */}
       {selectedId && selectedEntry && (
         <div className="flex flex-col overflow-hidden" style={{ width: detailWidth, flexShrink: 0 }}>
-          {/* En-tête */}
-          <div
-            className="px-6 py-4 shrink-0 flex items-start justify-between gap-4"
-            style={{ borderBottom: '1px solid var(--border)' }}
-          >
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--text)', fontSize: 15, lineHeight: 1.3 }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>📋</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedEntry.title}
-                </span>
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {selectedEntry.suivi && (
-                  <PropRow icon="📋" label="Suivi">
-                    <span
-                      className="text-[11px] px-2 py-0.5 rounded font-medium"
-                      style={suiviBadgeStyle(selectedEntry.suiviColor)}
-                    >
-                      {selectedEntry.suivi}
-                    </span>
-                  </PropRow>
-                )}
-                {selectedEntry.projets.length > 0 && (
-                  <PropRow icon="📁" label="Projets">{selectedEntry.projets.join(', ')}</PropRow>
-                )}
-                {selectedEntry.partenaires.length > 0 && (
-                  <PropRow icon="🤝" label="Partenaires">{selectedEntry.partenaires.join(', ')}</PropRow>
-                )}
-                {selectedEntry.contact.length > 0 && (
-                  <PropRow icon="👤" label="Contact">{selectedEntry.contact.join(', ')}</PropRow>
-                )}
-                {selectedEntry.createdTime && (
-                  <PropRow icon="📅" label="Créé le">{formatDate(selectedEntry.createdTime)}</PropRow>
-                )}
-                {selectedEntry.lastActionDate && (
-                  <PropRow icon="🕐" label="Dernière action">{formatDate(selectedEntry.lastActionDate)}</PropRow>
-                )}
-                {selectedEntry.notion_url && (
-                  <PropRow icon="🔗" label="Notion">
-                    <a
-                      href={selectedEntry.notion_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="hover:underline transition-opacity hover:opacity-80"
-                      style={{ color: 'var(--accent)', fontSize: 11 }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      Ouvrir dans Notion
-                    </a>
-                  </PropRow>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              {todoStatus && (
-                <span
-                  className="text-[10px] px-2 py-0.5 rounded"
-                  style={todoStatus === 'error'
-                    ? { background: 'var(--color-error-bg)', color: 'var(--color-error)' }
-                    : todoStatus === 'ok'
-                      ? { background: 'var(--color-success-bg)', color: 'var(--color-success)' }
-                      : { color: 'var(--text-muted)' }}
-                >
-                  {todoStatus === 'saving' && <span className="animate-spin inline-block">⟳</span>}
-                  {todoStatus === 'ok' && '✓ Sauvegardé'}
-                  {todoStatus === 'error' && '⚠ Erreur'}
-                </span>
-              )}
-              <button
-                onClick={() => setSelectedId(null)}
-                title="Fermer"
-                style={{ color: 'var(--text-muted)', fontSize: 15, background: 'transparent', border: 'none', cursor: 'pointer' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
-              >✕</button>
-            </div>
-          </div>
-
-          {/* Corps : blocs Notion */}
-          <div className="themed-scroll flex-1 overflow-y-auto px-6 py-5">
-            {blocksLoading ? (
-              <p className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement du contenu…</p>
-            ) : blocksError ? (
-              <p className="text-xs" style={{ color: 'var(--color-error)' }}>⚠ {blocksError}</p>
-            ) : blocks.length === 0 ? (
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>(Page vide)</p>
-            ) : (
-              <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} token={token} />
-            )}
-          </div>
+          {detailInner}
         </div>
       )}
     </div>
