@@ -25,6 +25,7 @@ export type StoreCtx = {
   updateTaskDates: (taskId: string, startISO: string, endISO: string) => void;
   openTaskModal: (taskId: string) => void;
   openGcalModal: (eventId: string) => void;
+  dataLoading: boolean;
 };
 
 export const StoreContext = createContext<StoreCtx | null>(null);
