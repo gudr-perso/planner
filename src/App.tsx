@@ -394,8 +394,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               onOpenMobileNav={() => setMobileNavOpen(true)}
             />
             <div className="flex-1 flex min-h-0 relative">
-              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && <UnplannedPanel width={panelWidth} />}
-              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && (
+              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && <UnplannedPanel width={panelWidth} />}
+              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
                   style={{ background: 'var(--border)' }}
