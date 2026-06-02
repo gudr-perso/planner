@@ -42,7 +42,7 @@ function SortTh({
         padding: '6px 10px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
         letterSpacing: '0.05em', textAlign: 'left',
         color: active ? 'var(--accent)' : 'var(--text-muted)',
-        background: 'var(--surface)',
+        background: 'var(--bg-deep)',
         position: 'sticky', top: 0, zIndex: 1,
         borderBottom: '1px solid var(--border)',
         ...style,
@@ -251,11 +251,11 @@ export function TodoView() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* ── Toolbar ── */}
       <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 8, padding: '10px 14px',
-        borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
+        display: 'flex', flexWrap: 'wrap', gap: 8, padding: '8px 12px',
+        borderBottom: '1px solid var(--border)', background: 'var(--bg-deep)', flexShrink: 0, alignItems: 'center',
       }}>
         <input
           placeholder="🔍 Rechercher…"
@@ -289,11 +289,24 @@ export function TodoView() {
           {projetValues.map(v => <option key={v} value={v}>{v}</option>)}
         </select>
 
-        <select value={groupBy} onChange={e => setGroupBy(e.target.value as GroupBy)} style={inputStyle}>
-          <option value="none">Regrouper par…</option>
-          <option value="projet">Projet</option>
-          <option value="sousprojet">Sous-projet</option>
-        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Grouper :</span>
+          {(['none', 'projet', 'sousprojet'] as GroupBy[]).map(g => (
+            <button
+              key={g}
+              onClick={() => { setGroupBy(g); setCollapsed(new Set()); }}
+              style={{
+                ...inputStyle, cursor: 'pointer', padding: '3px 10px',
+                background: groupBy === g ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--bg-deep)',
+                color: groupBy === g ? 'var(--accent)' : 'var(--text-muted)',
+                border: groupBy === g ? '1px solid color-mix(in srgb, var(--accent) 40%, transparent)' : '1px solid var(--border)',
+                fontWeight: groupBy === g ? 600 : 400,
+              }}
+            >
+              {g === 'none' ? 'Aucun' : g === 'projet' ? 'Projet' : 'Sous-projet'}
+            </button>
+          ))}
+        </div>
 
         <button
           onClick={() => setShowDone(d => !d)}
