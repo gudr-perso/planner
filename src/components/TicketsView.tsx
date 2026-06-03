@@ -4,6 +4,7 @@ import { fetchAssociations, fetchTickets, patchRichTextField } from '../notionSe
 import type { AssociationEntry, AssociationsConfig, NotionConfig, TicketEntry, TicketsConfig } from '../types';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
 import { useIsMobile } from '../hooks/useBreakpoint';
+import { MobileListCard } from './MobileListCard';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -358,8 +359,41 @@ function TicketsTab({
 
   // ── Mode mobile : vue cards ─────────────────────────────────────────────
   if (isMobile) {
+    const SUBTABS = [
+      { key: 'all',      label: 'Tous' },
+      { key: 'noassoc',  label: 'Sans assoc.' },
+      { key: 'arepondu', label: 'A répondu' },
+      { key: 'zoneneo',  label: 'Zone Néo' },
+      { key: 'prb',      label: 'Problèmes' },
+      { key: 'sf',       label: 'Correctifs' },
+      { key: 'chn',      label: 'Changements' },
+    ] as const;
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
+        {/* Sous-onglets scrollables horizontalement */}
+        <div style={{
+          display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as never,
+          gap: 4, padding: '6px 10px', borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-deep)', flexShrink: 0, scrollbarWidth: 'none',
+        }}>
+          {SUBTABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setSubTab(t.key)}
+              style={{
+                flexShrink: 0, padding: '4px 12px', fontSize: 12, whiteSpace: 'nowrap',
+                fontWeight: subTab === t.key ? 700 : 500, cursor: 'pointer',
+                border: 'none', borderRadius: 6,
+                background: subTab === t.key ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'transparent',
+                color: subTab === t.key ? 'var(--accent)' : 'var(--text-muted)',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         {/* Recherche + compteur */}
         <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
           <input style={{ ...inputStyle, flex: 1 }} placeholder="ID / Sujet…" value={search} onChange={e => setSearch(e.target.value)} />
@@ -613,6 +647,9 @@ function AssociationsTab({
     }
   };
 
+  const isMobile = useIsMobile();
+  const [mobileDetail, setMobileDetail] = useState<AssociationEntry | null>(null);
+
   const SortTh = ({ col, label }: { col: AssocSortKey; label: string }) => (
     <th
       onClick={() => toggleSort(col)}
@@ -626,6 +663,113 @@ function AssociationsTab({
       {label}{sortKey === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
     </th>
   );
+
+  // ── Mode mobile ──────────────────────────────────────────────────────────
+  if (isMobile) {
+    const detailEntry = mobileDetail;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
+        {/* Barre filtres */}
+        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)', flexShrink: 0 }}>
+          <input style={{ ...inputStyle, flex: 1 }} placeholder="Nom / Code…" value={search} onChange={e => setSearch(e.target.value)} />
+          <button onClick={toggleTermines} style={btnStyle(showTermines)} title="Terminées">
+            {showTermines ? '🔓' : '🔒'}
+          </button>
+          {loading && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>…</span>}
+          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{filtered.length}</span>
+        </div>
+
+        {/* Cards */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {filtered.map(e => (
+            <MobileListCard
+              key={e.id}
+              title={e.nom}
+              badges={[
+                ...(e.statut ? [{ label: e.statut, style: { background: NOTION_COLOR[colorForStatut(e.statut)]?.bg ?? '#80808022', color: NOTION_COLOR[colorForStatut(e.statut)]?.fg ?? '#808080' } }] : []),
+                ...(e.priorite ? [{ label: e.priorite, style: { background: NOTION_COLOR[colorForPriorite(e.priorite)]?.bg ?? '#80808022', color: NOTION_COLOR[colorForPriorite(e.priorite)]?.fg ?? '#808080' } }] : []),
+              ]}
+              meta={[
+                ...(e.code ? [{ icon: '🏷', text: e.code }] : []),
+                ...(e.solution ? [{ icon: '💡', text: e.solution }] : []),
+              ]}
+              onClick={() => {
+                setMobileDetail(e);
+                setEditSolution(e.solution);
+                setSaveStatus(null);
+              }}
+            />
+          ))}
+          {filtered.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)', fontSize: 12 }}>Aucune association</div>
+          )}
+        </div>
+
+        {/* Modal détail */}
+        {detailEntry && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--bg-deep)', flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600, marginBottom: 2 }}>{detailEntry.code}</div>
+                <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{detailEntry.nom}</h3>
+              </div>
+              <button onClick={() => setMobileDetail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 22, lineHeight: 1, paddingLeft: 12 }}>✕</button>
+            </div>
+
+            {/* Corps */}
+            <div style={{ flex: 1, overflow: 'auto', padding: '14px 14px' }}>
+              {/* Badges */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                {detailEntry.statut && badge(detailEntry.statut, colorForStatut(detailEntry.statut))}
+                {detailEntry.priorite && badge(detailEntry.priorite, colorForPriorite(detailEntry.priorite))}
+              </div>
+
+              {/* Solution éditable */}
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>Solution de contournement</div>
+              <textarea
+                value={editSolution}
+                onChange={e => setEditSolution(e.target.value)}
+                rows={6}
+                style={{ width: '100%', ...inputStyle, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                <button
+                  onClick={async () => {
+                    if (!token || !cfg.solutionField) return;
+                    setSaving(true); setSaveStatus(null);
+                    try {
+                      await patchRichTextField(token, detailEntry.id, cfg.solutionField, editSolution);
+                      setEntries(prev => prev.map(e => e.id === detailEntry.id ? { ...e, solution: editSolution } : e));
+                      setSaveStatus('ok');
+                      setTimeout(() => setSaveStatus(null), 2000);
+                    } catch { setSaveStatus('error'); }
+                    finally { setSaving(false); }
+                  }}
+                  disabled={saving}
+                  style={{ ...btnStyle(), color: 'var(--accent)', border: '1px solid var(--accent)', padding: '6px 14px', fontWeight: 600 }}
+                >
+                  {saving ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+                {saveStatus === 'ok' && <span style={{ fontSize: 11, color: '#10b981' }}>✓ Sauvegardé</span>}
+                {saveStatus === 'error' && <span style={{ fontSize: 11, color: '#ef4444' }}>Erreur</span>}
+              </div>
+
+              {/* Lien suivi */}
+              {detailEntry.suivi && (
+                <button
+                  onClick={() => window.open(detailEntry.suivi, '_blank')}
+                  style={{ ...btnStyle(), color: 'var(--accent)', border: '1px solid var(--accent)', padding: '8px 14px', fontWeight: 600, width: '100%', marginTop: 16 }}
+                >
+                  ↗ Voir les tickets
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
