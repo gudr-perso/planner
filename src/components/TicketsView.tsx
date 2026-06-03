@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { load, save } from '../persistence';
-import { fetchAssociations, fetchTickets, patchRichTextField } from '../notionService';
-import type { AssociationEntry, AssociationsConfig, NotionConfig, TicketEntry, TicketsConfig } from '../types';
+import { fetchAssociations, fetchTickets, fetchPageBlocks, patchRichTextField } from '../notionService';
+import type { AssociationEntry, AssociationsConfig, NotionBlock, NotionConfig, TicketEntry, TicketsConfig } from '../types';
+import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
 import { useIsMobile } from '../hooks/useBreakpoint';
 import { MobileListCard } from './MobileListCard';
@@ -96,6 +97,20 @@ function TicketModal({
   const [memo, setMemo] = useState(ticket.memo);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'ok' | 'error' | null>(null);
+
+  const [blocks, setBlocks] = useState<NotionBlock[]>([]);
+  const [blocksLoading, setBlocksLoading] = useState(false);
+  const [blocksError, setBlocksError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token || !ticket.id) return;
+    setBlocksLoading(true);
+    setBlocksError(null);
+    fetchPageBlocks(token, ticket.id)
+      .then(setBlocks)
+      .catch(e => setBlocksError((e as Error).message))
+      .finally(() => setBlocksLoading(false));
+  }, [token, ticket.id]);
 
   const handleSaveMemo = async () => {
     if (!token || !memoField) return;
@@ -192,6 +207,24 @@ function TicketModal({
             {saveStatus === 'ok' && <span style={{ fontSize: 11, color: '#10b981' }}>✓ Sauvegardé</span>}
             {saveStatus === 'error' && <span style={{ fontSize: 11, color: '#ef4444' }}>Erreur lors de la sauvegarde</span>}
           </div>
+        </div>
+
+        {/* Contenu de la page Notion */}
+        <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600 }}>
+            Contenu Notion
+          </div>
+          {blocksLoading ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }} className="animate-pulse">
+              Chargement du contenu…
+            </p>
+          ) : blocksError ? (
+            <p style={{ fontSize: 12, color: 'var(--color-error)' }}>⚠ {blocksError}</p>
+          ) : blocks.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic' }}>(Page vide)</p>
+          ) : (
+            <NotionBlockRenderer blocks={blocks} token={token} />
+          )}
         </div>
       </div>
     </div>
