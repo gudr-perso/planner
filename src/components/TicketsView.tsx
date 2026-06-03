@@ -144,8 +144,13 @@ function TicketModal({
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12,
-        width: 600, maxWidth: '90vw', maxHeight: '85vh', overflow: 'auto',
+        background: 'var(--bg)', border: '1px solid var(--border)',
+        borderRadius: window.innerWidth < 768 ? 0 : 12,
+        width: window.innerWidth < 768 ? '100%' : 600,
+        maxWidth: window.innerWidth < 768 ? '100%' : '90vw',
+        height: window.innerWidth < 768 ? '100%' : 'auto',
+        maxHeight: window.innerWidth < 768 ? '100%' : '85vh',
+        overflow: 'auto',
         padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -566,7 +571,10 @@ function TicketsTab({
                 ))
               : filtered.map((e, i) => <TicketRow key={e.id} e={e} i={i} onOpen={setModalTicket} />)
             }
-            {filtered.length === 0 && (
+            {loading && entries.length === 0 && (
+              <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontStyle: 'italic', fontSize: 12 }} className="animate-pulse">Chargement…</td></tr>
+            )}
+            {!loading && filtered.length === 0 && (
               <tr><td colSpan={10} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)' }}>Aucun ticket</td></tr>
             )}
           </tbody>
@@ -868,7 +876,10 @@ function AssociationsTab({
                   <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.suivi || '—'}</td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {loading && entries.length === 0 && (
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontStyle: 'italic', fontSize: 12 }} className="animate-pulse">Chargement…</td></tr>
+              )}
+              {!loading && filtered.length === 0 && (
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)' }}>Aucune association</td></tr>
               )}
             </tbody>
