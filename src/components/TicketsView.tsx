@@ -433,43 +433,52 @@ function TicketsTab({
           <button onClick={toggleTermines} style={btnStyle(showTermines)} title="Terminés">
             {showTermines ? '🔓' : '🔒'}
           </button>
-          {loading && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>…</span>}
+          {loading && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>⟳</span>}
           <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{filtered.length}</span>
         </div>
 
         {/* Cards */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filtered.map(e => {
-            const statutColor = colorForStatut(e.statut);
-            const prioColor = colorForPriorite(e.priorite);
-            return (
-              <button
-                key={e.id}
-                onClick={() => setModalTicket(e)}
-                style={{
-                  display: 'block', width: '100%', textAlign: 'left',
-                  padding: '10px 12px', borderBottom: '1px solid var(--border)',
-                  background: 'transparent', cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{e.ticketId || '—'}</div>
-                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                    {e.statut && badge(e.statut, statutColor)}
-                    {e.priorite && badge(e.priorite, prioColor)}
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3, display: 'flex', gap: 8 }}>
-                  {e.codeAssoc && <span>{e.codeAssoc}</span>}
-                  {e.demandeur && <span>{e.demandeur}</span>}
-                  {e.dateModif && <span>{formatDate(e.dateModif)}</span>}
-                </div>
-              </button>
-            );
-          })}
-          {filtered.length === 0 && (
+          {loading && entries.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }} className="animate-pulse">Chargement…</span>
+            </div>
+          ) : error && entries.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 24px' }}>
+              <span style={{ fontSize: 12, color: 'var(--color-error)', textAlign: 'center' }}>⚠ {error}</span>
+            </div>
+          ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)', fontSize: 12 }}>Aucun ticket</div>
+          ) : (
+            filtered.map(e => {
+              const statutColor = colorForStatut(e.statut);
+              const prioColor = colorForPriorite(e.priorite);
+              return (
+                <button
+                  key={e.id}
+                  onClick={() => setModalTicket(e)}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    padding: '10px 12px', borderBottom: '1px solid var(--border)',
+                    background: 'transparent', cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{e.ticketId || '—'}</div>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      {e.statut && badge(e.statut, statutColor)}
+                      {e.priorite && badge(e.priorite, prioColor)}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3, display: 'flex', gap: 8 }}>
+                    {e.codeAssoc && <span>{e.codeAssoc}</span>}
+                    {e.demandeur && <span>{e.demandeur}</span>}
+                    {e.dateModif && <span>{formatDate(e.dateModif)}</span>}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
 
