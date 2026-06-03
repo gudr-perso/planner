@@ -473,7 +473,7 @@ export function Toolbar({
   };
 
   // Vues sans planning (pas de filtres projet/personnes)
-  const isNonPlanningView = view === 'home' || view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis' || view === 'tickets' || view === 'temps' || view === 'postits' || view === 'users';
+  const isNonPlanningView = view === 'home' || view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis' || view === 'tickets' || view === 'temps' || view === 'postits' || view === 'users' || view === 'todo';
 
   // ─── Barre de filtres planification (partagée desktop & mobile dropdown) ───
   const planningFilters = !isNonPlanningView ? (
