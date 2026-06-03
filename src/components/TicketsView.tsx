@@ -174,10 +174,17 @@ function TicketModal({
         <PropRow label="Département" value={ticket.departement} />
         <PropRow label="Conclusion" value={ticket.conclusion} />
 
-        {ticket.lien && (
+        {ticket.ticketId && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 12 }}>
             <span style={{ width: 130, flexShrink: 0, color: 'var(--text-muted)', textAlign: 'right' }}>Lien</span>
-            <a href={ticket.lien} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>{ticket.lien}</a>
+            <a
+              href={`https://cuma.freshservice.com/a/tickets/${ticket.ticketId.replace(/^[A-Za-z]+-/, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--accent)' }}
+            >
+              ↗ Ouvrir dans Freshservice
+            </a>
           </div>
         )}
 
