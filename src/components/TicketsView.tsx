@@ -359,7 +359,7 @@ function TicketsTab({
     if (filterCodeDossier) list = list.filter(e => e.codeDossier.toLowerCase().includes(filterCodeDossier.toLowerCase()));
     if (filterDateFrom) list = list.filter(e => e.dateModif && e.dateModif >= filterDateFrom);
     if (filterDateTo) list = list.filter(e => e.dateModif && e.dateModif <= filterDateTo + 'T23:59:59');
-    if (subTab === 'noassoc') list = list.filter(e => !e.codeAssoc);
+    if (subTab === 'noassoc') list = list.filter(e => !e.codeAssoc && !e.zone && !e.statut.toLowerCase().includes('répondu'));
     else if (subTab === 'arepondu') list = list.filter(e => e.statut.toLowerCase().includes('a répondu') || e.statut.toLowerCase().includes('répondu'));
     else if (subTab === 'zoneneo') list = list.filter(e => !!e.zone);
     else if (subTab === 'prb') list = list.filter(e => e.codeAssoc.toUpperCase().startsWith('PRB'));
