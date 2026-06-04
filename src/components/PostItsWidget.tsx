@@ -312,13 +312,20 @@ function PostItCreatePopup({
             />
           </FormRow>
           <FormRow label="Échéance">
-            <input
-              type="date"
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-              className="w-full text-xs rounded px-2 py-1.5 outline-none"
-              style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-            />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                id="postit-duedate"
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+                className="w-full text-xs rounded px-2 py-1.5 outline-none"
+                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)', paddingRight: 28 }}
+              />
+              <span
+                onClick={() => (document.getElementById('postit-duedate') as HTMLInputElement)?.showPicker?.()}
+                style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', pointerEvents: 'all', lineHeight: 1 }}
+              >📅</span>
+            </div>
           </FormRow>
           {statusOptions.length > 0 && (
             <FormRow label="Statut">
