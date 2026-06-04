@@ -23,11 +23,12 @@ const NOTION_COLOR: Record<string, { bg: string; fg: string }> = {
 
 function colorForStatut(text: string): string {
   const t = text.toLowerCase();
-  if (/termin|clos|fait|résolu|done|valid|résolv/.test(t)) return 'green';
-  if (/cours|traitement|progress|actif|ouvert|en cours/.test(t)) return 'blue';
-  if (/annul|rejet|abandon|refus/.test(t)) return 'gray';
-  if (/bloqu|erreur/.test(t)) return 'red';
-  if (/attente|pending|suspen/.test(t)) return 'yellow';
+  if (/qualif/.test(t)) return 'green';
+  if (/attente|pending/.test(t)) return 'blue';
+  if (/pause|suspen/.test(t)) return 'brown';
+  if (/résolu|résolv|done|valid|termin|fait/.test(t)) return 'yellow';
+  if (/ferm|clos|annul|rejet|abandon|refus/.test(t)) return 'red';
+  if (/ouvert|open/.test(t)) return 'gray';
   return 'gray';
 }
 
