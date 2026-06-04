@@ -302,7 +302,7 @@ function TicketsTab({
   const [filterNiveau, setFilterNiveau] = useState('');
   const [filterZone, setFilterZone] = useState('');
   const [filterCodeDossier, setFilterCodeDossier] = useState('');
-  const [sortKey, setSortKey] = useState<TicketSortKey>('ticketId');
+  const [sortKey, setSortKey] = useState<TicketSortKey>('dateModif');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [subTab, setSubTab] = useState<'all' | 'noassoc' | 'arepondu' | 'zoneneo' | 'prb' | 'sf' | 'chn'>('all');
   const [groupByAssoc, setGroupByAssoc] = useState(true);
