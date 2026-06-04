@@ -303,6 +303,9 @@ function TicketsTab({
   const [filterNiveau, setFilterNiveau] = useState('');
   const [filterZone, setFilterZone] = useState('');
   const [filterCodeDossier, setFilterCodeDossier] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [showDateFilter, setShowDateFilter] = useState(false);
   const [sortKey, setSortKey] = useState<TicketSortKey>('dateModif');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [subTab, setSubTab] = useState<'all' | 'noassoc' | 'arepondu' | 'zoneneo' | 'prb' | 'sf' | 'chn'>('all');
@@ -354,6 +357,8 @@ function TicketsTab({
     if (filterNiveau) list = list.filter(e => e.niveau.includes(filterNiveau));
     if (filterZone) list = list.filter(e => e.zone.includes(filterZone));
     if (filterCodeDossier) list = list.filter(e => e.codeDossier.toLowerCase().includes(filterCodeDossier.toLowerCase()));
+    if (filterDateFrom) list = list.filter(e => e.dateModif && e.dateModif >= filterDateFrom);
+    if (filterDateTo) list = list.filter(e => e.dateModif && e.dateModif <= filterDateTo + 'T23:59:59');
     if (subTab === 'noassoc') list = list.filter(e => !e.codeAssoc);
     else if (subTab === 'arepondu') list = list.filter(e => e.statut.toLowerCase().includes('a répondu') || e.statut.toLowerCase().includes('répondu'));
     else if (subTab === 'zoneneo') list = list.filter(e => !!e.zone);
@@ -366,7 +371,7 @@ function TicketsTab({
       const cmp = va.localeCompare(vb, 'fr', { sensitivity: 'base', numeric: true });
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [entries, search, filterStatut, filterPriorite, filterNiveau, filterZone, filterCodeDossier, sortKey, sortDir, subTab]);
+  }, [entries, search, filterStatut, filterPriorite, filterNiveau, filterZone, filterCodeDossier, filterDateFrom, filterDateTo, sortKey, sortDir, subTab]);
 
   const isGroupable = subTab === 'prb' || subTab === 'sf' || subTab === 'chn';
 
@@ -530,6 +535,18 @@ function TicketsTab({
           <option value="">Zone</option>{allZones.map(v => <option key={v} value={v}>{v}</option>)}
         </select>
         <input style={{ ...inputStyle, width: 140 }} placeholder="Code dossier…" value={filterCodeDossier} onChange={e => setFilterCodeDossier(e.target.value)} />
+        <button
+          onClick={() => { setShowDateFilter(v => !v); if (showDateFilter) { setFilterDateFrom(''); setFilterDateTo(''); } }}
+          style={{ ...btnStyle(showDateFilter || !!(filterDateFrom || filterDateTo)), padding: '4px 8px' }}
+          title="Filtrer par plage de dates de modification"
+        >
+          📅{(filterDateFrom || filterDateTo) ? ' ✕' : ''}
+        </button>
+        {showDateFilter && <>
+          <input type="date" style={{ ...inputStyle, width: 130 }} value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} title="Modifié depuis" />
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→</span>
+          <input type="date" style={{ ...inputStyle, width: 130 }} value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} title="Modifié jusqu'au" />
+        </>}
         {isGroupable && (
           <button onClick={() => setGroupByAssoc(v => !v)} style={btnStyle(groupByAssoc)} title="Regrouper par code association">
             ⊞ Regrouper
