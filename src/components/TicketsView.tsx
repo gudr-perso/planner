@@ -543,9 +543,15 @@ function TicketsTab({
           📅{(filterDateFrom || filterDateTo) ? ' ✕' : ''}
         </button>
         {showDateFilter && <>
-          <input type="date" style={{ ...inputStyle, width: 130 }} value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} title="Modifié depuis" />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input id="tickets-date-from" type="date" style={{ ...inputStyle, width: 130, paddingRight: 26 }} value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} title="Modifié depuis" />
+            <span onClick={() => (document.getElementById('tickets-date-from') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1 }}>📅</span>
+          </div>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→</span>
-          <input type="date" style={{ ...inputStyle, width: 130 }} value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} title="Modifié jusqu'au" />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input id="tickets-date-to" type="date" style={{ ...inputStyle, width: 130, paddingRight: 26 }} value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} title="Modifié jusqu'au" />
+            <span onClick={() => (document.getElementById('tickets-date-to') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1 }}>📅</span>
+          </div>
         </>}
         {isGroupable && (
           <button onClick={() => setGroupByAssoc(v => !v)} style={btnStyle(groupByAssoc)} title="Regrouper par code association">
