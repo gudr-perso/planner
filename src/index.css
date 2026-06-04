@@ -276,6 +276,24 @@ html, body, #root {
   font-size: 13px;
 }
 
+/* Force the gantt library's root to fill its container so the lib's own
+   internal scroll (overflow-y: auto on task list + task content) activates
+   instead of the outer wrapper scrolling and losing the timeline header. */
+[class*="_ganttTableRoot_"] {
+  height: 100%;
+}
+[class*="_ganttTableWrapper_"] {
+  height: 100%;
+  grid-template-rows: min-content 1fr !important;
+}
+[class*="_ganttTaskRoot_"] {
+  height: 100%;
+}
+[class*="_ganttTaskContent_1sr1d"] {
+  flex: 1;
+  min-height: 0;
+}
+
 /* ── Scrollbar thème navy ─────────────────────────────────────────────────── */
 .themed-scroll::-webkit-scrollbar {
   width: 4px;
