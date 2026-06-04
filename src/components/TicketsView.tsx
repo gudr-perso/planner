@@ -24,6 +24,7 @@ const NOTION_COLOR: Record<string, { bg: string; fg: string }> = {
 function colorForStatut(text: string): string {
   const t = text.toLowerCase();
   if (/qualif/.test(t)) return 'green';
+  if (/répondu|repondu/.test(t)) return 'purple';
   if (/attente|pending/.test(t)) return 'blue';
   if (/pause|suspen/.test(t)) return 'brown';
   if (/résolu|résolv|done|valid|termin|fait/.test(t)) return 'yellow';
@@ -360,7 +361,7 @@ function TicketsTab({
     if (filterDateFrom) list = list.filter(e => e.dateModif && e.dateModif >= filterDateFrom);
     if (filterDateTo) list = list.filter(e => e.dateModif && e.dateModif <= filterDateTo + 'T23:59:59');
     if (subTab === 'noassoc') list = list.filter(e => !e.codeAssoc && !e.zone && !e.statut.toLowerCase().includes('répondu'));
-    else if (subTab === 'arepondu') list = list.filter(e => e.statut.toLowerCase().includes('a répondu') || e.statut.toLowerCase().includes('répondu'));
+    else if (subTab === 'arepondu') list = list.filter(e => (e.statut.toLowerCase().includes('a répondu') || e.statut.toLowerCase().includes('répondu')) && !e.zone);
     else if (subTab === 'zoneneo') list = list.filter(e => !!e.zone);
     else if (subTab === 'prb') list = list.filter(e => e.codeAssoc.toUpperCase().startsWith('PRB'));
     else if (subTab === 'sf') list = list.filter(e => e.codeAssoc.toUpperCase().startsWith('SF'));
