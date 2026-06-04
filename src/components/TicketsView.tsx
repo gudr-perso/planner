@@ -10,15 +10,15 @@ import { MobileListCard } from './MobileListCard';
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 const NOTION_COLOR: Record<string, { bg: string; fg: string }> = {
-  gray:    { bg: '#80808022', fg: '#808080' },
-  brown:   { bg: '#9f6b5322', fg: '#9f6b53' },
-  orange:  { bg: '#d9730d22', fg: '#d9730d' },
-  yellow:  { bg: '#ca8a0422', fg: '#ca8a04' },
-  green:   { bg: '#0f7b6c22', fg: '#0f7b6c' },
-  blue:    { bg: '#0b6e9922', fg: '#0b6e99' },
-  purple:  { bg: '#6940a522', fg: '#6940a5' },
-  pink:    { bg: '#ad1a7222', fg: '#ad1a72' },
-  red:     { bg: '#e03e3e22', fg: '#e03e3e' },
+  gray:    { bg: '#80808040', fg: '#b0b0b0' },
+  brown:   { bg: '#9f6b5340', fg: '#c49070' },
+  orange:  { bg: '#d9730d40', fg: '#f0943a' },
+  yellow:  { bg: '#ca8a0440', fg: '#f0b429' },
+  green:   { bg: '#0f7b6c40', fg: '#1fd1b8' },
+  blue:    { bg: '#1a6ecc50', fg: '#5badff' },
+  purple:  { bg: '#6940a540', fg: '#9d6fd6' },
+  pink:    { bg: '#ad1a7240', fg: '#e05aaa' },
+  red:     { bg: '#e03e3e40', fg: '#ff6b6b' },
 };
 
 function colorForStatut(text: string): string {
@@ -54,7 +54,7 @@ function badge(text: string, color?: string) {
     ? { background: c.bg, color: c.fg }
     : { background: 'color-mix(in srgb, var(--text-muted) 12%, transparent)', color: 'var(--text-muted)' };
   return (
-    <span style={{ ...style, fontSize: 10, borderRadius: 4, padding: '1px 6px', display: 'inline-block', marginRight: 2 }}>
+    <span style={{ ...style, fontSize: 11, fontWeight: 600, borderRadius: 5, padding: '2px 8px', display: 'inline-block', marginRight: 2, letterSpacing: '0.02em' }}>
       {text}
     </span>
   );
@@ -255,17 +255,17 @@ function TicketRow({ e, i, onOpen }: { e: TicketEntry; i: number; onOpen: (t: Ti
     >
       <td style={{ padding: '5px 10px', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{e.ticketId || '—'}</td>
       <td style={{ padding: '5px 10px', color: 'var(--text)', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.sujet}</td>
+      <td style={{ padding: '5px 10px' }}>
+        {e.ticketId
+          ? <a href={`https://cuma.freshservice.com/a/tickets/${num}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontSize: 11 }} onClick={ev => ev.stopPropagation()}>↗ Ouvrir</a>
+          : '—'}
+      </td>
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.codeAssoc || '—'}</td>
       <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.statut ? badge(e.statut, colorForStatut(e.statut)) : '—'}</td>
       <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.priorite ? badge(e.priorite, colorForPriorite(e.priorite)) : '—'}</td>
       <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>{e.niveau ? badge(e.niveau, colorForNiveau(e.niveau)) : '—'}</td>
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDate(e.dateModif)}</td>
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.demandeur || '—'}</td>
-      <td style={{ padding: '5px 10px' }}>
-        {e.ticketId
-          ? <a href={`https://cuma.freshservice.com/a/tickets/${num}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontSize: 11 }} onClick={ev => ev.stopPropagation()}>↗ Ouvrir</a>
-          : '—'}
-      </td>
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.memo || '—'}</td>
     </tr>
   );
@@ -549,13 +549,13 @@ function TicketsTab({
             <tr>
               <SortTh col="ticketId" label="ID" />
               <SortTh col="sujet" label="Sujet" />
+              <th style={{ padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, background: 'var(--bg-deep)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0 }}>Lien</th>
               <SortTh col="codeAssoc" label="Code Asso." />
               <SortTh col="statut" label="Statut" />
               <SortTh col="priorite" label="Priorité" />
               <SortTh col="niveau" label="Niveau" />
               <SortTh col="dateModif" label="Modif." />
               <SortTh col="demandeur" label="Demandeur" />
-              <th style={{ padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, background: 'var(--bg-deep)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0 }}>Lien</th>
               <SortTh col="memo" label="Mémo" />
             </tr>
           </thead>
