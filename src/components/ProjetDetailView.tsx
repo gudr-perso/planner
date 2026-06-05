@@ -225,6 +225,7 @@ function DetailPanel({
   blocksLoading,
   blocksError,
   onClose,
+  token,
 }: {
   title: string;
   url: string | null;
@@ -232,6 +233,7 @@ function DetailPanel({
   blocksLoading: boolean;
   blocksError: string | null;
   onClose: () => void;
+  token: string;
 }) {
   const [exporting, setExporting] = useState(false);
 
@@ -241,9 +243,9 @@ function DetailPanel({
     try {
       const pdfMakeModule  = await import('pdfmake/build/pdfmake');
       const pdfFontsModule = await import('pdfmake/build/vfs_fonts');
-      const pdfMake = (pdfMakeModule as Record<string, unknown>).default ?? pdfMakeModule;
-      const pdfFonts = (pdfFontsModule as Record<string, unknown>).default ?? pdfFontsModule;
-      (pdfMake as Record<string, unknown>).vfs = (pdfFonts as Record<string, unknown & { pdfMake?: { vfs?: unknown } }>).pdfMake?.vfs ?? (pdfFonts as Record<string, unknown>).vfs ?? pdfFonts;
+      const pdfMake  = pdfMakeModule.default ?? pdfMakeModule;
+      const pdfFonts = pdfFontsModule.default ?? pdfFontsModule;
+      pdfMake.vfs = pdfFonts.pdfMake.vfs;
 
       const contentBlocks = blocksToPdfContent(blocks);
 
@@ -266,8 +268,7 @@ function DetailPanel({
       };
 
       const safeTitle = title.replace(/[/\\:*?"<>|]/g, '_').slice(0, 60);
-      await (pdfMake as { createPdf: (d: unknown) => { download: (n: string) => Promise<void> } })
-        .createPdf(docDef).download(`${safeTitle}.pdf`);
+      pdfMake.createPdf(docDef as Record<string, unknown>).download(`${safeTitle}.pdf`);
     } finally {
       setExporting(false);
     }
@@ -549,6 +550,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               blocksLoading={blocksLoading}
               blocksError={blocksError}
               onClose={closeDetail}
+              token={token}
             />
           </div>
         )}
