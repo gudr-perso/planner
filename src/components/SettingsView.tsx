@@ -244,6 +244,18 @@ function CapProjetsSection({ token, projetsConfig, setProjetsConfig }: {
         <PropSelect value={projetsConfig.statutField ?? ''} onChange={v => setProjetsConfig(p => ({ ...p, statutField: v }))} schema={schema} />
       </FieldRow>
       <FieldRow label="Code projet"><PropCombo value={projetsConfig.codeProjetField ?? ''} onChange={v => setProjetsConfig(p => ({ ...p, codeProjetField: v }))} schema={schema} placeholder="Champ contenant le code unique (ex: PJ-8)…" /></FieldRow>
+      <FieldRow label="Champ code client">
+        <PropCombo value={projetsConfig.codeClientField ?? ''} onChange={v => setProjetsConfig(p => ({ ...p, codeClientField: v || undefined }))} schema={schema} placeholder="ex: Code Client" />
+        <select
+          value={projetsConfig.codeClientFieldType ?? 'rich_text'}
+          onChange={e => setProjetsConfig(p => ({ ...p, codeClientFieldType: e.target.value }))}
+          className="text-xs rounded px-2 py-1.5 outline-none shrink-0"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+        >
+          <option value="rich_text">Texte</option>
+          <option value="formula">Formule</option>
+        </select>
+      </FieldRow>
     </section>
   );
 }
