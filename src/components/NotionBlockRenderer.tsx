@@ -350,6 +350,64 @@ function ColumnListBlock({ block }: { block: NotionBlock }) {
   );
 }
 
+// ── TableBlock : table + table_row ────────────────────────────────────────────
+function TableBlock({ block }: { block: NotionBlock }) {
+  const tableData = block.table as Record<string, unknown> | undefined;
+  const hasColumnHeader = !!(tableData?.has_column_header);
+  const { kids: rows, loading } = useBlockChildren(block, true /* fetchOnMount */);
+
+  if (loading) {
+    return (
+      <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', margin: '6px 0' }}>
+        Chargement tableau…
+      </span>
+    );
+  }
+  if (rows.length === 0) return null;
+
+  return (
+    <div style={{ overflowX: 'auto', margin: '10px 0' }}>
+      <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%', tableLayout: 'auto' }}>
+        <tbody>
+          {rows.map((row, rowIdx) => {
+            const cells = ((row.table_row as Record<string, unknown>)?.cells as NotionRichText[][]) ?? [];
+            const isHeader = hasColumnHeader && rowIdx === 0;
+            return (
+              <tr
+                key={row.id}
+                style={{
+                  background: isHeader
+                    ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-deep))'
+                    : rowIdx % 2 === 0 ? 'transparent' : 'color-mix(in srgb, var(--bg-deep) 60%, transparent)',
+                }}
+              >
+                {cells.map((cell, cellIdx) => {
+                  const Tag = isHeader ? 'th' : 'td';
+                  return (
+                    <Tag
+                      key={cellIdx}
+                      style={{
+                        padding: '5px 10px',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text)',
+                        fontWeight: isHeader ? 600 : 400,
+                        textAlign: 'left',
+                        verticalAlign: 'top',
+                      }}
+                    >
+                      {cell.length > 0 ? <RichText parts={cell} /> : null}
+                    </Tag>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── BlockItem ──────────────────────────────────────────────────────────────────
 function BlockItem({ block, listIndex }: {
   block: NotionBlock;
@@ -518,6 +576,13 @@ function BlockItem({ block, listIndex }: {
 
     case 'tab':
       return <TabBlock block={block} />;
+
+    case 'table':
+      return <TableBlock block={block} />;
+
+    case 'table_row':
+      // Rendu directement par TableBlock ; ne devrait pas arriver seul
+      return null;
 
     // Blocs non exposés par l'API Notion → silencer (ne pas afficher le message d'erreur)
     case 'unsupported':
