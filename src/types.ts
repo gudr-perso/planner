@@ -338,6 +338,7 @@ export type ProjetsConfig = {
   typeProjetField: string; // select
   dateDebutField: string;  // date
   statutField: string;     // status/select
+  codeProjetField?: string; // formula/text/number → code unique du projet (ex: "PJ-8")
 };
 
 export type ProjetEntry = {
@@ -350,6 +351,7 @@ export type ProjetEntry = {
   statut: string;
   statutColor?: string;
   notion_url?: string;
+  codeProjet?: string;     // code unique lu depuis codeProjetField (ex: "PJ-8")
 };
 
 // ── Tâches (CAP Consulting) ───────────────────────────────────────────────────

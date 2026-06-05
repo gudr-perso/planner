@@ -28,7 +28,7 @@ let _projetsCache: ProjetEntry[] | null = null;
 let _projetsCacheKey = '';
 
 interface Props {
-  onSelectProjet: (id: string, nom: string) => void;
+  onSelectProjet: (id: string, nom: string, code?: string) => void;
 }
 
 export default function ProjetsView({ onSelectProjet }: Props) {
@@ -142,7 +142,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
               {sorted.map(p => (
                 <tr
                   key={p.id}
-                  onClick={() => onSelectProjet(p.id, p.nom)}
+                  onClick={() => onSelectProjet(p.id, p.nom, p.codeProjet)}
                   className="cursor-pointer"
                   style={{ borderBottom: '1px solid var(--border)' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card)')}

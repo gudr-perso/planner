@@ -196,6 +196,7 @@ function DetailPanel({
 interface Props {
   projetId: string;
   projetNom: string;
+  projetCode?: string;
   onBack: () => void;
 }
 
@@ -203,7 +204,7 @@ type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges' | 'documents' | 'tem
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export default function ProjetDetailView({ projetId, projetNom, onBack }: Props) {
+export default function ProjetDetailView({ projetId, projetNom, projetCode, onBack }: Props) {
   const notionCfg = load<NotionConfig>('notionConfig', {
     integrationToken: '', databaseId: '', fieldMap: {}, statusMappings: [],
   });
@@ -334,6 +335,7 @@ export default function ProjetDetailView({ projetId, projetNom, onBack }: Props)
           {activeTab === 'sousTaches' && (
             <SousTachesTab
               projetId={projetId}
+              projetCode={projetCode}
               token={token}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
@@ -344,6 +346,7 @@ export default function ProjetDetailView({ projetId, projetNom, onBack }: Props)
           {activeTab === 'suivi' && (
             <SuiviProjetTab
               projetId={projetId}
+              projetCode={projetCode}
               token={token}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
@@ -362,6 +365,7 @@ export default function ProjetDetailView({ projetId, projetNom, onBack }: Props)
           {activeTab === 'documents' && (
             <DocumentsTab
               projetId={projetId}
+              projetCode={projetCode}
               token={token}
               selectedId={selectedId}
               onSelectRow={openDetail}
@@ -370,6 +374,7 @@ export default function ProjetDetailView({ projetId, projetNom, onBack }: Props)
           {activeTab === 'temps' && (
             <TempsProjetTab
               projetId={projetId}
+              projetCode={projetCode}
               token={token}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
@@ -568,6 +573,7 @@ function SousTacheRow({ e, selectedId, onSelectRow }: {
 
 function SousTachesTab({
   projetId,
+  projetCode,
   token,
   tacheIdToName,
   tachesReady,
@@ -575,6 +581,7 @@ function SousTachesTab({
   onSelectRow,
 }: {
   projetId: string;
+  projetCode?: string;
   token: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
@@ -604,7 +611,7 @@ function SousTachesTab({
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
     setLoading(true);
-    fetchSousTaches(token, config, tacheIdToName, projetId)
+    fetchSousTaches(token, config, tacheIdToName, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
@@ -781,6 +788,7 @@ function SousTachesTab({
 
 function SuiviProjetTab({
   projetId,
+  projetCode,
   token,
   tacheIdToName,
   tachesReady,
@@ -788,6 +796,7 @@ function SuiviProjetTab({
   onSelectRow,
 }: {
   projetId: string;
+  projetCode?: string;
   token: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
@@ -808,7 +817,7 @@ function SuiviProjetTab({
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
     setLoading(true);
-    fetchSuivisProjet(token, config, tacheIdToName, projetId)
+    fetchSuivisProjet(token, config, tacheIdToName, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
@@ -1080,11 +1089,13 @@ function EchangesTab({
 
 function DocumentsTab({
   projetId,
+  projetCode,
   token,
   selectedId,
   onSelectRow,
 }: {
   projetId: string;
+  projetCode?: string;
   token: string;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
@@ -1101,7 +1112,7 @@ function DocumentsTab({
   useEffect(() => {
     if (!token || !config.databaseId) return;
     setLoading(true);
-    fetchDocuments(token, config, projetId)
+    fetchDocuments(token, config, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
@@ -1212,6 +1223,7 @@ function TempsRow({ e, selectedId, onSelectRow }: {
 
 function TempsProjetTab({
   projetId,
+  projetCode,
   token,
   tacheIdToName,
   tachesReady,
@@ -1219,6 +1231,7 @@ function TempsProjetTab({
   onSelectRow,
 }: {
   projetId: string;
+  projetCode?: string;
   token: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
@@ -1244,7 +1257,7 @@ function TempsProjetTab({
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
     setLoading(true);
-    fetchTempsProjet(token, config, tacheIdToName, projetId)
+    fetchTempsProjet(token, config, tacheIdToName, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));

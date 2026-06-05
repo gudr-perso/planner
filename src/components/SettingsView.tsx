@@ -243,6 +243,7 @@ function CapProjetsSection({ token, projetsConfig, setProjetsConfig }: {
       <FieldRow label="Statut">
         <PropSelect value={projetsConfig.statutField ?? ''} onChange={v => setProjetsConfig(p => ({ ...p, statutField: v }))} schema={schema} />
       </FieldRow>
+      <FieldRow label="Code projet"><PropCombo value={projetsConfig.codeProjetField ?? ''} onChange={v => setProjetsConfig(p => ({ ...p, codeProjetField: v }))} schema={schema} placeholder="Champ contenant le code unique (ex: PJ-8)…" /></FieldRow>
     </section>
   );
 }

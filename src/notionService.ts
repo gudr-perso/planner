@@ -1321,7 +1321,8 @@ export async function fetchProjets(token: string, config: ProjetsConfig): Promis
       const dateDebut = (props[config.dateDebutField]?.date as { start?: string } | null)?.start ?? null;
       const statut = config.statutField ? selectName(props[config.statutField]) : '';
       const statutColor = config.statutField ? selectColor(props[config.statutField]) : 'default';
-      results.push({ id: page.id, nom, tiers, tiersId, typeProjet, dateDebut, statut, statutColor, notion_url: page.url });
+      const codeProjet = config.codeProjetField ? readFieldAsString(props[config.codeProjetField]) : undefined;
+      results.push({ id: page.id, nom, tiers, tiersId, typeProjet, dateDebut, statut, statutColor, notion_url: page.url, codeProjet });
     }
     cursor = (data.next_cursor as string | null) ?? undefined;
   } while (cursor);
@@ -1386,11 +1387,32 @@ export async function fetchTaches(
 
 // ── Helpers filtrage projet ───────────────────────────────────────────────────
 
-function buildProjetFilter(field: string, fieldType: string, projetId: string): Record<string, unknown> | undefined {
-  if (!field || !projetId) return undefined;
-  if (fieldType === 'relation') return { property: field, relation: { contains: projetId } };
-  if (fieldType === 'formula')  return { property: field, formula: { string: { equals: projetId } } };
-  return { property: field, rich_text: { equals: projetId } };
+function readFieldAsString(prop: PropVal): string {
+  if (!prop) return '';
+  const f = (prop as Record<string, unknown>).formula as Record<string, unknown> | undefined;
+  if (f) return f.type === 'string' ? String(f.string ?? '') : String(f.number ?? '');
+  const rt = (prop as Record<string, unknown>).rich_text;
+  if (rt) return plainText(prop);
+  const num = (prop as Record<string, unknown>).number;
+  if (num !== undefined && num !== null) return String(num);
+  return '';
+}
+
+function buildProjetFilter(
+  field: string,
+  fieldType: string,
+  projetId: string,
+  projetCode?: string,
+): Record<string, unknown> | undefined {
+  if (!field) return undefined;
+  if (fieldType === 'relation') {
+    if (!projetId) return undefined;
+    return { property: field, relation: { contains: projetId } };
+  }
+  const value = projetCode ?? projetId;
+  if (!value) return undefined;
+  if (fieldType === 'formula') return { property: field, formula: { string: { equals: value } } };
+  return { property: field, rich_text: { equals: value } };
 }
 
 async function queryWithFilter(
@@ -1418,11 +1440,12 @@ export async function fetchSousTaches(
   config: SousTachesConfig,
   tacheIdToName: Map<string, string>,
   projetId?: string,
+  projetCode?: string,
 ): Promise<SousTacheEntry[]> {
   if (!config.databaseId) return [];
 
   const filter = config.projetFilterField && projetId
-    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId)
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
     : undefined;
 
   const allPages = await queryWithFilter(token, config.databaseId, filter);
@@ -1461,11 +1484,12 @@ export async function fetchSuivisProjet(
   config: SuiviProjetConfig,
   tacheIdToName: Map<string, string>,
   projetId?: string,
+  projetCode?: string,
 ): Promise<SuiviProjetEntry[]> {
   if (!config.databaseId) return [];
 
   const filter = config.projetFilterField && projetId
-    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId)
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
     : undefined;
 
   const allPages = await queryWithFilter(token, config.databaseId, filter);
@@ -1566,11 +1590,12 @@ export async function fetchDocuments(
   token: string,
   config: DocumentsConfig,
   projetId: string,
+  projetCode?: string,
 ): Promise<DocumentEntry[]> {
   if (!config.databaseId) return [];
 
   const filter = config.projetFilterField && projetId
-    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId)
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
     : undefined;
 
   const allPages = await queryWithFilter(token, config.databaseId, filter);
@@ -1594,11 +1619,12 @@ export async function fetchTempsProjet(
   config: TempsProjetConfig,
   tacheIdToName: Map<string, string>,
   projetId?: string,
+  projetCode?: string,
 ): Promise<TempsProjetEntry[]> {
   if (!config.databaseId) return [];
 
   const filter = config.projetFilterField && projetId
-    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId)
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
     : undefined;
 
   const allPages = await queryWithFilter(token, config.databaseId, filter);

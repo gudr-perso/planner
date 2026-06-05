@@ -105,6 +105,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const [partenaireFilter, setPartenaireFilter] = useState<PartenaireEntry | null>(null);
   const [selectedProjetId, setSelectedProjetId] = useState<string>('');
   const [selectedProjetNom, setSelectedProjetNom] = useState<string>('');
+  const [selectedProjetCode, setSelectedProjetCode] = useState<string | undefined>(undefined);
   const [suivisSearch, setSuivisSearch] = useState('');
   const googleClientId = load<string>('gcalClientId', '');
   const [dataSource, setDataSource] = useState<'demo' | 'notion'>(() => load<'demo' | 'notion'>('dataSource', 'demo'));
@@ -460,9 +461,10 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                   : view === 'postits' ? <PostItsView refreshKey={viewRefreshKeys['postits'] ?? 0} />
                   : view === 'clients' ? <ClientsView />
                   : view === 'projets' ? (
-                    <ProjetsView onSelectProjet={(id, nom) => {
+                    <ProjetsView onSelectProjet={(id, nom, code) => {
                       setSelectedProjetId(id);
                       setSelectedProjetNom(nom);
+                      setSelectedProjetCode(code);
                       setView('projet-detail');
                     }} />
                   )
@@ -470,6 +472,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                     <ProjetDetailView
                       projetId={selectedProjetId}
                       projetNom={selectedProjetNom}
+                      projetCode={selectedProjetCode}
                       onBack={() => setView('projets')}
                     />
                   )
