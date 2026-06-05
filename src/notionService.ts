@@ -1509,6 +1509,25 @@ export async function fetchEchanges(
   }
   const contactIdToTitle = contactIds.size > 0 ? await resolvePageTitles(token, contactIds) : new Map<string, string>();
 
+  // Résoudre les relations Suivi et Tâche
+  const allSuiviIds = new Set<string>();
+  const allTacheIds = new Set<string>();
+  for (const page of allPages) {
+    const props = page.properties ?? {};
+    if (config.suiviField) {
+      const rels = ((props[config.suiviField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? [];
+      rels.forEach(r => allSuiviIds.add(r.id));
+    }
+    if (config.tacheField) {
+      const rels = ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? [];
+      rels.forEach(r => allTacheIds.add(r.id));
+    }
+  }
+  const [suiviTitles, tacheTitles] = await Promise.all([
+    resolvePageTitles(token, allSuiviIds),
+    resolvePageTitles(token, allTacheIds),
+  ]);
+
   const results: EchangeEntry[] = [];
   for (const page of allPages) {
     const props = page.properties ?? {};
@@ -1521,7 +1540,18 @@ export async function fetchEchanges(
       ? ((props[config.contactField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
       : [];
     const contact = contactRels.map(r => contactIdToTitle.get(r.id) ?? '').filter(Boolean);
-    results.push({ id: page.id, nom, date, canal, canalColor, contact, notion_url: page.url });
+
+    const suiviRels = config.suiviField
+      ? ((props[config.suiviField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
+      : [];
+    const suivi = suiviRels.map(r => suiviTitles.get(r.id) ?? r.id.slice(0, 8)).filter(Boolean);
+
+    const tacheRels = config.tacheField
+      ? ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
+      : [];
+    const tacheNoms = tacheRels.map(r => tacheTitles.get(r.id) ?? r.id.slice(0, 8)).filter(Boolean);
+
+    results.push({ id: page.id, nom, date, canal, canalColor, contact, suivi, tacheNoms, notion_url: page.url });
   }
   return results;
 }

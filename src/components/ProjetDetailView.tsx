@@ -775,13 +775,14 @@ function EchangesTab({
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
   const config = load<EchangesConfig>('echangesConfig', {
-    databaseId: '', nomField: 'Name', dateField: '', canalField: '', contactField: '', projetField: '',
+    databaseId: '', nomField: 'Name', dateField: '', canalField: '',
+    contactField: '', projetField: '', suiviField: '', tacheField: '',
   });
 
   const [entries, setEntries] = useState<EchangeEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [sort, setSort] = useState<{ col: 'nom' | 'date' | 'canal'; dir: 'asc' | 'desc' }>({ col: 'date', dir: 'desc' });
+  const [sort, setSort] = useState<{ col: 'nom' | 'date' | 'canal' | 'contact' | 'suivi' | 'tacheNoms'; dir: 'asc' | 'desc' }>({ col: 'date', dir: 'desc' });
 
   useEffect(() => {
     if (!token || !config.databaseId) return;
@@ -793,8 +794,14 @@ function EchangesTab({
   }, [token, projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sorted = useMemo(() => [...entries].sort((a, b) => {
-    const va = sort.col === 'date' ? (a.date ?? '') : String(a[sort.col] ?? '');
-    const vb = sort.col === 'date' ? (b.date ?? '') : String(b[sort.col] ?? '');
+    let va: string, vb: string;
+    if (sort.col === 'date') {
+      va = a.date ?? ''; vb = b.date ?? '';
+    } else if (sort.col === 'contact' || sort.col === 'suivi' || sort.col === 'tacheNoms') {
+      va = a[sort.col][0] ?? ''; vb = b[sort.col][0] ?? '';
+    } else {
+      va = String(a[sort.col] ?? ''); vb = String(b[sort.col] ?? '');
+    }
     return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
   }), [entries, sort]);
 
@@ -810,6 +817,9 @@ function EchangesTab({
     { key: 'nom', label: 'Nom' },
     { key: 'date', label: 'Date' },
     { key: 'canal', label: 'Canal' },
+    { key: 'contact', label: 'Contact' },
+    { key: 'suivi', label: 'Suivi' },
+    { key: 'tacheNoms', label: 'Tâche' },
   ];
 
   return (
@@ -831,7 +841,6 @@ function EchangesTab({
                     {label}{sort.col === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
                   </th>
                 ))}
-                <th className="text-left px-3 py-2 font-medium">Contact</th>
                 <th className="text-left px-3 py-2 font-medium">Lien</th>
               </tr>
             </thead>
@@ -852,12 +861,14 @@ function EchangesTab({
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date)}</td>
                   <td className="px-3 py-2"><Badge label={e.canal} color={e.canalColor} /></td>
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.contact.join(', ') || '—'}</td>
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.suivi.join(', ') || '—'}</td>
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
                   <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
                 </tr>
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucun échange.
                   </td>
                 </tr>

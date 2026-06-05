@@ -481,6 +481,8 @@ export type EchangesConfig = {
   canalField: string;
   contactField: string;          // relation → contacts
   projetField: string;           // relation → Projets (pour filtrage)
+  suiviField: string;            // relation → Suivi
+  tacheField: string;            // relation → Tâches
 };
 
 export type EchangeEntry = {
@@ -490,5 +492,7 @@ export type EchangeEntry = {
   canal: string;
   canalColor?: string;
   contact: string[];             // noms résolus
+  suivi: string[];               // noms résolus
+  tacheNoms: string[];           // noms résolus
   notion_url?: string;
 };
