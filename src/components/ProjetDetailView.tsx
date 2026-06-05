@@ -111,11 +111,17 @@ const tabInputStyle: React.CSSProperties = {
 
 type PdfContent = Record<string, unknown>;
 
+// Roboto ne supporte pas les emoji — on les supprime du texte PDF
+const EMOJI_RE = /[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]️?|[\u{2300}-\u{23FF}]|️/gu;
+function noEmoji(s: string): string {
+  return s.replace(EMOJI_RE, '').trim();
+}
+
 function richTextToPdf(parts: NotionRichText[]): PdfContent[] {
   if (!parts || parts.length === 0) return [{ text: '' }];
   return parts.map(p => {
     const ann = p.annotations ?? {};
-    const obj: PdfContent = { text: p.plain_text ?? '' };
+    const obj: PdfContent = { text: noEmoji(p.plain_text ?? '') };
     if (ann.bold) obj.bold = true;
     if (ann.italic) obj.italics = true;
     if (ann.underline) obj.decoration = 'underline';
@@ -154,7 +160,7 @@ function blocksToPdfContent(blocks: NotionBlock[]): PdfContent[] {
         break;
       case 'to_do': {
         const checked = !!((block.to_do as Record<string, unknown>)?.checked);
-        content.push({ text: [{ text: checked ? '☑ ' : '☐ ', color: '#718096' }, ...rtPdf], margin: [8, 1, 0, 1], fontSize: 10, color: '#1A202C' });
+        content.push({ text: [{ text: checked ? '[x] ' : '[ ] ', color: '#718096' }, ...rtPdf], margin: [8, 1, 0, 1], fontSize: 10, color: '#1A202C' });
         break;
       }
       case 'quote':
@@ -164,9 +170,8 @@ function blocksToPdfContent(blocks: NotionBlock[]): PdfContent[] {
         });
         break;
       case 'callout': {
-        const icon = ((block.callout as Record<string, unknown>)?.icon as Record<string, unknown>)?.emoji as string ?? '💡';
         content.push({
-          table: { widths: ['auto', '*'], body: [[{ text: icon, fontSize: 12, border: [false, false, false, false] }, { text: rtPdf, fontSize: 10, border: [false, false, false, false] }]] },
+          table: { widths: ['auto', '*'], body: [[{ text: '▸', fontSize: 10, color: '#718096', border: [false, false, false, false] }, { text: rtPdf, fontSize: 10, border: [false, false, false, false] }]] },
           fillColor: '#F8FAFC', layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 6, paddingRight: () => 6, paddingTop: () => 5, paddingBottom: () => 5 },
           margin: [0, 6, 0, 6],
         });
@@ -191,7 +196,7 @@ function blocksToPdfContent(blocks: NotionBlock[]): PdfContent[] {
           const tableBody = kids.map((row, rowIdx) => {
             const cells = ((row.table_row as Record<string, unknown>)?.cells as NotionRichText[][]) ?? [];
             return cells.map(cell => ({
-              text: cell.map(p => p.plain_text).join('') || ' ',
+              text: noEmoji(cell.map(p => p.plain_text).join('')) || ' ',
               fontSize: 9,
               bold: hasColHeader && rowIdx === 0,
               fillColor: hasColHeader && rowIdx === 0 ? '#F7FAFC' : undefined,
