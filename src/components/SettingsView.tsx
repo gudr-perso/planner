@@ -23,6 +23,7 @@ import type {
   SuiviProjetConfig,
   TachesConfig,
   TempsConfig,
+  TempsProjetConfig,
   TicketsConfig,
 } from '../types';
 import { STATUS_LABELS, STATUS_COLORS } from '../types';
@@ -456,6 +457,40 @@ function CapDocumentsSection({ token, documentsConfig, setDocumentsConfig }: {
   );
 }
 
+function CapTempsSection({ token, tempsProjetConfig, setTempsProjetConfig }: {
+  token: string;
+  tempsProjetConfig: TempsProjetConfig;
+  setTempsProjetConfig: React.Dispatch<React.SetStateAction<TempsProjetConfig>>;
+}) {
+  const [schema, setSchema] = useState<NotionPropertySchema[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSchema() {
+    if (!token || !tempsProjetConfig.databaseId) return;
+    setLoading(true);
+    try { setSchema(await fetchDatabaseSchema(token, tempsProjetConfig.databaseId)); } finally { setLoading(false); }
+  }
+
+  return (
+    <section className="mb-8">
+      <SectionTitle>Base Temps</SectionTitle>
+      <FieldRow label="Database ID">
+        <input className="flex-1 text-xs rounded px-2 py-1.5 font-mono" style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={tempsProjetConfig.databaseId} onChange={e => setTempsProjetConfig(p => ({ ...p, databaseId: e.target.value }))} placeholder="ID de la base Temps Notion" />
+        <button onClick={loadSchema} disabled={loading} className="text-xs px-3 py-1.5 rounded" style={{ background: 'var(--border)', color: 'var(--text)' }}>
+          {loading ? '…' : 'Charger'}
+        </button>
+      </FieldRow>
+      <FieldRow label="Description"><PropCombo value={tempsProjetConfig.descriptionField} onChange={v => setTempsProjetConfig(p => ({ ...p, descriptionField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Début session"><PropSelect value={tempsProjetConfig.debutField} onChange={v => setTempsProjetConfig(p => ({ ...p, debutField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Fin session"><PropSelect value={tempsProjetConfig.finField} onChange={v => setTempsProjetConfig(p => ({ ...p, finField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Durée (min)"><PropSelect value={tempsProjetConfig.dureeMinField} onChange={v => setTempsProjetConfig(p => ({ ...p, dureeMinField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Durée (h)"><PropSelect value={tempsProjetConfig.dureeHField} onChange={v => setTempsProjetConfig(p => ({ ...p, dureeHField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Tâches (relation)"><PropCombo value={tempsProjetConfig.tacheField} onChange={v => setTempsProjetConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
+    </section>
+  );
+}
+
 export function SettingsView({
   onSync,
   onGcalClientIdSave,
@@ -561,6 +596,12 @@ export function SettingsView({
   const [documentsConfig, setDocumentsConfig] = useState<DocumentsConfig>(() =>
     load<DocumentsConfig>('documentsConfig', {
       databaseId: '', nomField: 'Name', statutField: '',
+    })
+  );
+  const [tempsProjetConfig, setTempsProjetConfig] = useState<TempsProjetConfig>(() =>
+    load<TempsProjetConfig>('tempsProjetConfig', {
+      databaseId: '', descriptionField: 'Name', debutField: '', finField: '',
+      dureeMinField: '', dureeHField: '', tacheField: '',
     })
   );
 
@@ -765,6 +806,7 @@ export function SettingsView({
     save('suiviProjetConfig', suiviProjetConfig);
     save('echangesConfig', echangesConfig);
     save('documentsConfig', documentsConfig);
+    save('tempsProjetConfig', tempsProjetConfig);
     flash('Configuration sauvegardée');
   };
 
@@ -1798,6 +1840,11 @@ export function SettingsView({
               token={config.integrationToken}
               documentsConfig={documentsConfig}
               setDocumentsConfig={setDocumentsConfig}
+            />
+            <CapTempsSection
+              token={config.integrationToken}
+              tempsProjetConfig={tempsProjetConfig}
+              setTempsProjetConfig={setTempsProjetConfig}
             />
           </div>
         )}

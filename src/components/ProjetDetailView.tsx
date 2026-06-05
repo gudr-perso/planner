@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
-import { fetchTaches, fetchSousTaches, fetchSuivisProjet, fetchEchanges, fetchDocuments, fetchPageBlocks } from '../notionService';
+import { fetchTaches, fetchSousTaches, fetchSuivisProjet, fetchEchanges, fetchDocuments, fetchTempsProjet, fetchPageBlocks } from '../notionService';
 import type {
   DocumentEntry,
   DocumentsConfig,
@@ -14,6 +14,8 @@ import type {
   SuiviProjetConfig,
   TacheEntry,
   TachesConfig,
+  TempsProjetConfig,
+  TempsProjetEntry,
 } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
@@ -45,6 +47,18 @@ function formatDate(iso: string | null): string {
   if (!iso) return '—';
   try {
     return new Date(iso).toLocaleDateString('fr-FR');
+  } catch {
+    return iso;
+  }
+}
+
+function formatDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString('fr-FR');
+    const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return `${date} ${time}`;
   } catch {
     return iso;
   }
@@ -159,7 +173,7 @@ interface Props {
   onBack: () => void;
 }
 
-type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges' | 'documents';
+type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges' | 'documents' | 'temps';
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
@@ -240,6 +254,7 @@ export default function ProjetDetailView({ projetId, projetNom, onBack }: Props)
     { id: 'suivi', label: 'Suivi' },
     { id: 'echanges', label: 'Echanges' },
     { id: 'documents', label: 'Documents' },
+    { id: 'temps', label: 'Temps' },
   ];
 
   return (
@@ -322,6 +337,16 @@ export default function ProjetDetailView({ projetId, projetNom, onBack }: Props)
             <DocumentsTab
               projetId={projetId}
               token={token}
+              selectedId={selectedId}
+              onSelectRow={openDetail}
+            />
+          )}
+          {activeTab === 'temps' && (
+            <TempsProjetTab
+              projetId={projetId}
+              token={token}
+              tacheIdToName={tacheIdToName}
+              tachesReady={!tachesLoading}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -939,6 +964,124 @@ function DocumentsTab({
                 <tr>
                   <td colSpan={3} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucun document.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── TempsProjetTab ────────────────────────────────────────────────────────────
+
+function TempsProjetTab({
+  projetId: _projetId,
+  token,
+  tacheIdToName,
+  tachesReady,
+  selectedId,
+  onSelectRow,
+}: {
+  projetId: string;
+  token: string;
+  tacheIdToName: Map<string, string>;
+  tachesReady: boolean;
+  selectedId: string | null;
+  onSelectRow: (id: string, title: string, url?: string) => void;
+}) {
+  const config = load<TempsProjetConfig>('tempsProjetConfig', {
+    databaseId: '', descriptionField: 'Name', debutField: '', finField: '',
+    dureeMinField: '', dureeHField: '', tacheField: '',
+  });
+
+  const [entries, setEntries] = useState<TempsProjetEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [sort, setSort] = useState<{ col: 'description' | 'debut' | 'fin' | 'dureeMin' | 'dureeH'; dir: 'asc' | 'desc' }>({ col: 'debut', dir: 'desc' });
+
+  useEffect(() => {
+    if (!tachesReady || !token || !config.databaseId) return;
+    setLoading(true);
+    fetchTempsProjet(token, config, tacheIdToName)
+      .then(setEntries)
+      .catch(e => setError(String(e)))
+      .finally(() => setLoading(false));
+  }, [tachesReady, token, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sorted = useMemo(() => [...entries].sort((a, b) => {
+    const va = (sort.col === 'debut' || sort.col === 'fin') ? (a[sort.col] ?? '') : String(a[sort.col] ?? '');
+    const vb = (sort.col === 'debut' || sort.col === 'fin') ? (b[sort.col] ?? '') : String(b[sort.col] ?? '');
+    return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
+  }), [entries, sort]);
+
+  function toggleSort(col: typeof sort.col) {
+    setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
+  }
+
+  if (!config.databaseId) {
+    return <EmptyConfig message="Configurez la base Temps dans les Paramètres > CAP CONSULTING." />;
+  }
+
+  const colHeaders: Array<{ key: typeof sort.col; label: string }> = [
+    { key: 'description', label: 'Description' },
+    { key: 'debut', label: 'Début session' },
+    { key: 'fin', label: 'Fin session' },
+    { key: 'dureeMin', label: 'Durée (min)' },
+    { key: 'dureeH', label: 'Durée (h)' },
+  ];
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          {sorted.length} session{sorted.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="flex-1 overflow-auto">
+        {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
+        {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
+        {!loading && !error && (
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                {colHeaders.map(({ key, label }) => (
+                  <th key={key} onClick={() => toggleSort(key)} className="text-left px-3 py-2 cursor-pointer select-none font-medium">
+                    {label}{sort.col === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
+                  </th>
+                ))}
+                <th className="text-left px-3 py-2 font-medium">Tâches</th>
+                <th className="text-left px-3 py-2 font-medium">Lien</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(e => (
+                <tr
+                  key={e.id}
+                  onClick={() => onSelectRow(e.id, e.description, e.notion_url)}
+                  className="cursor-pointer"
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    background: selectedId === e.id ? 'color-mix(in srgb, var(--accent) 9%, transparent)' : undefined,
+                  }}
+                  onMouseEnter={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 4%, transparent)'; }}
+                  onMouseLeave={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = ''; }}
+                >
+                  <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.description || '(sans titre)'}</td>
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.debut)}</td>
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.fin)}</td>
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeMin || '—'}</td>
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeH || '—'}</td>
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
+                  <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
+                </tr>
+              ))}
+              {sorted.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                    Aucune session de temps.
                   </td>
                 </tr>
               )}

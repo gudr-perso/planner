@@ -448,6 +448,30 @@ export type DocumentEntry = {
   notion_url?: string;
 };
 
+// ── Temps Projet (CAP Consulting) ─────────────────────────────────────────────
+
+export type TempsProjetConfig = {
+  databaseId: string;
+  descriptionField: string;        // title
+  debutField: string;              // date + heure
+  finField: string;                // date + heure
+  dureeMinField: string;           // number (min)
+  dureeHField: string;             // number (h)
+  tacheField: string;              // relation → Tâches
+};
+
+export type TempsProjetEntry = {
+  id: string;
+  description: string;
+  debut: string | null;
+  fin: string | null;
+  dureeMin: string;
+  dureeH: string;
+  tacheIds: string[];
+  tacheNoms: string[];
+  notion_url?: string;
+};
+
 // ── Echanges (CAP Consulting) ─────────────────────────────────────────────────
 
 export type EchangesConfig = {

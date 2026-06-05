@@ -9,6 +9,8 @@ import type {
   DocumentEntry,
   DocumentsConfig,
   EchangeEntry,
+  TempsProjetConfig,
+  TempsProjetEntry,
   EchangesConfig,
   NotionBlock,
   NotionConfig,
@@ -1552,6 +1554,48 @@ export async function fetchDocuments(
     const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
     const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
     results.push({ id: page.id, nom, statut, statutColor, notion_url: page.url });
+  }
+  return results;
+}
+
+// ── Temps Projet (CAP Consulting) ─────────────────────────────────────────────
+
+export async function fetchTempsProjet(
+  token: string,
+  config: TempsProjetConfig,
+  tacheIdToName: Map<string, string>,
+): Promise<TempsProjetEntry[]> {
+  if (!config.databaseId) return [];
+  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    allPages.push(...((data.results ?? []) as typeof allPages));
+    cursor = (data.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+
+  const results: TempsProjetEntry[] = [];
+  for (const page of allPages) {
+    const props = page.properties ?? {};
+    const tacheRels = config.tacheField
+      ? ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
+      : [];
+    const tacheIds = tacheRels.map(r => r.id);
+    if (config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
+    const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
+
+    const description = plainText(props[config.descriptionField]);
+    const debut = config.debutField ? (props[config.debutField]?.date as { start?: string } | null)?.start ?? null : null;
+    const fin = config.finField ? (props[config.finField]?.date as { start?: string } | null)?.start ?? null : null;
+    const dureeMin = config.dureeMinField
+      ? String((props[config.dureeMinField] as Record<string, unknown>)?.number ?? '')
+      : '';
+    const dureeH = config.dureeHField
+      ? String((props[config.dureeHField] as Record<string, unknown>)?.number ?? '')
+      : '';
+    results.push({ id: page.id, description, debut, fin, dureeMin, dureeH, tacheIds, tacheNoms, notion_url: page.url });
   }
   return results;
 }
