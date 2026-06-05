@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchTaches, fetchSousTaches, fetchSuivisProjet, fetchEchanges, fetchDocuments, fetchTempsProjet, fetchPageBlocks } from '../notionService';
 import type {
@@ -513,6 +513,33 @@ function TachesTab({
 
 // ── SousTachesTab ─────────────────────────────────────────────────────────────
 
+function SousTacheRow({ e, selectedId, onSelectRow }: {
+  e: SousTacheEntry;
+  selectedId: string | null;
+  onSelectRow: (id: string, title: string, url?: string) => void;
+}) {
+  return (
+    <tr
+      onClick={() => onSelectRow(e.id, e.nom, e.notion_url)}
+      className="cursor-pointer"
+      style={{
+        borderBottom: '1px solid var(--border)',
+        background: selectedId === e.id ? 'color-mix(in srgb, var(--accent) 9%, transparent)' : undefined,
+      }}
+      onMouseEnter={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 4%, transparent)'; }}
+      onMouseLeave={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = ''; }}
+    >
+      <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.nom || '(sans nom)'}</td>
+      <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
+      <td className="px-3 py-2"><Badge label={e.priorite} color={e.prioriteColor} /></td>
+      <td className="px-3 py-2"><Badge label={e.canal} color={e.canalColor} /></td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date)}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
+      <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
+    </tr>
+  );
+}
+
 function SousTachesTab({
   projetId: _projetId,
   token,
@@ -538,6 +565,7 @@ function SousTachesTab({
   const [error, setError] = useState('');
   const [showTermine, setShowTermine] = useState(false);
   const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'priorite' | 'canal' | 'date'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
+  const [groupByTache, setGroupByTache] = useState(false);
 
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
@@ -558,6 +586,17 @@ function SousTachesTab({
     const vb = sort.col === 'date' ? (b.date ?? '') : String(b[sort.col] ?? '');
     return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
   }), [filtered, sort]);
+
+  const grouped = useMemo(() => {
+    if (!groupByTache) return null;
+    const map = new Map<string, SousTacheEntry[]>();
+    for (const e of sorted) {
+      const key = e.tacheNoms[0] ?? '(Sans tâche)';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'fr'));
+  }, [sorted, groupByTache]);
 
   function toggleSort(col: typeof sort.col) {
     setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
@@ -581,7 +620,18 @@ function SousTachesTab({
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {filtered.length} sous-tâche{filtered.length !== 1 ? 's' : ''}
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setGroupByTache(v => !v)}
+            className="text-xs px-2 py-1 rounded"
+            style={{
+              background: groupByTache ? 'var(--accent)' : 'var(--border)',
+              color: groupByTache ? 'var(--accent-fg)' : 'var(--text)',
+            }}
+            title="Regrouper par tâche"
+          >
+            ⊞ Par tâche
+          </button>
           <TermineButton showTermine={showTermine} onToggle={() => setShowTermine(v => !v)} />
         </div>
       </div>
@@ -602,27 +652,26 @@ function SousTachesTab({
               </tr>
             </thead>
             <tbody>
-              {sorted.map(e => (
-                <tr
-                  key={e.id}
-                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url)}
-                  className="cursor-pointer"
-                  style={{
-                    borderBottom: '1px solid var(--border)',
-                    background: selectedId === e.id ? 'color-mix(in srgb, var(--accent) 9%, transparent)' : undefined,
-                  }}
-                  onMouseEnter={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 4%, transparent)'; }}
-                  onMouseLeave={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = ''; }}
-                >
-                  <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.nom || '(sans nom)'}</td>
-                  <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
-                  <td className="px-3 py-2"><Badge label={e.priorite} color={e.prioriteColor} /></td>
-                  <td className="px-3 py-2"><Badge label={e.canal} color={e.canalColor} /></td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date)}</td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
-                  <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
-                </tr>
-              ))}
+              {grouped
+                ? grouped.map(([tacheNom, rows]) => (
+                    <React.Fragment key={`grp-${tacheNom}`}>
+                      <tr>
+                        <td colSpan={7} style={{
+                          padding: '4px 12px', fontWeight: 700, fontSize: 11,
+                          background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                          color: 'var(--accent)', borderTop: '1px solid var(--border)',
+                        }}>
+                          {tacheNom}
+                          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
+                            {rows.length} sous-tâche{rows.length !== 1 ? 's' : ''}
+                          </span>
+                        </td>
+                      </tr>
+                      {rows.map(e => <SousTacheRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)}
+                    </React.Fragment>
+                  ))
+                : sorted.map(e => <SousTacheRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)
+              }
               {sorted.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
@@ -988,6 +1037,33 @@ function DocumentsTab({
 
 // ── TempsProjetTab ────────────────────────────────────────────────────────────
 
+function TempsRow({ e, selectedId, onSelectRow }: {
+  e: TempsProjetEntry;
+  selectedId: string | null;
+  onSelectRow: (id: string, title: string, url?: string) => void;
+}) {
+  return (
+    <tr
+      onClick={() => onSelectRow(e.id, e.description, e.notion_url)}
+      className="cursor-pointer"
+      style={{
+        borderBottom: '1px solid var(--border)',
+        background: selectedId === e.id ? 'color-mix(in srgb, var(--accent) 9%, transparent)' : undefined,
+      }}
+      onMouseEnter={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 4%, transparent)'; }}
+      onMouseLeave={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = ''; }}
+    >
+      <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.description || '(sans titre)'}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.debut)}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.fin)}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeMin || '—'}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeH || '—'}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
+      <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
+    </tr>
+  );
+}
+
 function TempsProjetTab({
   projetId: _projetId,
   token,
@@ -1012,6 +1088,7 @@ function TempsProjetTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sort, setSort] = useState<{ col: 'description' | 'debut' | 'fin' | 'dureeMin' | 'dureeH'; dir: 'asc' | 'desc' }>({ col: 'debut', dir: 'desc' });
+  const [groupByTache, setGroupByTache] = useState(false);
 
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
@@ -1027,6 +1104,17 @@ function TempsProjetTab({
     const vb = (sort.col === 'debut' || sort.col === 'fin') ? (b[sort.col] ?? '') : String(b[sort.col] ?? '');
     return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
   }), [entries, sort]);
+
+  const grouped = useMemo(() => {
+    if (!groupByTache) return null;
+    const map = new Map<string, TempsProjetEntry[]>();
+    for (const e of sorted) {
+      const key = e.tacheNoms[0] ?? '(Sans tâche)';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'fr'));
+  }, [sorted, groupByTache]);
 
   function toggleSort(col: typeof sort.col) {
     setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
@@ -1050,6 +1138,19 @@ function TempsProjetTab({
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {sorted.length} session{sorted.length !== 1 ? 's' : ''}
         </span>
+        <div className="ml-auto">
+          <button
+            onClick={() => setGroupByTache(v => !v)}
+            className="text-xs px-2 py-1 rounded"
+            style={{
+              background: groupByTache ? 'var(--accent)' : 'var(--border)',
+              color: groupByTache ? 'var(--accent-fg)' : 'var(--text)',
+            }}
+            title="Regrouper par tâche"
+          >
+            ⊞ Par tâche
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
@@ -1068,27 +1169,26 @@ function TempsProjetTab({
               </tr>
             </thead>
             <tbody>
-              {sorted.map(e => (
-                <tr
-                  key={e.id}
-                  onClick={() => onSelectRow(e.id, e.description, e.notion_url)}
-                  className="cursor-pointer"
-                  style={{
-                    borderBottom: '1px solid var(--border)',
-                    background: selectedId === e.id ? 'color-mix(in srgb, var(--accent) 9%, transparent)' : undefined,
-                  }}
-                  onMouseEnter={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 4%, transparent)'; }}
-                  onMouseLeave={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = ''; }}
-                >
-                  <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.description || '(sans titre)'}</td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.debut)}</td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.fin)}</td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeMin || '—'}</td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeH || '—'}</td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
-                  <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
-                </tr>
-              ))}
+              {grouped
+                ? grouped.map(([tacheNom, rows]) => (
+                    <React.Fragment key={`grp-${tacheNom}`}>
+                      <tr>
+                        <td colSpan={7} style={{
+                          padding: '4px 12px', fontWeight: 700, fontSize: 11,
+                          background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                          color: 'var(--accent)', borderTop: '1px solid var(--border)',
+                        }}>
+                          {tacheNom}
+                          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
+                            {rows.length} session{rows.length !== 1 ? 's' : ''}
+                          </span>
+                        </td>
+                      </tr>
+                      {rows.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)}
+                    </React.Fragment>
+                  ))
+                : sorted.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)
+              }
               {sorted.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
