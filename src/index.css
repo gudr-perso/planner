@@ -309,3 +309,22 @@ html, body, #root {
 .themed-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 160, 255, 0.5);
 }
+
+/* ── Export PDF via window.print() ──────────────────────────── */
+@media print {
+  body > * { display: none !important; }
+  #projet-print-content {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    overflow: visible;
+    padding: 24px 32px;
+    font-size: 13px;
+    color: #111;
+    background: #fff;
+  }
+  #projet-print-content h1, #projet-print-content h2 { color: #111; }
+  #projet-print-content a { color: #0b6e99; }
+  #projet-print-content .print-title { display: block !important; }
+  @page { margin: 20mm; }
+}

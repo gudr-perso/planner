@@ -125,6 +125,10 @@ function DetailPanel({
   onClose: () => void;
   token: string;
 }) {
+  function handlePrint() {
+    window.print();
+  }
+
   return (
     <>
       <div
@@ -150,15 +154,29 @@ function DetailPanel({
             </a>
           )}
         </div>
-        <button
-          onClick={onClose}
-          title="Fermer"
-          style={{ color: 'var(--text-muted)', fontSize: 15, background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
-        >
-          ✕
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          {blocks.length > 0 && (
+            <button
+              onClick={handlePrint}
+              title="Générer PDF"
+              style={{ fontSize: 12, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-deep)', color: 'var(--text)', cursor: 'pointer' }}
+            >
+              ↓ PDF
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            title="Fermer"
+            style={{ color: 'var(--text-muted)', fontSize: 15, background: 'transparent', border: 'none', cursor: 'pointer' }}
+          >
+            ✕
+          </button>
+        </div>
       </div>
-      <div className="themed-scroll flex-1 overflow-y-auto px-5 py-5">
+      <div id="projet-print-content" className="themed-scroll flex-1 overflow-y-auto px-5 py-5">
+        <h1 className="print-title" style={{ display: 'none', fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+          {title}
+        </h1>
         {blocksLoading ? (
           <p className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement…</p>
         ) : blocksError ? (
