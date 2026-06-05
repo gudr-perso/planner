@@ -6,6 +6,8 @@ import type {
   ClientEntry,
   ClientsConfig,
   DataBundle,
+  DocumentEntry,
+  DocumentsConfig,
   EchangeEntry,
   EchangesConfig,
   NotionBlock,
@@ -1410,6 +1412,7 @@ export async function fetchSousTaches(
     const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
 
     const nom = plainText(props[config.nomField]);
+    const date = config.dateField ? (props[config.dateField]?.date as { start?: string } | null)?.start ?? null : null;
     const statutProp = props[config.statutField];
     const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
     const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
@@ -1419,7 +1422,7 @@ export async function fetchSousTaches(
     const canalProp = props[config.canalField];
     const canal = (canalProp?.select as { name?: string } | undefined)?.name ?? '';
     const canalColor = (canalProp?.select as { color?: string } | undefined)?.color;
-    results.push({ id: page.id, nom, statut, statutColor, priorite, prioriteColor, canal, canalColor, tacheIds, tacheNoms, notion_url: page.url });
+    results.push({ id: page.id, nom, date, statut, statutColor, priorite, prioriteColor, canal, canalColor, tacheIds, tacheNoms, notion_url: page.url });
   }
   return results;
 }
@@ -1517,6 +1520,38 @@ export async function fetchEchanges(
       : [];
     const contact = contactRels.map(r => contactIdToTitle.get(r.id) ?? '').filter(Boolean);
     results.push({ id: page.id, nom, date, canal, canalColor, contact, notion_url: page.url });
+  }
+  return results;
+}
+
+// ── Documents (CAP Consulting) ────────────────────────────────────────────────
+
+export async function fetchDocuments(
+  token: string,
+  config: DocumentsConfig,
+  projetId: string,
+): Promise<DocumentEntry[]> {
+  if (!config.databaseId) return [];
+  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    allPages.push(...((data.results ?? []) as typeof allPages));
+    cursor = (data.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+
+  void projetId; // pas de filtrage par projet pour l'instant (pas de champ relation requis)
+
+  const results: DocumentEntry[] = [];
+  for (const page of allPages) {
+    const props = page.properties ?? {};
+    const nom = plainText(props[config.nomField]);
+    const statutProp = props[config.statutField];
+    const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
+    const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
+    results.push({ id: page.id, nom, statut, statutColor, notion_url: page.url });
   }
   return results;
 }

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
-import { fetchTaches, fetchSousTaches, fetchSuivisProjet, fetchEchanges, fetchPageBlocks } from '../notionService';
+import { fetchTaches, fetchSousTaches, fetchSuivisProjet, fetchEchanges, fetchDocuments, fetchPageBlocks } from '../notionService';
 import type {
+  DocumentEntry,
+  DocumentsConfig,
   EchangeEntry,
   EchangesConfig,
   NotionBlock,
@@ -157,7 +159,7 @@ interface Props {
   onBack: () => void;
 }
 
-type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges';
+type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges' | 'documents';
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
@@ -237,6 +239,7 @@ export default function ProjetDetailView({ projetId, projetNom, onBack }: Props)
     { id: 'sousTaches', label: 'Sous-tâches' },
     { id: 'suivi', label: 'Suivi' },
     { id: 'echanges', label: 'Echanges' },
+    { id: 'documents', label: 'Documents' },
   ];
 
   return (
@@ -309,6 +312,14 @@ export default function ProjetDetailView({ projetId, projetNom, onBack }: Props)
           )}
           {activeTab === 'echanges' && (
             <EchangesTab
+              projetId={projetId}
+              token={token}
+              selectedId={selectedId}
+              onSelectRow={openDetail}
+            />
+          )}
+          {activeTab === 'documents' && (
+            <DocumentsTab
               projetId={projetId}
               token={token}
               selectedId={selectedId}
@@ -501,7 +512,7 @@ function SousTachesTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showTermine, setShowTermine] = useState(false);
-  const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'priorite' | 'canal'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
+  const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'priorite' | 'canal' | 'date'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
 
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
@@ -518,8 +529,8 @@ function SousTachesTab({
   );
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
-    const va = String(a[sort.col] ?? '');
-    const vb = String(b[sort.col] ?? '');
+    const va = sort.col === 'date' ? (a.date ?? '') : String(a[sort.col] ?? '');
+    const vb = sort.col === 'date' ? (b.date ?? '') : String(b[sort.col] ?? '');
     return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
   }), [filtered, sort]);
 
@@ -536,6 +547,7 @@ function SousTachesTab({
     { key: 'statut', label: 'Statut' },
     { key: 'priorite', label: 'Priorité' },
     { key: 'canal', label: 'Canal' },
+    { key: 'date', label: 'Date' },
   ];
 
   return (
@@ -581,13 +593,14 @@ function SousTachesTab({
                   <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
                   <td className="px-3 py-2"><Badge label={e.priorite} color={e.prioriteColor} /></td>
                   <td className="px-3 py-2"><Badge label={e.canal} color={e.canalColor} /></td>
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date)}</td>
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
                   <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
                 </tr>
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune sous-tâche{!showTermine ? ' en cours' : ''}.
                   </td>
                 </tr>
@@ -821,6 +834,111 @@ function EchangesTab({
                 <tr>
                   <td colSpan={5} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucun échange.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── DocumentsTab ──────────────────────────────────────────────────────────────
+
+function DocumentsTab({
+  projetId,
+  token,
+  selectedId,
+  onSelectRow,
+}: {
+  projetId: string;
+  token: string;
+  selectedId: string | null;
+  onSelectRow: (id: string, title: string, url?: string) => void;
+}) {
+  const config = load<DocumentsConfig>('documentsConfig', {
+    databaseId: '', nomField: 'Name', statutField: '',
+  });
+
+  const [entries, setEntries] = useState<DocumentEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [sort, setSort] = useState<{ col: 'nom' | 'statut'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
+
+  useEffect(() => {
+    if (!token || !config.databaseId) return;
+    setLoading(true);
+    fetchDocuments(token, config, projetId)
+      .then(setEntries)
+      .catch(e => setError(String(e)))
+      .finally(() => setLoading(false));
+  }, [token, projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sorted = useMemo(() => [...entries].sort((a, b) => {
+    const va = String(a[sort.col] ?? '');
+    const vb = String(b[sort.col] ?? '');
+    return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
+  }), [entries, sort]);
+
+  function toggleSort(col: typeof sort.col) {
+    setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
+  }
+
+  if (!config.databaseId) {
+    return <EmptyConfig message="Configurez la base Documents dans les Paramètres > CAP CONSULTING." />;
+  }
+
+  const colHeaders: Array<{ key: typeof sort.col; label: string }> = [
+    { key: 'nom', label: 'Nom' },
+    { key: 'statut', label: 'Statut' },
+  ];
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          {sorted.length} document{sorted.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="flex-1 overflow-auto">
+        {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
+        {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
+        {!loading && !error && (
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                {colHeaders.map(({ key, label }) => (
+                  <th key={key} onClick={() => toggleSort(key)} className="text-left px-3 py-2 cursor-pointer select-none font-medium">
+                    {label}{sort.col === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
+                  </th>
+                ))}
+                <th className="text-left px-3 py-2 font-medium">Lien</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(e => (
+                <tr
+                  key={e.id}
+                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url)}
+                  className="cursor-pointer"
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    background: selectedId === e.id ? 'color-mix(in srgb, var(--accent) 9%, transparent)' : undefined,
+                  }}
+                  onMouseEnter={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 4%, transparent)'; }}
+                  onMouseLeave={ev => { if (selectedId !== e.id) ev.currentTarget.style.background = ''; }}
+                >
+                  <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.nom || '(sans nom)'}</td>
+                  <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
+                  <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
+                </tr>
+              ))}
+              {sorted.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                    Aucun document.
                   </td>
                 </tr>
               )}

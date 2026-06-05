@@ -390,6 +390,7 @@ export type SousTachesConfig = {
   statutField: string;
   prioriteField: string;
   canalField: string;
+  dateField: string;             // date
   tacheField: string;            // relation → Tâches
   statutTermineValue: string;
 };
@@ -403,6 +404,7 @@ export type SousTacheEntry = {
   prioriteColor?: string;
   canal: string;
   canalColor?: string;
+  date: string | null;
   tacheIds: string[];            // IDs bruts (pour filtrage par projet)
   tacheNoms: string[];           // noms résolus depuis tâches du projet
   notion_url?: string;
@@ -427,6 +429,22 @@ export type SuiviProjetEntry = {
   statutColor?: string;
   tacheIds: string[];
   tacheNoms: string[];
+  notion_url?: string;
+};
+
+// ── Documents (CAP Consulting) ────────────────────────────────────────────────
+
+export type DocumentsConfig = {
+  databaseId: string;
+  nomField: string;
+  statutField: string;
+};
+
+export type DocumentEntry = {
+  id: string;
+  nom: string;
+  statut: string;
+  statutColor?: string;
   notion_url?: string;
 };
 
