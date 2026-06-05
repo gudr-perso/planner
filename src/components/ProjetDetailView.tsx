@@ -567,7 +567,7 @@ function SousTacheRow({ e, selectedId, onSelectRow }: {
 }
 
 function SousTachesTab({
-  projetId: _projetId,
+  projetId,
   token,
   tacheIdToName,
   tachesReady,
@@ -604,7 +604,7 @@ function SousTachesTab({
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
     setLoading(true);
-    fetchSousTaches(token, config, tacheIdToName)
+    fetchSousTaches(token, config, tacheIdToName, projetId)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
@@ -780,7 +780,7 @@ function SousTachesTab({
 // ── SuiviProjetTab ────────────────────────────────────────────────────────────
 
 function SuiviProjetTab({
-  projetId: _projetId,
+  projetId,
   token,
   tacheIdToName,
   tachesReady,
@@ -808,7 +808,7 @@ function SuiviProjetTab({
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
     setLoading(true);
-    fetchSuivisProjet(token, config, tacheIdToName)
+    fetchSuivisProjet(token, config, tacheIdToName, projetId)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
@@ -1211,7 +1211,7 @@ function TempsRow({ e, selectedId, onSelectRow }: {
 }
 
 function TempsProjetTab({
-  projetId: _projetId,
+  projetId,
   token,
   tacheIdToName,
   tachesReady,
@@ -1244,7 +1244,7 @@ function TempsProjetTab({
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
     setLoading(true);
-    fetchTempsProjet(token, config, tacheIdToName)
+    fetchTempsProjet(token, config, tacheIdToName, projetId)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));

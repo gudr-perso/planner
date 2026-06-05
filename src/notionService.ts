@@ -1384,23 +1384,58 @@ export async function fetchTaches(
   return results;
 }
 
+// ── Helpers filtrage projet ───────────────────────────────────────────────────
+
+function buildProjetFilter(field: string, fieldType: string, projetId: string): Record<string, unknown> | undefined {
+  if (!field || !projetId) return undefined;
+  if (fieldType === 'relation') return { property: field, relation: { contains: projetId } };
+  if (fieldType === 'formula')  return { property: field, formula: { string: { equals: projetId } } };
+  return { property: field, rich_text: { equals: projetId } };
+}
+
+async function queryWithFilter(
+  token: string,
+  databaseId: string,
+  filter: Record<string, unknown> | undefined,
+): Promise<Array<{ id: string; url: string; properties: Record<string, PropVal> }>> {
+  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    if (filter) body.filter = filter;
+    let data: Record<string, unknown>;
+    try {
+      data = await nPost(token, `/databases/${databaseId}/query`, body);
+    } catch (e) {
+      if (filter && !cursor) {
+        delete body.filter;
+        data = await nPost(token, `/databases/${databaseId}/query`, body);
+      } else {
+        throw e;
+      }
+    }
+    allPages.push(...((data!.results ?? []) as typeof allPages));
+    cursor = (data!.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+  return allPages;
+}
+
 // ── Sous-tâches (CAP Consulting) ──────────────────────────────────────────────
 
 export async function fetchSousTaches(
   token: string,
   config: SousTachesConfig,
   tacheIdToName: Map<string, string>,
+  projetId?: string,
 ): Promise<SousTacheEntry[]> {
   if (!config.databaseId) return [];
-  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
-  let cursor: string | undefined;
-  do {
-    const body: Record<string, unknown> = { page_size: 100 };
-    if (cursor) body.start_cursor = cursor;
-    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
-    allPages.push(...((data.results ?? []) as typeof allPages));
-    cursor = (data.next_cursor as string | null) ?? undefined;
-  } while (cursor);
+
+  const filter = config.projetFilterField && projetId
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId)
+    : undefined;
+
+  const allPages = await queryWithFilter(token, config.databaseId, filter);
 
   const results: SousTacheEntry[] = [];
   for (const page of allPages) {
@@ -1409,8 +1444,8 @@ export async function fetchSousTaches(
       ? ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
       : [];
     const tacheIds = tacheRels.map(r => r.id);
-    // Filtrer : ne garder que les sous-tâches dont au moins une tâche appartient au projet
-    if (config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
+    // Fallback filtrage Map si pas de projetFilterField configuré
+    if (!filter && config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
     const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
 
     const nom = plainText(props[config.nomField]);
@@ -1435,17 +1470,15 @@ export async function fetchSuivisProjet(
   token: string,
   config: SuiviProjetConfig,
   tacheIdToName: Map<string, string>,
+  projetId?: string,
 ): Promise<SuiviProjetEntry[]> {
   if (!config.databaseId) return [];
-  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
-  let cursor: string | undefined;
-  do {
-    const body: Record<string, unknown> = { page_size: 100 };
-    if (cursor) body.start_cursor = cursor;
-    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
-    allPages.push(...((data.results ?? []) as typeof allPages));
-    cursor = (data.next_cursor as string | null) ?? undefined;
-  } while (cursor);
+
+  const filter = config.projetFilterField && projetId
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId)
+    : undefined;
+
+  const allPages = await queryWithFilter(token, config.databaseId, filter);
 
   const results: SuiviProjetEntry[] = [];
   for (const page of allPages) {
@@ -1454,7 +1487,7 @@ export async function fetchSuivisProjet(
       ? ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
       : [];
     const tacheIds = tacheRels.map(r => r.id);
-    if (config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
+    if (!filter && config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
     const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
 
     const nom = plainText(props[config.nomField]);
@@ -1564,17 +1597,12 @@ export async function fetchDocuments(
   projetId: string,
 ): Promise<DocumentEntry[]> {
   if (!config.databaseId) return [];
-  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
-  let cursor: string | undefined;
-  do {
-    const body: Record<string, unknown> = { page_size: 100 };
-    if (cursor) body.start_cursor = cursor;
-    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
-    allPages.push(...((data.results ?? []) as typeof allPages));
-    cursor = (data.next_cursor as string | null) ?? undefined;
-  } while (cursor);
 
-  void projetId; // pas de filtrage par projet pour l'instant (pas de champ relation requis)
+  const filter = config.projetFilterField && projetId
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId)
+    : undefined;
+
+  const allPages = await queryWithFilter(token, config.databaseId, filter);
 
   const results: DocumentEntry[] = [];
   for (const page of allPages) {
@@ -1594,17 +1622,15 @@ export async function fetchTempsProjet(
   token: string,
   config: TempsProjetConfig,
   tacheIdToName: Map<string, string>,
+  projetId?: string,
 ): Promise<TempsProjetEntry[]> {
   if (!config.databaseId) return [];
-  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
-  let cursor: string | undefined;
-  do {
-    const body: Record<string, unknown> = { page_size: 100 };
-    if (cursor) body.start_cursor = cursor;
-    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
-    allPages.push(...((data.results ?? []) as typeof allPages));
-    cursor = (data.next_cursor as string | null) ?? undefined;
-  } while (cursor);
+
+  const filter = config.projetFilterField && projetId
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId)
+    : undefined;
+
+  const allPages = await queryWithFilter(token, config.databaseId, filter);
 
   const results: TempsProjetEntry[] = [];
   for (const page of allPages) {
@@ -1613,7 +1639,7 @@ export async function fetchTempsProjet(
       ? ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
       : [];
     const tacheIds = tacheRels.map(r => r.id);
-    if (config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
+    if (!filter && config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
     const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
 
     const description = plainText(props[config.descriptionField]);

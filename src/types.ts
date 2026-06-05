@@ -393,6 +393,8 @@ export type SousTachesConfig = {
   dateField: string;             // date
   tacheField: string;            // relation → Tâches
   statutTermineValue: string;
+  projetFilterField?: string;    // champ relation/formula vers Projet (filtre direct)
+  projetFilterFieldType?: string;
 };
 
 export type SousTacheEntry = {
@@ -419,6 +421,8 @@ export type SuiviProjetConfig = {
   statutField: string;
   tacheField: string;            // relation → Tâches
   statutTermineValue: string;
+  projetFilterField?: string;    // champ relation/formula vers Projet (filtre direct)
+  projetFilterFieldType?: string;
 };
 
 export type SuiviProjetEntry = {
@@ -438,6 +442,8 @@ export type DocumentsConfig = {
   databaseId: string;
   nomField: string;
   statutField: string;
+  projetFilterField?: string;    // champ relation/formula vers Projet (filtre direct)
+  projetFilterFieldType?: string;
 };
 
 export type DocumentEntry = {
@@ -458,6 +464,8 @@ export type TempsProjetConfig = {
   dureeMinField: string;           // number (min)
   dureeHField: string;             // number (h)
   tacheField: string;              // relation → Tâches
+  projetFilterField?: string;      // champ relation/formula vers Projet (filtre direct)
+  projetFilterFieldType?: string;
 };
 
 export type TempsProjetEntry = {
