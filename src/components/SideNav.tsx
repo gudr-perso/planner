@@ -103,6 +103,7 @@ export function SideNav({
   onMobileClose?: () => void;
 }) {
   const { user } = useAuth();
+  const isClientUser = Boolean(user?.client_code);
   const isTablet = useIsTablet();
   const lastPlanningView = useRef<ViewKey>('calendar');
 
@@ -177,7 +178,7 @@ export function SideNav({
           {/* Main sections */}
           <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
             {/* Accueil */}
-            {HOME_ITEMS.map((item) => (
+            {!isClientUser && HOME_ITEMS.map((item) => (
               <NavItem
                 key={item.key}
                 item={item}
@@ -188,32 +189,34 @@ export function SideNav({
             ))}
 
             {/* ── CUMA ── */}
-            <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
-              <div style={{
-                padding: '2px 14px 6px',
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--text-dim, var(--text-muted))',
-                opacity: 0.6,
-              }}>
-                CUMA
+            {!isClientUser && (
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+                <div style={{
+                  padding: '2px 14px 6px',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-dim, var(--text-muted))',
+                  opacity: 0.6,
+                }}>
+                  CUMA
+                </div>
+                {CUMA_ITEMS.map((item) => {
+                  const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
+                  const key = item.key === 'planning' ? lastPlanningView.current : item.key as ViewKey;
+                  return (
+                    <NavItem
+                      key={item.key}
+                      item={item}
+                      isActive={isActive}
+                      collapsed={false}
+                      onClick={() => handleNavClick(key)}
+                    />
+                  );
+                })}
               </div>
-              {CUMA_ITEMS.map((item) => {
-                const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
-                const key = item.key === 'planning' ? lastPlanningView.current : item.key as ViewKey;
-                return (
-                  <NavItem
-                    key={item.key}
-                    item={item}
-                    isActive={isActive}
-                    collapsed={false}
-                    onClick={() => handleNavClick(key)}
-                  />
-                );
-              })}
-            </div>
+            )}
 
             {/* ── CAP CONSULTING ── */}
             <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
@@ -228,7 +231,7 @@ export function SideNav({
               }}>
                 CAP Consulting
               </div>
-              {CAP_ITEMS.map((item) => {
+              {CAP_ITEMS.filter(item => !isClientUser || item.key === 'projets').map((item) => {
                 const isActive = view === item.key || (item.key === 'projets' && view === 'projet-detail');
                 return (
                   <NavItem
@@ -245,7 +248,7 @@ export function SideNav({
 
           {/* Bottom */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 4, paddingBottom: 4 }}>
-            {BOTTOM_ITEMS.map((item) => (
+            {!isClientUser && BOTTOM_ITEMS.map((item) => (
               <NavItem
                 key={item.key}
                 item={item}
@@ -254,7 +257,7 @@ export function SideNav({
                 onClick={() => handleNavClick(item.key as ViewKey)}
               />
             ))}
-            {user?.role === 'admin' && (
+            {!isClientUser && user?.role === 'admin' && (
               <NavItem
                 item={{ key: 'users', icon: <UserCog size={17} />, label: 'Utilisateurs' }}
                 isActive={view === 'users'}
@@ -303,7 +306,7 @@ export function SideNav({
       {/* Main sections */}
       <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
         {/* Accueil */}
-        {HOME_ITEMS.map((item) => (
+        {!isClientUser && HOME_ITEMS.map((item) => (
           <NavItem
             key={item.key}
             item={item}
@@ -314,36 +317,38 @@ export function SideNav({
         ))}
 
         {/* ── CUMA ── */}
-        <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
-          {!collapsed && (
-            <div style={{
-              padding: '2px 14px 6px',
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--text-dim, var(--text-muted))',
-              opacity: 0.6,
-            }}>
-              CUMA
-            </div>
-          )}
-          {CUMA_ITEMS.map((item) => {
-            const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
-            const handleClick = item.key === 'planning'
-              ? () => onView(lastPlanningView.current)
-              : () => onView(item.key as ViewKey);
-            return (
-              <NavItem
-                key={item.key}
-                item={item}
-                isActive={isActive}
-                collapsed={collapsed}
-                onClick={handleClick}
-              />
-            );
-          })}
-        </div>
+        {!isClientUser && (
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+            {!collapsed && (
+              <div style={{
+                padding: '2px 14px 6px',
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--text-dim, var(--text-muted))',
+                opacity: 0.6,
+              }}>
+                CUMA
+              </div>
+            )}
+            {CUMA_ITEMS.map((item) => {
+              const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
+              const handleClick = item.key === 'planning'
+                ? () => onView(lastPlanningView.current)
+                : () => onView(item.key as ViewKey);
+              return (
+                <NavItem
+                  key={item.key}
+                  item={item}
+                  isActive={isActive}
+                  collapsed={collapsed}
+                  onClick={handleClick}
+                />
+              );
+            })}
+          </div>
+        )}
 
         {/* ── CAP CONSULTING ── */}
         <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
@@ -360,7 +365,7 @@ export function SideNav({
               CAP Consulting
             </div>
           )}
-          {CAP_ITEMS.map((item) => {
+          {CAP_ITEMS.filter(item => !isClientUser || item.key === 'projets').map((item) => {
             const isActive = view === item.key || (item.key === 'projets' && view === 'projet-detail');
             return (
               <NavItem
@@ -377,7 +382,7 @@ export function SideNav({
 
       {/* Bottom: Settings + Utilisateurs (admin) + Déconnexion + toggle */}
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: 4, paddingBottom: 4 }}>
-        {BOTTOM_ITEMS.map((item) => (
+        {!isClientUser && BOTTOM_ITEMS.map((item) => (
           <NavItem
             key={item.key}
             item={item}
@@ -386,7 +391,7 @@ export function SideNav({
             onClick={() => onView(item.key as ViewKey)}
           />
         ))}
-        {user?.role === 'admin' && (
+        {!isClientUser && user?.role === 'admin' && (
           <NavItem
             item={{ key: 'users', icon: <UserCog size={17} />, label: 'Utilisateurs' }}
             isActive={view === 'users'}
