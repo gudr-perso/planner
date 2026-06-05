@@ -1111,6 +1111,9 @@ function DocumentsTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sort, setSort] = useState<{ col: 'nom' | 'statut'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterNom, setFilterNom] = useState('');
+  const [filterStatut, setFilterStatut] = useState('');
 
   useEffect(() => {
     if (!token || !config.databaseId) return;
@@ -1121,11 +1124,19 @@ function DocumentsTab({
       .finally(() => setLoading(false));
   }, [token, projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sorted = useMemo(() => [...entries].sort((a, b) => {
+  const allStatuts = useMemo(() => [...new Set(entries.map(e => e.statut).filter(Boolean))].sort(), [entries]);
+
+  const filtered = useMemo(() => entries.filter(e => {
+    if (filterNom && !e.nom.toLowerCase().includes(filterNom.toLowerCase())) return false;
+    if (filterStatut && e.statut !== filterStatut) return false;
+    return true;
+  }), [entries, filterNom, filterStatut]);
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
     const va = String(a[sort.col] ?? '');
     const vb = String(b[sort.col] ?? '');
     return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
-  }), [entries, sort]);
+  }), [filtered, sort]);
 
   function toggleSort(col: typeof sort.col) {
     setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
@@ -1144,9 +1155,32 @@ function DocumentsTab({
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {sorted.length} document{sorted.length !== 1 ? 's' : ''}
+          {filtered.length} document{filtered.length !== 1 ? 's' : ''}
         </span>
+        <button
+          onClick={() => setShowFilters(v => !v)}
+          className="text-xs px-2 py-1 rounded ml-auto"
+          style={{
+            background: showFilters ? 'var(--accent)' : 'var(--border)',
+            color: showFilters ? 'var(--accent-fg)' : 'var(--text)',
+          }}
+        >
+          ▼ Filtres
+        </button>
       </div>
+      {showFilters && (
+        <div style={{ display: 'flex', gap: 6, padding: '6px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
+          <input style={{ ...tabInputStyle, width: 160 }} placeholder="Nom…" value={filterNom} onChange={e => setFilterNom(e.target.value)} />
+          <select style={{ ...tabInputStyle, width: 140 }} value={filterStatut} onChange={e => setFilterStatut(e.target.value)}>
+            <option value="">Statut</option>
+            {allStatuts.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          {(filterNom || filterStatut) && (
+            <button onClick={() => { setFilterNom(''); setFilterStatut(''); }}
+              style={{ ...tabInputStyle, cursor: 'pointer', color: 'var(--accent)' }}>✕ Effacer</button>
+          )}
+        </div>
+      )}
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
