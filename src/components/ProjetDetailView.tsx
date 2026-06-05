@@ -98,6 +98,14 @@ function TermineButton({ showTermine, onToggle }: { showTermine: boolean; onTogg
   );
 }
 
+// ── Shared tab input style ────────────────────────────────────────────────────
+
+const tabInputStyle: React.CSSProperties = {
+  fontSize: 11, padding: '3px 7px', borderRadius: 4,
+  border: '1px solid var(--border)', background: 'var(--bg-deep)',
+  color: 'var(--text)', outline: 'none',
+};
+
 // ── Panneau détail ────────────────────────────────────────────────────────────
 
 function DetailPanel({
@@ -566,6 +574,14 @@ function SousTachesTab({
   const [showTermine, setShowTermine] = useState(false);
   const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'priorite' | 'canal' | 'date'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
   const [groupByTache, setGroupByTache] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterNom, setFilterNom] = useState('');
+  const [filterStatut, setFilterStatut] = useState('');
+  const [filterPriorite, setFilterPriorite] = useState('');
+  const [filterCanal, setFilterCanal] = useState('');
+  const [filterTacheLiee, setFilterTacheLiee] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
@@ -576,9 +592,24 @@ function SousTachesTab({
       .finally(() => setLoading(false));
   }, [tachesReady, token, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const allStatuts = useMemo(() => [...new Set(entries.map(e => e.statut).filter(Boolean))].sort(), [entries]);
+  const allPriorites = useMemo(() => [...new Set(entries.map(e => e.priorite).filter(Boolean))].sort(), [entries]);
+  const allCanauxST = useMemo(() => [...new Set(entries.map(e => e.canal).filter(Boolean))].sort(), [entries]);
+
+  const filteredByFilters = useMemo(() => entries.filter(e => {
+    if (filterNom && !e.nom.toLowerCase().includes(filterNom.toLowerCase())) return false;
+    if (filterStatut && e.statut !== filterStatut) return false;
+    if (filterPriorite && e.priorite !== filterPriorite) return false;
+    if (filterCanal && e.canal !== filterCanal) return false;
+    if (filterTacheLiee && !e.tacheNoms.some(t => t.toLowerCase().includes(filterTacheLiee.toLowerCase()))) return false;
+    if (filterDateFrom && (e.date ?? '') < filterDateFrom) return false;
+    if (filterDateTo && (e.date ?? '') > filterDateTo) return false;
+    return true;
+  }), [entries, filterNom, filterStatut, filterPriorite, filterCanal, filterTacheLiee, filterDateFrom, filterDateTo]);
+
   const filtered = useMemo(() =>
-    showTermine ? entries : entries.filter(e => e.statut !== config.statutTermineValue),
-    [entries, showTermine, config.statutTermineValue],
+    showTermine ? filteredByFilters : filteredByFilters.filter(e => e.statut !== config.statutTermineValue),
+    [filteredByFilters, showTermine, config.statutTermineValue],
   );
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
@@ -622,6 +653,16 @@ function SousTachesTab({
         </span>
         <div className="ml-auto flex items-center gap-2">
           <button
+            onClick={() => setShowFilters(v => !v)}
+            className="text-xs px-2 py-1 rounded"
+            style={{
+              background: showFilters ? 'var(--accent)' : 'var(--border)',
+              color: showFilters ? 'var(--accent-fg)' : 'var(--text)',
+            }}
+          >
+            ▼ Filtres
+          </button>
+          <button
             onClick={() => setGroupByTache(v => !v)}
             className="text-xs px-2 py-1 rounded"
             style={{
@@ -635,6 +676,37 @@ function SousTachesTab({
           <TermineButton showTermine={showTermine} onToggle={() => setShowTermine(v => !v)} />
         </div>
       </div>
+      {showFilters && (
+        <div style={{ display: 'flex', gap: 6, padding: '6px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
+          <input style={{ ...tabInputStyle, width: 140 }} placeholder="Nom…" value={filterNom} onChange={e => setFilterNom(e.target.value)} />
+          <select style={{ ...tabInputStyle, width: 120 }} value={filterStatut} onChange={e => setFilterStatut(e.target.value)}>
+            <option value="">Statut</option>
+            {allStatuts.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <select style={{ ...tabInputStyle, width: 120 }} value={filterPriorite} onChange={e => setFilterPriorite(e.target.value)}>
+            <option value="">Priorité</option>
+            {allPriorites.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <select style={{ ...tabInputStyle, width: 110 }} value={filterCanal} onChange={e => setFilterCanal(e.target.value)}>
+            <option value="">Canal</option>
+            {allCanauxST.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <input style={{ ...tabInputStyle, width: 130 }} placeholder="Tâche liée…" value={filterTacheLiee} onChange={e => setFilterTacheLiee(e.target.value)} />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input id="sous-taches-date-from" type="date" style={{ ...tabInputStyle, width: 130, paddingRight: 26 }} value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+            <span onClick={() => (document.getElementById('sous-taches-date-from') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>📅</span>
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→</span>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input id="sous-taches-date-to" type="date" style={{ ...tabInputStyle, width: 130, paddingRight: 26 }} value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
+            <span onClick={() => (document.getElementById('sous-taches-date-to') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>📅</span>
+          </div>
+          {(filterNom || filterStatut || filterPriorite || filterCanal || filterTacheLiee || filterDateFrom || filterDateTo) && (
+            <button onClick={() => { setFilterNom(''); setFilterStatut(''); setFilterPriorite(''); setFilterCanal(''); setFilterTacheLiee(''); setFilterDateFrom(''); setFilterDateTo(''); }}
+              style={{ ...tabInputStyle, cursor: 'pointer', color: 'var(--accent)' }}>✕ Effacer</button>
+          )}
+        </div>
+      )}
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
@@ -832,6 +904,14 @@ function EchangesTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sort, setSort] = useState<{ col: 'nom' | 'date' | 'canal' | 'contact' | 'suivi' | 'tacheNoms'; dir: 'asc' | 'desc' }>({ col: 'date', dir: 'desc' });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterNom, setFilterNom] = useState('');
+  const [filterCanal, setFilterCanal] = useState('');
+  const [filterContact, setFilterContact] = useState('');
+  const [filterSuivi, setFilterSuivi] = useState('');
+  const [filterTache, setFilterTache] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
     if (!token || !config.databaseId) return;
@@ -842,7 +922,20 @@ function EchangesTab({
       .finally(() => setLoading(false));
   }, [token, projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sorted = useMemo(() => [...entries].sort((a, b) => {
+  const allCanaux = useMemo(() => [...new Set(entries.map(e => e.canal).filter(Boolean))].sort(), [entries]);
+
+  const filtered = useMemo(() => entries.filter(e => {
+    if (filterNom && !e.nom.toLowerCase().includes(filterNom.toLowerCase())) return false;
+    if (filterCanal && e.canal !== filterCanal) return false;
+    if (filterContact && !e.contact.some(c => c.toLowerCase().includes(filterContact.toLowerCase()))) return false;
+    if (filterSuivi && !e.suivi.some(s => s.toLowerCase().includes(filterSuivi.toLowerCase()))) return false;
+    if (filterTache && !e.tacheNoms.some(t => t.toLowerCase().includes(filterTache.toLowerCase()))) return false;
+    if (filterDateFrom && (e.date ?? '') < filterDateFrom) return false;
+    if (filterDateTo && (e.date ?? '') > filterDateTo) return false;
+    return true;
+  }), [entries, filterNom, filterCanal, filterContact, filterSuivi, filterTache, filterDateFrom, filterDateTo]);
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
     let va: string, vb: string;
     if (sort.col === 'date') {
       va = a.date ?? ''; vb = b.date ?? '';
@@ -852,7 +945,7 @@ function EchangesTab({
       va = String(a[sort.col] ?? ''); vb = String(b[sort.col] ?? '');
     }
     return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
-  }), [entries, sort]);
+  }), [filtered, sort]);
 
   function toggleSort(col: typeof sort.col) {
     setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
@@ -877,7 +970,42 @@ function EchangesTab({
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {sorted.length} échange{sorted.length !== 1 ? 's' : ''}
         </span>
+        <button
+          onClick={() => setShowFilters(v => !v)}
+          className="text-xs px-2 py-1 rounded ml-auto"
+          style={{
+            background: showFilters ? 'var(--accent)' : 'var(--border)',
+            color: showFilters ? 'var(--accent-fg)' : 'var(--text)',
+          }}
+        >
+          ▼ Filtres
+        </button>
       </div>
+      {showFilters && (
+        <div style={{ display: 'flex', gap: 6, padding: '6px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
+          <input style={{ ...tabInputStyle, width: 140 }} placeholder="Nom…" value={filterNom} onChange={e => setFilterNom(e.target.value)} />
+          <select style={{ ...tabInputStyle, width: 130 }} value={filterCanal} onChange={e => setFilterCanal(e.target.value)}>
+            <option value="">Canal</option>
+            {allCanaux.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <input style={{ ...tabInputStyle, width: 130 }} placeholder="Contact…" value={filterContact} onChange={e => setFilterContact(e.target.value)} />
+          <input style={{ ...tabInputStyle, width: 130 }} placeholder="Suivi…" value={filterSuivi} onChange={e => setFilterSuivi(e.target.value)} />
+          <input style={{ ...tabInputStyle, width: 130 }} placeholder="Tâche…" value={filterTache} onChange={e => setFilterTache(e.target.value)} />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input id="echanges-date-from" type="date" style={{ ...tabInputStyle, width: 130, paddingRight: 26 }} value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+            <span onClick={() => (document.getElementById('echanges-date-from') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>📅</span>
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→</span>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input id="echanges-date-to" type="date" style={{ ...tabInputStyle, width: 130, paddingRight: 26 }} value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
+            <span onClick={() => (document.getElementById('echanges-date-to') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>📅</span>
+          </div>
+          {(filterNom || filterCanal || filterContact || filterSuivi || filterTache || filterDateFrom || filterDateTo) && (
+            <button onClick={() => { setFilterNom(''); setFilterCanal(''); setFilterContact(''); setFilterSuivi(''); setFilterTache(''); setFilterDateFrom(''); setFilterDateTo(''); }}
+              style={{ ...tabInputStyle, cursor: 'pointer', color: 'var(--accent)' }}>✕ Effacer</button>
+          )}
+        </div>
+      )}
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
@@ -1089,6 +1217,11 @@ function TempsProjetTab({
   const [error, setError] = useState('');
   const [sort, setSort] = useState<{ col: 'description' | 'debut' | 'fin' | 'dureeMin' | 'dureeH'; dir: 'asc' | 'desc' }>({ col: 'debut', dir: 'desc' });
   const [groupByTache, setGroupByTache] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterDescription, setFilterDescription] = useState('');
+  const [filterTache, setFilterTache] = useState('');
+  const [filterDebutFrom, setFilterDebutFrom] = useState('');
+  const [filterDebutTo, setFilterDebutTo] = useState('');
 
   useEffect(() => {
     if (!tachesReady || !token || !config.databaseId) return;
@@ -1099,11 +1232,19 @@ function TempsProjetTab({
       .finally(() => setLoading(false));
   }, [tachesReady, token, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sorted = useMemo(() => [...entries].sort((a, b) => {
+  const filtered = useMemo(() => entries.filter(e => {
+    if (filterDescription && !e.description.toLowerCase().includes(filterDescription.toLowerCase())) return false;
+    if (filterTache && !e.tacheNoms.some(t => t.toLowerCase().includes(filterTache.toLowerCase()))) return false;
+    if (filterDebutFrom && (e.debut ?? '') < filterDebutFrom) return false;
+    if (filterDebutTo && (e.debut ?? '') > filterDebutTo) return false;
+    return true;
+  }), [entries, filterDescription, filterTache, filterDebutFrom, filterDebutTo]);
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
     const va = (sort.col === 'debut' || sort.col === 'fin') ? (a[sort.col] ?? '') : String(a[sort.col] ?? '');
     const vb = (sort.col === 'debut' || sort.col === 'fin') ? (b[sort.col] ?? '') : String(b[sort.col] ?? '');
     return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
-  }), [entries, sort]);
+  }), [filtered, sort]);
 
   const grouped = useMemo(() => {
     if (!groupByTache) return null;
@@ -1138,7 +1279,17 @@ function TempsProjetTab({
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {sorted.length} session{sorted.length !== 1 ? 's' : ''}
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className="text-xs px-2 py-1 rounded"
+            style={{
+              background: showFilters ? 'var(--accent)' : 'var(--border)',
+              color: showFilters ? 'var(--accent-fg)' : 'var(--text)',
+            }}
+          >
+            ▼ Filtres
+          </button>
           <button
             onClick={() => setGroupByTache(v => !v)}
             className="text-xs px-2 py-1 rounded"
@@ -1152,6 +1303,26 @@ function TempsProjetTab({
           </button>
         </div>
       </div>
+      {showFilters && (
+        <div style={{ display: 'flex', gap: 6, padding: '6px 12px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep)' }}>
+          <input style={{ ...tabInputStyle, width: 160 }} placeholder="Description…" value={filterDescription} onChange={e => setFilterDescription(e.target.value)} />
+          <input style={{ ...tabInputStyle, width: 140 }} placeholder="Tâche…" value={filterTache} onChange={e => setFilterTache(e.target.value)} />
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Début :</span>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input id="temps-debut-from" type="date" style={{ ...tabInputStyle, width: 130, paddingRight: 26 }} value={filterDebutFrom} onChange={e => setFilterDebutFrom(e.target.value)} />
+            <span onClick={() => (document.getElementById('temps-debut-from') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>📅</span>
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→</span>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input id="temps-debut-to" type="date" style={{ ...tabInputStyle, width: 130, paddingRight: 26 }} value={filterDebutTo} onChange={e => setFilterDebutTo(e.target.value)} />
+            <span onClick={() => (document.getElementById('temps-debut-to') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>📅</span>
+          </div>
+          {(filterDescription || filterTache || filterDebutFrom || filterDebutTo) && (
+            <button onClick={() => { setFilterDescription(''); setFilterTache(''); setFilterDebutFrom(''); setFilterDebutTo(''); }}
+              style={{ ...tabInputStyle, cursor: 'pointer', color: 'var(--accent)' }}>✕ Effacer</button>
+          )}
+        </div>
+      )}
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
