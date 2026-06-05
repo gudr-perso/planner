@@ -530,7 +530,7 @@ function SousTachesTab({
 }) {
   const config = load<SousTachesConfig>('sousTachesConfig', {
     databaseId: '', nomField: 'Name', statutField: '', prioriteField: '',
-    canalField: '', tacheField: '', statutTermineValue: 'Terminé',
+    canalField: '', dateField: '', tacheField: '', statutTermineValue: 'Terminé',
   });
 
   const [entries, setEntries] = useState<SousTacheEntry[]>([]);
