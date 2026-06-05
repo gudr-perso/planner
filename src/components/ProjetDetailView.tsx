@@ -112,9 +112,13 @@ const tabInputStyle: React.CSSProperties = {
 type PdfContent = Record<string, unknown>;
 
 // Roboto ne supporte pas les emoji — on les supprime du texte PDF
-const EMOJI_RE = /[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]️?|[\u{2300}-\u{23FF}]|️/gu;
 function noEmoji(s: string): string {
-  return s.replace(EMOJI_RE, '').trim();
+  return s
+    .replace(/\p{Extended_Pictographic}/gu, '')  // tous les emoji pictographiques
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')        // variation selectors
+    .replace(/\u{200D}/gu, '')                    // zero-width joiner
+    .replace(/\u{20E3}/gu, '')                    // combining enclosing keycap
+    .trim();
 }
 
 function richTextToPdf(parts: NotionRichText[]): PdfContent[] {
