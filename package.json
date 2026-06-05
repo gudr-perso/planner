@@ -24,6 +24,7 @@
     "@wamra/gantt-task-react": "^0.6.17",
     "date-fns": "^4.3.0",
     "lucide-react": "^1.17.0",
+    "pdfmake": "^0.3.9",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "xlsx": "^0.18.5"

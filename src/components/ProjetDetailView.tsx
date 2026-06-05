@@ -8,6 +8,7 @@ import type {
   EchangesConfig,
   NotionBlock,
   NotionConfig,
+  NotionRichText,
   SousTacheEntry,
   SousTachesConfig,
   SuiviProjetEntry,
@@ -106,6 +107,115 @@ const tabInputStyle: React.CSSProperties = {
   color: 'var(--text)', outline: 'none',
 };
 
+// ── Convertit NotionBlock[] en contenu pdfmake ────────────────────────────────
+
+type PdfContent = Record<string, unknown>;
+
+function richTextToPdf(parts: NotionRichText[]): PdfContent[] {
+  if (!parts || parts.length === 0) return [{ text: '' }];
+  return parts.map(p => {
+    const ann = p.annotations ?? {};
+    const obj: PdfContent = { text: p.plain_text ?? '' };
+    if (ann.bold) obj.bold = true;
+    if (ann.italic) obj.italics = true;
+    if (ann.underline) obj.decoration = 'underline';
+    if (ann.strikethrough) obj.decoration = 'lineThrough';
+    if (ann.code) { obj.font = 'Courier'; obj.fontSize = 8; obj.background = '#F1F5F9'; }
+    return obj;
+  });
+}
+
+function blocksToPdfContent(blocks: NotionBlock[]): PdfContent[] {
+  const content: PdfContent[] = [];
+
+  for (const block of blocks) {
+    const rt = ((block[block.type] as Record<string, unknown>)?.rich_text as NotionRichText[]) ?? [];
+    const rtPdf = richTextToPdf(rt);
+    const plainText = rt.map(p => p.plain_text).join('');
+
+    switch (block.type) {
+      case 'paragraph':
+        content.push({ text: rtPdf.length > 0 ? rtPdf : ' ', margin: [0, 2, 0, 4], fontSize: 10, color: '#1A202C' });
+        break;
+      case 'heading_1':
+        content.push({ text: rtPdf, fontSize: 16, bold: true, margin: [0, 14, 0, 6], color: '#1A202C' });
+        break;
+      case 'heading_2':
+        content.push({ text: rtPdf, fontSize: 13, bold: true, margin: [0, 10, 0, 4], color: '#1A202C' });
+        break;
+      case 'heading_3':
+        content.push({ text: rtPdf, fontSize: 11, bold: true, margin: [0, 8, 0, 3], color: '#1A202C' });
+        break;
+      case 'bulleted_list_item':
+        content.push({ text: [{ text: '• ', color: '#718096' }, ...rtPdf], margin: [8, 1, 0, 1], fontSize: 10, color: '#1A202C' });
+        break;
+      case 'numbered_list_item':
+        content.push({ text: rtPdf, margin: [8, 1, 0, 1], fontSize: 10, color: '#1A202C' });
+        break;
+      case 'to_do': {
+        const checked = !!((block.to_do as Record<string, unknown>)?.checked);
+        content.push({ text: [{ text: checked ? '☑ ' : '☐ ', color: '#718096' }, ...rtPdf], margin: [8, 1, 0, 1], fontSize: 10, color: '#1A202C' });
+        break;
+      }
+      case 'quote':
+        content.push({
+          table: { widths: [3, '*'], body: [[{ text: '', fillColor: '#718096', border: [false, false, false, false] }, { text: rtPdf, italics: true, color: '#718096', fontSize: 10, border: [false, false, false, false] }]] },
+          layout: 'noBorders', margin: [0, 6, 0, 6],
+        });
+        break;
+      case 'callout': {
+        const icon = ((block.callout as Record<string, unknown>)?.icon as Record<string, unknown>)?.emoji as string ?? '💡';
+        content.push({
+          table: { widths: ['auto', '*'], body: [[{ text: icon, fontSize: 12, border: [false, false, false, false] }, { text: rtPdf, fontSize: 10, border: [false, false, false, false] }]] },
+          fillColor: '#F8FAFC', layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 6, paddingRight: () => 6, paddingTop: () => 5, paddingBottom: () => 5 },
+          margin: [0, 6, 0, 6],
+        });
+        break;
+      }
+      case 'code':
+        content.push({ text: plainText || ' ', font: 'Courier', fontSize: 8, background: '#F1F5F9', margin: [0, 4, 0, 4], color: '#2D3748', preserveLeadingSpaces: true });
+        break;
+      case 'divider':
+        content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: '#E2E8F0' }], margin: [0, 8, 0, 8] });
+        break;
+      case 'image': {
+        const imgData = block.image as Record<string, unknown> | undefined;
+        const imgUrl = (imgData?.file as Record<string, unknown>)?.url as string ?? (imgData?.external as Record<string, unknown>)?.url as string;
+        if (imgUrl) content.push({ text: `[Image: ${imgUrl}]`, fontSize: 8, color: '#718096', italics: true, margin: [0, 4, 0, 4] });
+        break;
+      }
+      case 'table': {
+        const kids = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
+        if (kids && kids.length > 0) {
+          const hasColHeader = !!((block.table as Record<string, unknown>)?.has_column_header);
+          const tableBody = kids.map((row, rowIdx) => {
+            const cells = ((row.table_row as Record<string, unknown>)?.cells as NotionRichText[][]) ?? [];
+            return cells.map(cell => ({
+              text: cell.map(p => p.plain_text).join('') || ' ',
+              fontSize: 9,
+              bold: hasColHeader && rowIdx === 0,
+              fillColor: hasColHeader && rowIdx === 0 ? '#F7FAFC' : undefined,
+            }));
+          });
+          if (tableBody.length > 0 && tableBody[0].length > 0) {
+            const colCount = tableBody[0].length;
+            content.push({
+              table: { headerRows: hasColHeader ? 1 : 0, widths: Array(colCount).fill('*'), body: tableBody },
+              layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#E2E8F0', vLineColor: () => '#E2E8F0' },
+              margin: [0, 6, 0, 6],
+            });
+          }
+        }
+        break;
+      }
+      default:
+        if (rt.length > 0) content.push({ text: rtPdf, margin: [0, 2, 0, 4], fontSize: 10, color: '#718096' });
+    }
+  }
+
+  return content;
+}
+
 // ── Panneau détail ────────────────────────────────────────────────────────────
 
 function DetailPanel({
@@ -115,7 +225,6 @@ function DetailPanel({
   blocksLoading,
   blocksError,
   onClose,
-  token,
 }: {
   title: string;
   url: string | null;
@@ -123,10 +232,45 @@ function DetailPanel({
   blocksLoading: boolean;
   blocksError: string | null;
   onClose: () => void;
-  token: string;
 }) {
-  function handlePrint() {
-    window.print();
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportPdf() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const pdfMakeModule  = await import('pdfmake/build/pdfmake');
+      const pdfFontsModule = await import('pdfmake/build/vfs_fonts');
+      const pdfMake = (pdfMakeModule as Record<string, unknown>).default ?? pdfMakeModule;
+      const pdfFonts = (pdfFontsModule as Record<string, unknown>).default ?? pdfFontsModule;
+      (pdfMake as Record<string, unknown>).vfs = (pdfFonts as Record<string, unknown & { pdfMake?: { vfs?: unknown } }>).pdfMake?.vfs ?? (pdfFonts as Record<string, unknown>).vfs ?? pdfFonts;
+
+      const contentBlocks = blocksToPdfContent(blocks);
+
+      const docDef = {
+        pageSize: 'A4' as const,
+        pageMargins: [40, 55, 40, 50] as [number, number, number, number],
+        header: (_page: number, _count: number) => ({
+          text: title,
+          fontSize: 9, color: '#718096', margin: [40, 18, 40, 0], alignment: 'left' as const,
+        }),
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `${currentPage} / ${pageCount}`,
+          fontSize: 8, color: '#A0AEC0', alignment: 'center' as const, margin: [0, 8, 0, 0],
+        }),
+        content: [
+          { text: title, fontSize: 20, bold: true, color: '#1A202C', margin: [0, 0, 0, 16] },
+          ...contentBlocks,
+        ],
+        defaultStyle: { fontSize: 10, color: '#1A202C', lineHeight: 1.4 },
+      };
+
+      const safeTitle = title.replace(/[/\\:*?"<>|]/g, '_').slice(0, 60);
+      await (pdfMake as { createPdf: (d: unknown) => { download: (n: string) => Promise<void> } })
+        .createPdf(docDef).download(`${safeTitle}.pdf`);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -157,11 +301,12 @@ function DetailPanel({
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           {blocks.length > 0 && (
             <button
-              onClick={handlePrint}
-              title="Générer PDF"
-              style={{ fontSize: 12, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-deep)', color: 'var(--text)', cursor: 'pointer' }}
+              onClick={handleExportPdf}
+              disabled={exporting}
+              title="Télécharger en PDF"
+              style={{ fontSize: 12, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-deep)', color: exporting ? 'var(--text-muted)' : 'var(--text)', cursor: exporting ? 'default' : 'pointer', opacity: exporting ? 0.6 : 1 }}
             >
-              ↓ PDF
+              {exporting ? '…PDF' : '↓ PDF'}
             </button>
           )}
           <button
@@ -173,10 +318,7 @@ function DetailPanel({
           </button>
         </div>
       </div>
-      <div id="projet-print-content" className="themed-scroll flex-1 overflow-y-auto px-5 py-5">
-        <h1 className="print-title" style={{ display: 'none', fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
-          {title}
-        </h1>
+      <div className="themed-scroll flex-1 overflow-y-auto px-5 py-5">
         {blocksLoading ? (
           <p className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement…</p>
         ) : blocksError ? (
@@ -407,7 +549,6 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               blocksLoading={blocksLoading}
               blocksError={blocksError}
               onClose={closeDetail}
-              token={token}
             />
           </div>
         )}
