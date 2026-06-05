@@ -322,6 +322,34 @@ function TabBlock({ block }: { block: NotionBlock }) {
   );
 }
 
+// ── ColumnBlock : une colonne dans un column_list ─────────────────────────────
+function ColumnBlock({ block }: { block: NotionBlock }) {
+  const { onToggleTodo } = useContext(BlockCtx);
+  const { kids, loading } = useBlockChildren(block, true /* fetchOnMount */);
+
+  return (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      {loading && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>…</span>}
+      {kids.length > 0 && <NotionBlockRenderer blocks={kids} onToggleTodo={onToggleTodo} />}
+    </div>
+  );
+}
+
+// ── ColumnListBlock : conteneur flex de colonnes ───────────────────────────────
+function ColumnListBlock({ block }: { block: NotionBlock }) {
+  const { kids: columns, loading } = useBlockChildren(block, true /* fetchOnMount */);
+
+  if (loading) {
+    return <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', margin: '6px 0' }}>…</span>;
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 16, margin: '8px 0', alignItems: 'flex-start' }}>
+      {columns.map(col => <ColumnBlock key={col.id} block={col} />)}
+    </div>
+  );
+}
+
 // ── BlockItem ──────────────────────────────────────────────────────────────────
 function BlockItem({ block, listIndex }: {
   block: NotionBlock;
@@ -478,6 +506,12 @@ function BlockItem({ block, listIndex }: {
       if (!url) return null;
       return <img src={url} alt="" style={{ maxWidth: '100%', borderRadius: 6, margin: '8px 0' }} />;
     }
+
+    case 'column_list':
+      return <ColumnListBlock block={block} />;
+
+    case 'column':
+      return <ColumnBlock block={block} />;
 
     case 'toggle':
       return <ToggleBlock block={block} />;
