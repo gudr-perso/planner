@@ -350,6 +350,7 @@ function CapSousTachesSection({ token, sousTachesConfig, setSousTachesConfig }: 
       <FieldRow label="Canal"><PropSelect value={sousTachesConfig.canalField} onChange={v => setSousTachesConfig(p => ({ ...p, canalField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Date"><PropSelect value={sousTachesConfig.dateField} onChange={v => setSousTachesConfig(p => ({ ...p, dateField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Tâche liée (relation)"><PropCombo value={sousTachesConfig.tacheField} onChange={v => setSousTachesConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
+      <FieldRow label="Filtre projet"><PropCombo value={sousTachesConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setSousTachesConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
       <FieldRow label="Valeur Terminé">
         <input className="flex-1 text-xs rounded px-2 py-1.5" style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
           value={sousTachesConfig.statutTermineValue} onChange={e => setSousTachesConfig(p => ({ ...p, statutTermineValue: e.target.value }))} placeholder="Terminé" />
@@ -386,6 +387,7 @@ function CapSuiviProjetSection({ token, suiviProjetConfig, setSuiviProjetConfig 
       <FieldRow label="Date"><PropSelect value={suiviProjetConfig.dateField} onChange={v => setSuiviProjetConfig(p => ({ ...p, dateField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Statut"><PropSelect value={suiviProjetConfig.statutField} onChange={v => setSuiviProjetConfig(p => ({ ...p, statutField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Tâche liée (relation)"><PropCombo value={suiviProjetConfig.tacheField} onChange={v => setSuiviProjetConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
+      <FieldRow label="Filtre projet"><PropCombo value={suiviProjetConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setSuiviProjetConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
       <FieldRow label="Valeur Terminé">
         <input className="flex-1 text-xs rounded px-2 py-1.5" style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
           value={suiviProjetConfig.statutTermineValue} onChange={e => setSuiviProjetConfig(p => ({ ...p, statutTermineValue: e.target.value }))} placeholder="Terminé" />
@@ -459,6 +461,7 @@ function CapDocumentsSection({ token, documentsConfig, setDocumentsConfig }: {
       </FieldRow>
       <FieldRow label="Nom"><PropCombo value={documentsConfig.nomField} onChange={v => setDocumentsConfig(p => ({ ...p, nomField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Statut"><PropSelect value={documentsConfig.statutField} onChange={v => setDocumentsConfig(p => ({ ...p, statutField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Filtre projet"><PropCombo value={documentsConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setDocumentsConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
     </section>
   );
 }
@@ -493,6 +496,7 @@ function CapTempsSection({ token, tempsProjetConfig, setTempsProjetConfig }: {
       <FieldRow label="Durée (min)"><PropSelect value={tempsProjetConfig.dureeMinField} onChange={v => setTempsProjetConfig(p => ({ ...p, dureeMinField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Durée (h)"><PropSelect value={tempsProjetConfig.dureeHField} onChange={v => setTempsProjetConfig(p => ({ ...p, dureeHField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Tâches (relation)"><PropCombo value={tempsProjetConfig.tacheField} onChange={v => setTempsProjetConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
+      <FieldRow label="Filtre projet"><PropCombo value={tempsProjetConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setTempsProjetConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
     </section>
   );
 }
@@ -596,7 +600,7 @@ export function SettingsView({
   const [echangesConfig, setEchangesConfig] = useState<EchangesConfig>(() =>
     load<EchangesConfig>('echangesConfig', {
       databaseId: '', nomField: 'Name', dateField: '', canalField: '',
-      contactField: '', projetField: '',
+      contactField: '', projetField: '', suiviField: '', tacheField: '',
     })
   );
   const [documentsConfig, setDocumentsConfig] = useState<DocumentsConfig>(() =>
