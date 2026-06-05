@@ -1,7 +1,7 @@
 export async function onRequestGet({ params, env, data }) {
   if (data.user.role !== 'admin') return Response.json({ error: 'Accès refusé' }, { status: 403 });
   const user = await env.DB.prepare(
-    'SELECT id, email, name, role, is_active, created_at, last_login, failed_login_attempts FROM users WHERE id = ?'
+    'SELECT id, email, name, role, is_active, client_code, created_at, last_login, failed_login_attempts FROM users WHERE id = ?'
   ).bind(params.id).first();
   if (!user) return Response.json({ error: 'Utilisateur introuvable' }, { status: 404 });
   const { results: sessions } = await env.DB.prepare(
@@ -24,10 +24,13 @@ export async function onRequestPut({ params, request, env, data }) {
   const name = body.name ?? user.name;
   const role = body.role ?? user.role;
   const is_active = body.is_active ?? user.is_active;
+  const client_code = Object.prototype.hasOwnProperty.call(body, 'client_code')
+    ? (body.client_code?.trim() || null)
+    : user.client_code;
 
   await env.DB.prepare(
-    'UPDATE users SET name = ?, role = ?, is_active = ?, updated_at = ? WHERE id = ?'
-  ).bind(name, role, is_active, new Date().toISOString(), params.id).run();
+    'UPDATE users SET name = ?, role = ?, is_active = ?, client_code = ?, updated_at = ? WHERE id = ?'
+  ).bind(name, role, is_active, client_code, new Date().toISOString(), params.id).run();
 
   if (is_active === 0 && user.is_active !== 0) {
     await env.DB.prepare('UPDATE sessions SET is_revoked = 1 WHERE user_id = ?').bind(params.id).run();

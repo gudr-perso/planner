@@ -5,7 +5,7 @@ export async function onRequestGet({ env, data }) {
     return Response.json({ error: 'Accès refusé' }, { status: 403 });
   }
   const { results } = await env.DB.prepare(
-    'SELECT id, email, name, role, is_active, created_at, last_login FROM users ORDER BY created_at ASC'
+    'SELECT id, email, name, role, is_active, client_code, created_at, last_login FROM users ORDER BY created_at ASC'
   ).all();
   return Response.json({ users: results });
 }
@@ -14,7 +14,7 @@ export async function onRequestPost({ request, env, data }) {
   if (data.user.role !== 'admin') {
     return Response.json({ error: 'Accès refusé' }, { status: 403 });
   }
-  const { email, name, password, role } = await request.json().catch(() => ({}));
+  const { email, name, password, role, client_code } = await request.json().catch(() => ({}));
   if (!email || !name || !password) {
     return Response.json({ error: 'Champs requis : email, name, password' }, { status: 400 });
   }
@@ -22,12 +22,13 @@ export async function onRequestPost({ request, env, data }) {
     return Response.json({ error: 'Le mot de passe doit contenir au moins 10 caractères' }, { status: 400 });
   }
   const validRole = role === 'admin' ? 'admin' : 'user';
+  const clientCode = client_code?.trim() || null;
   const id = crypto.randomUUID();
   const hash = await hashPassword(password);
   try {
     await env.DB.prepare(
-      'INSERT INTO users (id, email, name, role, password_hash) VALUES (?, ?, ?, ?, ?)'
-    ).bind(id, email.trim().toLowerCase(), name.trim(), validRole, hash).run();
+      'INSERT INTO users (id, email, name, role, password_hash, client_code) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(id, email.trim().toLowerCase(), name.trim(), validRole, hash, clientCode).run();
   } catch (e) {
     if (e.message?.includes('UNIQUE')) {
       return Response.json({ error: 'Cet email est déjà utilisé' }, { status: 409 });
@@ -35,7 +36,7 @@ export async function onRequestPost({ request, env, data }) {
     throw e;
   }
   return Response.json(
-    { user: { id, email: email.trim().toLowerCase(), name: name.trim(), role: validRole, is_active: 1 } },
+    { user: { id, email: email.trim().toLowerCase(), name: name.trim(), role: validRole, is_active: 1, client_code: clientCode } },
     { status: 201 }
   );
 }

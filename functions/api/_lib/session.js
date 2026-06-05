@@ -30,7 +30,7 @@ export async function validateSession(db, sessionId) {
   if (!sessionId) return null;
   const row = await db.prepare(`
     SELECT s.id, s.user_id, s.expires_at, s.is_revoked,
-           u.id as uid, u.email, u.name, u.role, u.is_active
+           u.id as uid, u.email, u.name, u.role, u.is_active, u.client_code
     FROM sessions s JOIN users u ON s.user_id = u.id
     WHERE s.id = ?
   `).bind(sessionId).first();
@@ -41,5 +41,5 @@ export async function validateSession(db, sessionId) {
   // Update last_seen non-blocking
   db.prepare('UPDATE sessions SET last_seen = ? WHERE id = ?')
     .bind(new Date().toISOString(), sessionId).run().catch(() => {});
-  return { id: row.uid, email: row.email, name: row.name, role: row.role };
+  return { id: row.uid, email: row.email, name: row.name, role: row.role, client_code: row.client_code ?? null };
 }
