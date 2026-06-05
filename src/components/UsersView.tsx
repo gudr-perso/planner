@@ -5,9 +5,10 @@ import { useIsMobile } from '../hooks/useBreakpoint';
 type User = {
   id: string; email: string; name: string; role: string;
   is_active: number; created_at: string; last_login: string | null;
+  client_code?: string | null;
 };
 
-type CreateForm = { name: string; email: string; password: string; role: string };
+type CreateForm = { name: string; email: string; password: string; role: string; client_code: string };
 
 // Module-level cache (survit aux démontages)
 let _usersCache: User[] | null = null;
@@ -19,7 +20,8 @@ export function UsersView({ refreshKey = 0 }: { refreshKey?: number }) {
   const [loading, setLoading] = useState(_usersCache === null);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<CreateForm>({ name: '', email: '', password: '', role: 'user' });
+  const [form, setForm] = useState<CreateForm>({ name: '', email: '', password: '', role: 'user', client_code: '' });
+  const [editClientCode, setEditClientCode] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -54,15 +56,24 @@ export function UsersView({ refreshKey = 0 }: { refreshKey?: number }) {
     try {
       const res = await apiFetch('/api/admin/users', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, client_code: form.client_code || undefined }),
       });
       const data = await res.json();
       if (!res.ok) { setFormError(data.error || 'Erreur'); return; }
       setShowCreate(false);
-      setForm({ name: '', email: '', password: '', role: 'user' });
+      setForm({ name: '', email: '', password: '', role: 'user', client_code: '' });
       load();
     } catch { setFormError('Erreur réseau'); }
     finally { setSaving(false); }
+  }
+
+  async function updateClientCode(u: User, code: string) {
+    await apiFetch(`/api/admin/users/${u.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_code: code.trim() || null }),
+    });
+    _usersCache = null; // invalidate cache
+    load();
   }
 
   async function toggleActive(u: User) {
@@ -166,7 +177,7 @@ export function UsersView({ refreshKey = 0 }: { refreshKey?: number }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)' }}>
-                {['Nom', 'Email', 'Rôle', 'Statut', 'Dernière connexion', 'Actions'].map(h => (
+                {['Nom', 'Email', 'Rôle', 'Code client', 'Statut', 'Dernière connexion', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>{h}</th>
                 ))}
               </tr>
@@ -180,6 +191,25 @@ export function UsersView({ refreshKey = 0 }: { refreshKey?: number }) {
                     <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: u.role === 'admin' ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'color-mix(in srgb, var(--text-muted) 15%, transparent)', color: u.role === 'admin' ? 'var(--accent)' : 'var(--text-muted)' }}>
                       {u.role === 'admin' ? 'Admin' : 'Utilisateur'}
                     </span>
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={editClientCode[u.id] ?? (u.client_code || '')}
+                        onChange={e => setEditClientCode(prev => ({ ...prev, [u.id]: e.target.value }))}
+                        placeholder="—"
+                        style={{ width: 70, padding: '3px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 12 }}
+                      />
+                      {(editClientCode[u.id] !== undefined && editClientCode[u.id] !== (u.client_code || '')) && (
+                        <button
+                          onClick={() => updateClientCode(u, editClientCode[u.id])}
+                          style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--accent)', color: '#fff', fontSize: 11, cursor: 'pointer' }}
+                        >
+                          ✓
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td style={td}>
                     <span style={{ color: u.is_active ? 'var(--color-success, #0a0)' : 'var(--color-error, #e05)', fontSize: 12 }}>
@@ -221,6 +251,18 @@ export function UsersView({ refreshKey = 0 }: { refreshKey?: number }) {
                 <option value="user">Utilisateur</option>
                 <option value="admin">Admin</option>
               </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
+                Code client (optionnel)
+              </label>
+              <input
+                type="text"
+                value={form.client_code}
+                onChange={e => setForm(f => ({ ...f, client_code: e.target.value }))}
+                placeholder="ex: T1-3"
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13 }}
+              />
             </div>
             {formError && <p style={{ margin: 0, fontSize: 12, color: 'var(--color-error, #e05)' }}>{formError}</p>}
             <button onClick={createUser} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
