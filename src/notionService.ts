@@ -1404,19 +1404,9 @@ async function queryWithFilter(
     const body: Record<string, unknown> = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
     if (filter) body.filter = filter;
-    let data: Record<string, unknown>;
-    try {
-      data = await nPost(token, `/databases/${databaseId}/query`, body);
-    } catch (e) {
-      if (filter && !cursor) {
-        delete body.filter;
-        data = await nPost(token, `/databases/${databaseId}/query`, body);
-      } else {
-        throw e;
-      }
-    }
-    allPages.push(...((data!.results ?? []) as typeof allPages));
-    cursor = (data!.next_cursor as string | null) ?? undefined;
+    const data = await nPost(token, `/databases/${databaseId}/query`, body);
+    allPages.push(...((data.results ?? []) as typeof allPages));
+    cursor = (data.next_cursor as string | null) ?? undefined;
   } while (cursor);
   return allPages;
 }
@@ -1513,26 +1503,7 @@ export async function fetchEchanges(
     ? { property: config.projetField, relation: { contains: projetId } }
     : undefined;
 
-  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
-  let cursor: string | undefined;
-  do {
-    const body: Record<string, unknown> = { page_size: 100 };
-    if (cursor) body.start_cursor = cursor;
-    if (filter) body.filter = filter;
-    let data: Record<string, unknown>;
-    try {
-      data = await nPost(token, `/databases/${config.databaseId}/query`, body);
-    } catch (e) {
-      if (filter && !cursor) {
-        delete body.filter;
-        data = await nPost(token, `/databases/${config.databaseId}/query`, body);
-      } else {
-        throw e;
-      }
-    }
-    allPages.push(...((data!.results ?? []) as typeof allPages));
-    cursor = (data!.next_cursor as string | null) ?? undefined;
-  } while (cursor);
+  const allPages = await queryWithFilter(token, config.databaseId, filter);
 
   // Résoudre les contacts
   const contactIds = new Set<string>();
