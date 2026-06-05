@@ -719,6 +719,73 @@ export function SettingsView({
           <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>⚙ Paramètres</h2>
         </div>
 
+        {/* ── Export / Import ── */}
+        <section className="mb-4 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <SectionTitle>Export / Import de configuration</SectionTitle>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={downloadConfig}
+              className="text-xs px-3 py-1.5 rounded font-medium transition"
+              style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+            >
+              ↓ Exporter la config
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs px-3 py-1.5 rounded font-medium transition"
+              style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+            >
+              ↑ Importer…
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+          </div>
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            Les clefs API (tokens Notion et Google) ne sont pas exportées.
+          </p>
+        </section>
+
+        {/* ── Sync Cloud ── */}
+        <section className="mb-6 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <SectionTitle>Sync Cloud</SectionTitle>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCloudUpload}
+              disabled={cloudStatus.saving}
+              className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+              style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+            >
+              {cloudStatus.saving ? '…' : '↑ Envoyer vers le cloud'}
+            </button>
+            <button
+              onClick={handleCloudDownload}
+              disabled={cloudStatus.loading}
+              className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+              style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+            >
+              {cloudStatus.loading ? '…' : '↓ Télécharger depuis le cloud'}
+            </button>
+          </div>
+          {cloudStatus.savedAt && (
+            <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Dernière sauvegarde : {new Date(cloudStatus.savedAt + 'Z').toLocaleString()}
+            </p>
+          )}
+          {cloudStatus.error && (
+            <p className="mt-1.5 text-[11px]" style={{ color: 'var(--color-error, #e53e3e)' }}>
+              {cloudStatus.error}
+            </p>
+          )}
+          <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            Les clefs API (tokens Notion et Google) ne sont pas incluses.
+          </p>
+        </section>
+
         {/* ── Onglets ── */}
         <div className="flex gap-1 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
           {(['cuma', 'cap'] as const).map(t => (
@@ -759,73 +826,6 @@ export function SettingsView({
               >×</button>
             </div>
           )}
-
-          {/* ── Export / Import ── */}
-          <section>
-            <SectionTitle>Export / Import de configuration</SectionTitle>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={downloadConfig}
-                className="text-xs px-3 py-1.5 rounded font-medium transition"
-                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-              >
-                ↓ Exporter la config
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs px-3 py-1.5 rounded font-medium transition"
-                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-              >
-                ↑ Importer…
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={handleImportFile}
-              />
-            </div>
-            <p className="mt-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Les clefs API (tokens Notion et Google) ne sont pas exportées.
-            </p>
-          </section>
-
-          {/* ── Sync Cloud ── */}
-          <section>
-            <SectionTitle>Sync Cloud</SectionTitle>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleCloudUpload}
-                disabled={cloudStatus.saving}
-                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
-                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-              >
-                {cloudStatus.saving ? '…' : '↑ Envoyer vers le cloud'}
-              </button>
-              <button
-                onClick={handleCloudDownload}
-                disabled={cloudStatus.loading}
-                className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
-                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-              >
-                {cloudStatus.loading ? '…' : '↓ Télécharger depuis le cloud'}
-              </button>
-            </div>
-            {cloudStatus.savedAt && (
-              <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Dernière sauvegarde : {new Date(cloudStatus.savedAt + 'Z').toLocaleString()}
-              </p>
-            )}
-            {cloudStatus.error && (
-              <p className="mt-1.5 text-[11px]" style={{ color: 'var(--color-error, #e53e3e)' }}>
-                {cloudStatus.error}
-              </p>
-            )}
-            <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Les clefs API (tokens Notion et Google) ne sont pas incluses.
-            </p>
-          </section>
 
           {/* ── Connexion Notion ── */}
           <section>
