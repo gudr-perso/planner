@@ -224,16 +224,16 @@ function CapProjetsSection({ token, projetsConfig, setProjetsConfig }: {
         </button>
       </FieldRow>
       <FieldRow label="Nom">
-        <PropSelect value={projetsConfig.nomField} onChange={v => setProjetsConfig(p => ({ ...p, nomField: v }))} schema={schema} />
+        <PropCombo value={projetsConfig.nomField} onChange={v => setProjetsConfig(p => ({ ...p, nomField: v }))} schema={schema} />
       </FieldRow>
       <FieldRow label="Tiers (relation)">
-        <PropSelect value={projetsConfig.tiersField} onChange={v => setProjetsConfig(p => ({ ...p, tiersField: v }))} schema={schema} />
+        <PropCombo value={projetsConfig.tiersField} onChange={v => setProjetsConfig(p => ({ ...p, tiersField: v }))} schema={schema} placeholder="Nom exact du champ relation…" />
       </FieldRow>
       <FieldRow label="Type de projet">
-        <PropSelect value={projetsConfig.typeProjetField} onChange={v => setProjetsConfig(p => ({ ...p, typeProjetField: v }))} schema={schema} />
+        <PropCombo value={projetsConfig.typeProjetField} onChange={v => setProjetsConfig(p => ({ ...p, typeProjetField: v }))} schema={schema} />
       </FieldRow>
       <FieldRow label="Date de début">
-        <PropSelect value={projetsConfig.dateDebutField} onChange={v => setProjetsConfig(p => ({ ...p, dateDebutField: v }))} schema={schema} />
+        <PropCombo value={projetsConfig.dateDebutField} onChange={v => setProjetsConfig(p => ({ ...p, dateDebutField: v }))} schema={schema} />
       </FieldRow>
     </section>
   );
@@ -297,7 +297,7 @@ function CapTachesSection({ token, tachesConfig, setTachesConfig }: {
         <PropSelect value={tachesConfig.planifieLeField} onChange={v => setTachesConfig(p => ({ ...p, planifieLeField: v }))} schema={schema} />
       </FieldRow>
       <FieldRow label="Projet (relation)">
-        <PropSelect value={tachesConfig.projetField} onChange={v => setTachesConfig(p => ({ ...p, projetField: v }))} schema={schema} />
+        <PropCombo value={tachesConfig.projetField} onChange={v => setTachesConfig(p => ({ ...p, projetField: v }))} schema={schema} placeholder="Nom exact du champ relation…" />
       </FieldRow>
       <FieldRow label="Valeur Terminé">
         <input
