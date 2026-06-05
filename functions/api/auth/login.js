@@ -38,7 +38,7 @@ export async function onRequestPost({ request, env }) {
   ).bind(new Date().toISOString(), user.id).run();
 
   return Response.json(
-    { user: { id: user.id, email: user.email, name: user.name, role: user.role } },
+    { user: { id: user.id, email: user.email, name: user.name, role: user.role, client_code: user.client_code ?? null } },
     { headers: { 'Set-Cookie': sessionCookie(sessionId, expires) } }
   );
 }
