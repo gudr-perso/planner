@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-export type AuthUser = { id: string; email: string; name: string; role: 'admin' | 'user' };
+export type AuthUser = { id: string; email: string; name: string; role: 'admin' | 'user'; client_code?: string | null };
 
 export type AuthContextValue = {
   user: AuthUser | null;

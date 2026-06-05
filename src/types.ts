@@ -339,6 +339,8 @@ export type ProjetsConfig = {
   dateDebutField: string;  // date
   statutField: string;     // status/select
   codeProjetField?: string; // formula/text/number → code unique du projet (ex: "PJ-8")
+  codeClientField?: string;     // champ Notion portant le code client (ex: "Code Client")
+  codeClientFieldType?: string; // 'rich_text' | 'formula'
 };
 
 export type ProjetEntry = {
