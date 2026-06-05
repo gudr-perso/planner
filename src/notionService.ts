@@ -1300,16 +1300,26 @@ async function fetchRelationTitle(token: string, pageId: string): Promise<string
   return '';
 }
 
-export async function fetchProjets(token: string, config: ProjetsConfig): Promise<ProjetEntry[]> {
+export async function fetchProjets(token: string, config: ProjetsConfig, clientCode?: string | null): Promise<ProjetEntry[]> {
   if (!config.databaseId) return [];
   const results: ProjetEntry[] = [];
   let cursor: string | undefined;
+  let clientFilter: Record<string, unknown> | undefined;
+  if (clientCode && config.codeClientField) {
+    const fieldType = config.codeClientFieldType ?? 'rich_text';
+    if (fieldType === 'formula') {
+      clientFilter = { property: config.codeClientField, formula: { string: { equals: clientCode } } };
+    } else {
+      clientFilter = { property: config.codeClientField, rich_text: { equals: clientCode } };
+    }
+  }
   do {
     const body: Record<string, unknown> = {
       page_size: 100,
       sorts: [{ property: config.nomField, direction: 'ascending' }],
     };
     if (cursor) body.start_cursor = cursor;
+    if (clientFilter) body.filter = clientFilter;
     const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
     for (const page of (data.results ?? []) as Array<{ id: string; url: string; properties: Record<string, PropVal> }>) {
       const props = page.properties ?? {};
