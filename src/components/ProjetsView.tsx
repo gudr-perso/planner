@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchProjets } from '../notionService';
 import type { NotionConfig, ProjetsConfig, ProjetEntry } from '../types';
+import { useAuth } from '../store/useAuthStore';
 
 function notionColor(color?: string): string {
   const map: Record<string, string> = {
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function ProjetsView({ onSelectProjet }: Props) {
+  const { user } = useAuth();
   const [projets, setProjets] = useState<ProjetEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,7 +60,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
       return;
     }
     setLoading(true);
-    fetchProjets(notionCfg.integrationToken, cfg)
+    fetchProjets(notionCfg.integrationToken, cfg, user?.client_code)
       .then(data => {
         _projetsCache = data;
         _projetsCacheKey = cacheKey;
