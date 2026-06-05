@@ -1406,7 +1406,7 @@ export async function fetchSousTaches(
       : [];
     const tacheIds = tacheRels.map(r => r.id);
     // Filtrer : ne garder que les sous-tâches dont au moins une tâche appartient au projet
-    if (tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
+    if (config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
     const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
 
     const nom = plainText(props[config.nomField]);
@@ -1449,7 +1449,7 @@ export async function fetchSuivisProjet(
       ? ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
       : [];
     const tacheIds = tacheRels.map(r => r.id);
-    if (tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
+    if (config.tacheField && tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
     const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
 
     const nom = plainText(props[config.nomField]);
