@@ -247,7 +247,21 @@ function DetailPanel({
       const pdfFonts = pdfFontsModule.default ?? pdfFontsModule;
       pdfMake.vfs = pdfFonts.pdfMake?.vfs ?? pdfFonts.vfs ?? (pdfFonts as unknown as Record<string, string>);
 
-      const contentBlocks = blocksToPdfContent(blocks);
+      // Fetch children of blocks that need them for PDF (table rows, columns, callouts)
+      const CHILD_TYPES = new Set(['table', 'column_list', 'callout', 'toggle', 'quote']);
+      const enriched = await Promise.all(blocks.map(async b => {
+        if (!b.has_children || !CHILD_TYPES.has(b.type)) return b;
+        const existing = (b as Record<string, unknown>)._children as NotionBlock[] | undefined;
+        if (existing && existing.length > 0) return b;
+        try {
+          const kids = await fetchPageBlocks(token, b.id);
+          return { ...b, _children: kids } as NotionBlock;
+        } catch {
+          return b;
+        }
+      }));
+
+      const contentBlocks = blocksToPdfContent(enriched);
 
       const docDef = {
         pageSize: 'A4' as const,
