@@ -426,6 +426,7 @@ function CapEchangesSection({ token, echangesConfig, setEchangesConfig }: {
       <FieldRow label="Canal"><PropSelect value={echangesConfig.canalField} onChange={v => setEchangesConfig(p => ({ ...p, canalField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Contact (relation)"><PropCombo value={echangesConfig.contactField} onChange={v => setEchangesConfig(p => ({ ...p, contactField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
       <FieldRow label="Projet (relation)"><PropCombo value={echangesConfig.projetField} onChange={v => setEchangesConfig(p => ({ ...p, projetField: v }))} schema={schema} placeholder="Nom exact du champ relation Projet…" /></FieldRow>
+      <FieldRow label="Filtre projet"><PropCombo value={echangesConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setEchangesConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
       <FieldRow label="Suivi (relation)">
         <PropCombo value={echangesConfig.suiviField ?? ''} onChange={v => setEchangesConfig(p => ({ ...p, suiviField: v }))} schema={schema} placeholder="Nom exact du champ relation Suivi…" />
       </FieldRow>

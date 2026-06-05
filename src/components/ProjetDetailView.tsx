@@ -357,6 +357,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
           {activeTab === 'echanges' && (
             <EchangesTab
               projetId={projetId}
+              projetCode={projetCode}
               token={token}
               selectedId={selectedId}
               onSelectRow={openDetail}
@@ -913,11 +914,13 @@ function SuiviProjetTab({
 
 function EchangesTab({
   projetId,
+  projetCode,
   token,
   selectedId,
   onSelectRow,
 }: {
   projetId: string;
+  projetCode?: string;
   token: string;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
@@ -943,7 +946,7 @@ function EchangesTab({
   useEffect(() => {
     if (!token || !config.databaseId) return;
     setLoading(true);
-    fetchEchanges(token, config, projetId)
+    fetchEchanges(token, config, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));

@@ -1520,12 +1520,16 @@ export async function fetchEchanges(
   token: string,
   config: EchangesConfig,
   projetId: string,
+  projetCode?: string,
 ): Promise<EchangeEntry[]> {
   if (!config.databaseId) return [];
 
-  const filter: Record<string, unknown> | undefined = config.projetField
-    ? { property: config.projetField, relation: { contains: projetId } }
-    : undefined;
+  // Priorité : projetFilterField (type flexible) > projetField (relation legacy)
+  const filter: Record<string, unknown> | undefined = config.projetFilterField
+    ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
+    : config.projetField
+      ? { property: config.projetField, relation: { contains: projetId } }
+      : undefined;
 
   const allPages = await queryWithFilter(token, config.databaseId, filter);
 

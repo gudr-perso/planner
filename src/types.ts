@@ -490,9 +490,11 @@ export type EchangesConfig = {
   dateField: string;
   canalField: string;
   contactField: string;          // relation → contacts
-  projetField: string;           // relation → Projets (pour filtrage)
+  projetField: string;           // relation → Projets (legacy, utilisé si projetFilterField absent)
   suiviField: string;            // relation → Suivi
   tacheField: string;            // relation → Tâches
+  projetFilterField?: string;    // champ relation/formule/texte vers Projet (prioritaire sur projetField)
+  projetFilterFieldType?: string;
 };
 
 export type EchangeEntry = {
