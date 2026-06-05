@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DndContext, type DragEndEvent, type DragMoveEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import { StoreContext, type StoreCtx } from './store';
-import { AuthContext, type AuthUser, _registerLogout } from './store/useAuthStore';
+import { AuthContext, type AuthUser, _registerLogout, useAuth } from './store/useAuthStore';
 import { LoginPage } from './components/LoginPage';
 import { SetupPage } from './components/SetupPage';
 import { UsersView } from './components/UsersView';
@@ -92,7 +92,9 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewKey>(() => {
     if (localStorage.getItem('planner:_justImported')) return 'settings';
-    return load<ViewKey>('view', 'home');
+    const v = load<ViewKey>('view', 'home');
+    if (v === 'projet-detail' && !load<string>('selectedProjetId', '')) return 'projets';
+    return v;
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => load<boolean>('sidebarCollapsed', false));
   const [gcalToken, setGcalToken] = useState<string | null>(loadToken);
@@ -103,9 +105,12 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const [notionWriteStatus, setNotionWriteStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
   const [notionWriteMsg, setNotionWriteMsg] = useState<string | null>(null);
   const [partenaireFilter, setPartenaireFilter] = useState<PartenaireEntry | null>(null);
-  const [selectedProjetId, setSelectedProjetId] = useState<string>('');
-  const [selectedProjetNom, setSelectedProjetNom] = useState<string>('');
-  const [selectedProjetCode, setSelectedProjetCode] = useState<string | undefined>(undefined);
+  const [selectedProjetId, setSelectedProjetId] = useState<string>(() => load<string>('selectedProjetId', ''));
+  const [selectedProjetNom, setSelectedProjetNom] = useState<string>(() => load<string>('selectedProjetNom', ''));
+  const [selectedProjetCode, setSelectedProjetCode] = useState<string | undefined>(() => {
+    const v = load<string>('selectedProjetCode', '');
+    return v || undefined;
+  });
   const [suivisSearch, setSuivisSearch] = useState('');
   const googleClientId = load<string>('gcalClientId', '');
   const [dataSource, setDataSource] = useState<'demo' | 'notion'>(() => load<'demo' | 'notion'>('dataSource', 'demo'));
@@ -118,6 +123,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     showGcal: load<boolean>('showGcal', true),
   }));
 
+  const { user } = useAuth();
   const { width: panelWidth, onMouseDown: onPanelResize } = useResizablePanel('panelWidth', 280);
   const isTablet = useIsTablet();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -200,9 +206,18 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     }
   }, [dataSource]);
   useEffect(() => { save('view', view); }, [view]);
+  useEffect(() => {
+    const nonClientViews: ViewKey[] = ['home', 'calendar', 'rolling', 'rolling2', 'gantt', 'clients', 'settings', 'users', 'briefing', 'todo', 'postits', 'partenaires', 'suivis', 'temps', 'tickets'];
+    if (user?.client_code && nonClientViews.includes(view)) {
+      setView('projets');
+    }
+  }, [user?.client_code]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { save('sidebarCollapsed', sidebarCollapsed); }, [sidebarCollapsed]);
   useEffect(() => { save('colorBy', filters.colorBy); }, [filters.colorBy]);
   useEffect(() => { save('showGcal', filters.showGcal); }, [filters.showGcal]);
+  useEffect(() => { save('selectedProjetId', selectedProjetId); }, [selectedProjetId]);
+  useEffect(() => { save('selectedProjetNom', selectedProjetNom); }, [selectedProjetNom]);
+  useEffect(() => { save('selectedProjetCode', selectedProjetCode ?? ''); }, [selectedProjetCode]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     save('theme', theme);
@@ -473,7 +488,12 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                       projetId={selectedProjetId}
                       projetNom={selectedProjetNom}
                       projetCode={selectedProjetCode}
-                      onBack={() => setView('projets')}
+                      onBack={() => {
+                        setSelectedProjetId('');
+                        setSelectedProjetNom('');
+                        setSelectedProjetCode(undefined);
+                        setView('projets');
+                      }}
                     />
                   )
                   : (isTablet ? <MobileUnavailable viewName="Le Gantt" /> : <GanttView />)}
