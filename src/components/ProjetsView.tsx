@@ -3,6 +3,27 @@ import { load } from '../persistence';
 import { fetchProjets } from '../notionService';
 import type { NotionConfig, ProjetsConfig, ProjetEntry } from '../types';
 
+function notionColor(color?: string): string {
+  const map: Record<string, string> = {
+    blue: '#3b82f6', green: '#10b981', red: '#ef4444', orange: '#f97316',
+    yellow: '#eab308', purple: '#8b5cf6', pink: '#ec4899', gray: '#6b7280',
+    brown: '#92400e', default: '#6b7280',
+  };
+  return color ? (map[color] ?? map.default) : map.default;
+}
+
+function Badge({ label, color }: { label: string; color?: string }) {
+  if (!label) return null;
+  return (
+    <span
+      className="inline-block px-1.5 py-0.5 rounded text-white text-xs font-medium"
+      style={{ background: notionColor(color) }}
+    >
+      {label}
+    </span>
+  );
+}
+
 let _projetsCache: ProjetEntry[] | null = null;
 let _projetsCacheKey = '';
 
@@ -16,7 +37,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<{
-    col: 'nom' | 'tiers' | 'typeProjet' | 'dateDebut';
+    col: 'nom' | 'tiers' | 'typeProjet' | 'dateDebut' | 'statut';
     dir: 'asc' | 'desc';
   }>({ col: 'nom', dir: 'asc' });
 
@@ -25,7 +46,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
       integrationToken: '', databaseId: '', fieldMap: {}, statusMappings: [],
     });
     const cfg = load<ProjetsConfig>('projetsConfig', {
-      databaseId: '', nomField: 'Name', tiersField: '', typeProjetField: '', dateDebutField: '',
+      databaseId: '', nomField: 'Name', tiersField: '', typeProjetField: '', dateDebutField: '', statutField: '',
     });
     if (!notionCfg.integrationToken || !cfg.databaseId) {
       setError('Configurez la base Projets dans les Paramètres > CAP CONSULTING.');
@@ -69,6 +90,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
   const colHeaders: Array<{ key: typeof sort.col; label: string }> = [
     { key: 'nom', label: 'Nom' },
     { key: 'tiers', label: 'Tiers' },
+    { key: 'statut', label: 'Statut' },
     { key: 'typeProjet', label: 'Type de projet' },
     { key: 'dateDebut', label: 'Date de début' },
   ];
@@ -130,6 +152,9 @@ export default function ProjetsView({ onSelectProjet }: Props) {
                     {p.nom || '(sans nom)'}
                   </td>
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{p.tiers}</td>
+                  <td className="px-3 py-2">
+                    <Badge label={p.statut} color={p.statutColor} />
+                  </td>
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{p.typeProjet}</td>
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>
                     {p.dateDebut
@@ -140,7 +165,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={5} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucun projet trouvé.
                   </td>
                 </tr>

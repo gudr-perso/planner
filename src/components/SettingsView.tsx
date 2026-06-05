@@ -7,6 +7,7 @@ import type {
   BriefingConfig,
   ClientsConfig,
   DataBundle,
+  EchangesConfig,
   NotionConfig,
   NotionExtraField,
   NotionFieldMap,
@@ -15,8 +16,10 @@ import type {
   PartenairesConfig,
   PostItsConfig,
   ProjetsConfig,
+  SousTachesConfig,
   Status,
   SuivisConfig,
+  SuiviProjetConfig,
   TachesConfig,
   TempsConfig,
   TicketsConfig,
@@ -235,6 +238,9 @@ function CapProjetsSection({ token, projetsConfig, setProjetsConfig }: {
       <FieldRow label="Date de début">
         <PropCombo value={projetsConfig.dateDebutField} onChange={v => setProjetsConfig(p => ({ ...p, dateDebutField: v }))} schema={schema} />
       </FieldRow>
+      <FieldRow label="Statut">
+        <PropSelect value={projetsConfig.statutField ?? ''} onChange={v => setProjetsConfig(p => ({ ...p, statutField: v }))} schema={schema} />
+      </FieldRow>
     </section>
   );
 }
@@ -293,11 +299,11 @@ function CapTachesSection({ token, tachesConfig, setTachesConfig }: {
       <FieldRow label="Date d'échéance">
         <PropSelect value={tachesConfig.dateEcheanceField} onChange={v => setTachesConfig(p => ({ ...p, dateEcheanceField: v }))} schema={schema} />
       </FieldRow>
-      <FieldRow label="Planifié le">
-        <PropSelect value={tachesConfig.planifieLeField} onChange={v => setTachesConfig(p => ({ ...p, planifieLeField: v }))} schema={schema} />
-      </FieldRow>
       <FieldRow label="Projet (relation)">
         <PropCombo value={tachesConfig.projetField} onChange={v => setTachesConfig(p => ({ ...p, projetField: v }))} schema={schema} placeholder="Nom exact du champ relation…" />
+      </FieldRow>
+      <FieldRow label="Suivi (relation)">
+        <PropCombo value={tachesConfig.suiviField ?? ''} onChange={v => setTachesConfig(p => ({ ...p, suiviField: v }))} schema={schema} placeholder="Nom exact du champ relation Suivi…" />
       </FieldRow>
       <FieldRow label="Valeur Terminé">
         <input
@@ -308,6 +314,112 @@ function CapTachesSection({ token, tachesConfig, setTachesConfig }: {
           placeholder="Terminé"
         />
       </FieldRow>
+    </section>
+  );
+}
+
+function CapSousTachesSection({ token, sousTachesConfig, setSousTachesConfig }: {
+  token: string;
+  sousTachesConfig: SousTachesConfig;
+  setSousTachesConfig: React.Dispatch<React.SetStateAction<SousTachesConfig>>;
+}) {
+  const [schema, setSchema] = useState<NotionPropertySchema[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSchema() {
+    if (!token || !sousTachesConfig.databaseId) return;
+    setLoading(true);
+    try { setSchema(await fetchDatabaseSchema(token, sousTachesConfig.databaseId)); } finally { setLoading(false); }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Base Sous-tâches</SectionTitle>
+      <FieldRow label="Database ID">
+        <input className="flex-1 text-xs rounded px-2 py-1.5 font-mono" style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={sousTachesConfig.databaseId} onChange={e => setSousTachesConfig(p => ({ ...p, databaseId: e.target.value }))} placeholder="ID de la base Sous-tâches Notion" />
+        <button onClick={loadSchema} disabled={loading} className="text-xs px-3 py-1.5 rounded" style={{ background: 'var(--border)', color: 'var(--text)' }}>
+          {loading ? '…' : 'Charger'}
+        </button>
+      </FieldRow>
+      <FieldRow label="Nom"><PropCombo value={sousTachesConfig.nomField} onChange={v => setSousTachesConfig(p => ({ ...p, nomField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Statut"><PropSelect value={sousTachesConfig.statutField} onChange={v => setSousTachesConfig(p => ({ ...p, statutField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Priorité"><PropSelect value={sousTachesConfig.prioriteField} onChange={v => setSousTachesConfig(p => ({ ...p, prioriteField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Canal"><PropSelect value={sousTachesConfig.canalField} onChange={v => setSousTachesConfig(p => ({ ...p, canalField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Tâche liée (relation)"><PropCombo value={sousTachesConfig.tacheField} onChange={v => setSousTachesConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
+      <FieldRow label="Valeur Terminé">
+        <input className="flex-1 text-xs rounded px-2 py-1.5" style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={sousTachesConfig.statutTermineValue} onChange={e => setSousTachesConfig(p => ({ ...p, statutTermineValue: e.target.value }))} placeholder="Terminé" />
+      </FieldRow>
+    </section>
+  );
+}
+
+function CapSuiviProjetSection({ token, suiviProjetConfig, setSuiviProjetConfig }: {
+  token: string;
+  suiviProjetConfig: SuiviProjetConfig;
+  setSuiviProjetConfig: React.Dispatch<React.SetStateAction<SuiviProjetConfig>>;
+}) {
+  const [schema, setSchema] = useState<NotionPropertySchema[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSchema() {
+    if (!token || !suiviProjetConfig.databaseId) return;
+    setLoading(true);
+    try { setSchema(await fetchDatabaseSchema(token, suiviProjetConfig.databaseId)); } finally { setLoading(false); }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Base Suivi Projet</SectionTitle>
+      <FieldRow label="Database ID">
+        <input className="flex-1 text-xs rounded px-2 py-1.5 font-mono" style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={suiviProjetConfig.databaseId} onChange={e => setSuiviProjetConfig(p => ({ ...p, databaseId: e.target.value }))} placeholder="ID de la base Suivi Notion" />
+        <button onClick={loadSchema} disabled={loading} className="text-xs px-3 py-1.5 rounded" style={{ background: 'var(--border)', color: 'var(--text)' }}>
+          {loading ? '…' : 'Charger'}
+        </button>
+      </FieldRow>
+      <FieldRow label="Nom"><PropCombo value={suiviProjetConfig.nomField} onChange={v => setSuiviProjetConfig(p => ({ ...p, nomField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Date"><PropSelect value={suiviProjetConfig.dateField} onChange={v => setSuiviProjetConfig(p => ({ ...p, dateField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Statut"><PropSelect value={suiviProjetConfig.statutField} onChange={v => setSuiviProjetConfig(p => ({ ...p, statutField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Tâche liée (relation)"><PropCombo value={suiviProjetConfig.tacheField} onChange={v => setSuiviProjetConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
+      <FieldRow label="Valeur Terminé">
+        <input className="flex-1 text-xs rounded px-2 py-1.5" style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={suiviProjetConfig.statutTermineValue} onChange={e => setSuiviProjetConfig(p => ({ ...p, statutTermineValue: e.target.value }))} placeholder="Terminé" />
+      </FieldRow>
+    </section>
+  );
+}
+
+function CapEchangesSection({ token, echangesConfig, setEchangesConfig }: {
+  token: string;
+  echangesConfig: EchangesConfig;
+  setEchangesConfig: React.Dispatch<React.SetStateAction<EchangesConfig>>;
+}) {
+  const [schema, setSchema] = useState<NotionPropertySchema[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSchema() {
+    if (!token || !echangesConfig.databaseId) return;
+    setLoading(true);
+    try { setSchema(await fetchDatabaseSchema(token, echangesConfig.databaseId)); } finally { setLoading(false); }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Base Echanges</SectionTitle>
+      <FieldRow label="Database ID">
+        <input className="flex-1 text-xs rounded px-2 py-1.5 font-mono" style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={echangesConfig.databaseId} onChange={e => setEchangesConfig(p => ({ ...p, databaseId: e.target.value }))} placeholder="ID de la base Echanges Notion" />
+        <button onClick={loadSchema} disabled={loading} className="text-xs px-3 py-1.5 rounded" style={{ background: 'var(--border)', color: 'var(--text)' }}>
+          {loading ? '…' : 'Charger'}
+        </button>
+      </FieldRow>
+      <FieldRow label="Nom"><PropCombo value={echangesConfig.nomField} onChange={v => setEchangesConfig(p => ({ ...p, nomField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Date"><PropSelect value={echangesConfig.dateField} onChange={v => setEchangesConfig(p => ({ ...p, dateField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Canal"><PropSelect value={echangesConfig.canalField} onChange={v => setEchangesConfig(p => ({ ...p, canalField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Contact (relation)"><PropCombo value={echangesConfig.contactField} onChange={v => setEchangesConfig(p => ({ ...p, contactField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
+      <FieldRow label="Projet (relation)"><PropCombo value={echangesConfig.projetField} onChange={v => setEchangesConfig(p => ({ ...p, projetField: v }))} schema={schema} placeholder="Nom exact du champ relation Projet…" /></FieldRow>
     </section>
   );
 }
@@ -387,13 +499,31 @@ export function SettingsView({
     load<ClientsConfig>('clientsConfig', { databaseId: '', titreField: 'Name', codeTiersField: '', lieuField: '' })
   );
   const [projetsConfig, setProjetsConfig] = useState<ProjetsConfig>(() =>
-    load<ProjetsConfig>('projetsConfig', { databaseId: '', nomField: 'Name', tiersField: '', typeProjetField: '', dateDebutField: '' })
+    load<ProjetsConfig>('projetsConfig', { databaseId: '', nomField: 'Name', tiersField: '', typeProjetField: '', dateDebutField: '', statutField: '' })
   );
   const [tachesConfig, setTachesConfig] = useState<TachesConfig>(() =>
     load<TachesConfig>('tachesConfig', {
       databaseId: '', nomField: 'Name', canalField: '', statutField: '',
       prioriteField: '', dateEcheanceField: '', planifieLeField: '',
-      projetField: '', statutTermineValue: 'Terminé',
+      projetField: '', statutTermineValue: 'Terminé', suiviField: '',
+    })
+  );
+  const [sousTachesConfig, setSousTachesConfig] = useState<SousTachesConfig>(() =>
+    load<SousTachesConfig>('sousTachesConfig', {
+      databaseId: '', nomField: 'Name', statutField: '', prioriteField: '',
+      canalField: '', tacheField: '', statutTermineValue: 'Terminé',
+    })
+  );
+  const [suiviProjetConfig, setSuiviProjetConfig] = useState<SuiviProjetConfig>(() =>
+    load<SuiviProjetConfig>('suiviProjetConfig', {
+      databaseId: '', nomField: 'Name', dateField: '', statutField: '',
+      tacheField: '', statutTermineValue: 'Terminé',
+    })
+  );
+  const [echangesConfig, setEchangesConfig] = useState<EchangesConfig>(() =>
+    load<EchangesConfig>('echangesConfig', {
+      databaseId: '', nomField: 'Name', dateField: '', canalField: '',
+      contactField: '', projetField: '',
     })
   );
 
@@ -594,6 +724,9 @@ export function SettingsView({
     save('clientsConfig', clientsConfig);
     save('projetsConfig', projetsConfig);
     save('tachesConfig', tachesConfig);
+    save('sousTachesConfig', sousTachesConfig);
+    save('suiviProjetConfig', suiviProjetConfig);
+    save('echangesConfig', echangesConfig);
     flash('Configuration sauvegardée');
   };
 
@@ -1607,6 +1740,21 @@ export function SettingsView({
               token={config.integrationToken}
               tachesConfig={tachesConfig}
               setTachesConfig={setTachesConfig}
+            />
+            <CapSousTachesSection
+              token={config.integrationToken}
+              sousTachesConfig={sousTachesConfig}
+              setSousTachesConfig={setSousTachesConfig}
+            />
+            <CapSuiviProjetSection
+              token={config.integrationToken}
+              suiviProjetConfig={suiviProjetConfig}
+              setSuiviProjetConfig={setSuiviProjetConfig}
+            />
+            <CapEchangesSection
+              token={config.integrationToken}
+              echangesConfig={echangesConfig}
+              setEchangesConfig={setEchangesConfig}
             />
           </div>
         )}

@@ -6,6 +6,8 @@ import type {
   ClientEntry,
   ClientsConfig,
   DataBundle,
+  EchangeEntry,
+  EchangesConfig,
   NotionBlock,
   NotionConfig,
   NotionPropertySchema,
@@ -17,10 +19,14 @@ import type {
   ProjetEntry,
   ProjetsConfig,
   Project,
+  SousTacheEntry,
+  SousTachesConfig,
   Status,
   SubProject,
   SuivisConfig,
   SuiviEntry,
+  SuiviProjetEntry,
+  SuiviProjetConfig,
   TacheEntry,
   TachesConfig,
   Task,
@@ -1309,7 +1315,9 @@ export async function fetchProjets(token: string, config: ProjetsConfig): Promis
       const tiers = tiersId ? await fetchRelationTitle(token, tiersId) : '';
       const typeProjet = selectName(props[config.typeProjetField]);
       const dateDebut = (props[config.dateDebutField]?.date as { start?: string } | null)?.start ?? null;
-      results.push({ id: page.id, nom, tiers, tiersId, typeProjet, dateDebut, notion_url: page.url });
+      const statut = config.statutField ? selectName(props[config.statutField]) : '';
+      const statutColor = config.statutField ? selectColor(props[config.statutField]) : 'default';
+      results.push({ id: page.id, nom, tiers, tiersId, typeProjet, dateDebut, statut, statutColor, notion_url: page.url });
     }
     cursor = (data.next_cursor as string | null) ?? undefined;
   } while (cursor);
@@ -1327,31 +1335,188 @@ export async function fetchTaches(
   const filter: Record<string, unknown> | undefined = projetId
     ? { property: config.projetField, relation: { contains: projetId } }
     : undefined;
-  const results: TacheEntry[] = [];
+  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
   let cursor: string | undefined;
   do {
     const body: Record<string, unknown> = { page_size: 100 };
     if (filter) body.filter = filter;
     if (cursor) body.start_cursor = cursor;
     const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
-    for (const page of (data.results ?? []) as Array<{ id: string; url: string; properties: Record<string, PropVal> }>) {
-      const props = page.properties ?? {};
-      const nom = plainText(props[config.nomField]);
-      const canalProp = props[config.canalField];
-      const canal = (canalProp?.select as { name?: string } | undefined)?.name ?? '';
-      const canalColor = (canalProp?.select as { color?: string } | undefined)?.color;
-      const statutProp = props[config.statutField];
-      // Notion status type: { status: { name, color } }; fallback to select
-      const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
-      const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
-      const prioriteProp = props[config.prioriteField];
-      const priorite = (prioriteProp?.select as { name?: string } | undefined)?.name ?? '';
-      const prioriteColor = (prioriteProp?.select as { color?: string } | undefined)?.color;
-      const dateEcheance = (props[config.dateEcheanceField]?.date as { start?: string } | null)?.start ?? null;
-      const planifieLe = (props[config.planifieLeField]?.date as { start?: string } | null)?.start ?? null;
-      results.push({ id: page.id, nom, canal, canalColor, statut, statutColor, priorite, prioriteColor, dateEcheance, planifieLe, notion_url: page.url });
-    }
+    allPages.push(...((data.results ?? []) as typeof allPages));
     cursor = (data.next_cursor as string | null) ?? undefined;
   } while (cursor);
+
+  // Résolution des IDs relation Suivi
+  const suiviRelIds = new Set<string>();
+  if (config.suiviField) {
+    for (const page of allPages) {
+      const rels = (page.properties[config.suiviField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined;
+      rels?.forEach(r => suiviRelIds.add(r.id));
+    }
+  }
+  const suiviIdToTitle = suiviRelIds.size > 0 ? await resolvePageTitles(token, suiviRelIds) : new Map<string, string>();
+
+  const results: TacheEntry[] = [];
+  for (const page of allPages) {
+    const props = page.properties ?? {};
+    const nom = plainText(props[config.nomField]);
+    const canalProp = props[config.canalField];
+    const canal = (canalProp?.select as { name?: string } | undefined)?.name ?? '';
+    const canalColor = (canalProp?.select as { color?: string } | undefined)?.color;
+    const statutProp = props[config.statutField];
+    const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
+    const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
+    const prioriteProp = props[config.prioriteField];
+    const priorite = (prioriteProp?.select as { name?: string } | undefined)?.name ?? '';
+    const prioriteColor = (prioriteProp?.select as { color?: string } | undefined)?.color;
+    const dateEcheance = (props[config.dateEcheanceField]?.date as { start?: string } | null)?.start ?? null;
+    const planifieLe = (props[config.planifieLeField]?.date as { start?: string } | null)?.start ?? null;
+    const suiviRels = config.suiviField
+      ? ((props[config.suiviField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
+      : [];
+    const suivis = suiviRels.map(r => suiviIdToTitle.get(r.id) ?? '').filter(Boolean);
+    results.push({ id: page.id, nom, canal, canalColor, statut, statutColor, priorite, prioriteColor, dateEcheance, planifieLe, suivis, notion_url: page.url });
+  }
+  return results;
+}
+
+// ── Sous-tâches (CAP Consulting) ──────────────────────────────────────────────
+
+export async function fetchSousTaches(
+  token: string,
+  config: SousTachesConfig,
+  tacheIdToName: Map<string, string>,
+): Promise<SousTacheEntry[]> {
+  if (!config.databaseId) return [];
+  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    allPages.push(...((data.results ?? []) as typeof allPages));
+    cursor = (data.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+
+  const results: SousTacheEntry[] = [];
+  for (const page of allPages) {
+    const props = page.properties ?? {};
+    const tacheRels = config.tacheField
+      ? ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
+      : [];
+    const tacheIds = tacheRels.map(r => r.id);
+    // Filtrer : ne garder que les sous-tâches dont au moins une tâche appartient au projet
+    if (tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
+    const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
+
+    const nom = plainText(props[config.nomField]);
+    const statutProp = props[config.statutField];
+    const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
+    const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
+    const prioriteProp = props[config.prioriteField];
+    const priorite = (prioriteProp?.select as { name?: string } | undefined)?.name ?? '';
+    const prioriteColor = (prioriteProp?.select as { color?: string } | undefined)?.color;
+    const canalProp = props[config.canalField];
+    const canal = (canalProp?.select as { name?: string } | undefined)?.name ?? '';
+    const canalColor = (canalProp?.select as { color?: string } | undefined)?.color;
+    results.push({ id: page.id, nom, statut, statutColor, priorite, prioriteColor, canal, canalColor, tacheIds, tacheNoms, notion_url: page.url });
+  }
+  return results;
+}
+
+// ── Suivi Projet (CAP Consulting) ─────────────────────────────────────────────
+
+export async function fetchSuivisProjet(
+  token: string,
+  config: SuiviProjetConfig,
+  tacheIdToName: Map<string, string>,
+): Promise<SuiviProjetEntry[]> {
+  if (!config.databaseId) return [];
+  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    allPages.push(...((data.results ?? []) as typeof allPages));
+    cursor = (data.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+
+  const results: SuiviProjetEntry[] = [];
+  for (const page of allPages) {
+    const props = page.properties ?? {};
+    const tacheRels = config.tacheField
+      ? ((props[config.tacheField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
+      : [];
+    const tacheIds = tacheRels.map(r => r.id);
+    if (tacheIdToName.size > 0 && !tacheIds.some(id => tacheIdToName.has(id))) continue;
+    const tacheNoms = tacheIds.map(id => tacheIdToName.get(id) ?? '').filter(Boolean);
+
+    const nom = plainText(props[config.nomField]);
+    const date = config.dateField ? (props[config.dateField]?.date as { start?: string } | null)?.start ?? null : null;
+    const statutProp = props[config.statutField];
+    const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
+    const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
+    results.push({ id: page.id, nom, date, statut, statutColor, tacheIds, tacheNoms, notion_url: page.url });
+  }
+  return results;
+}
+
+// ── Echanges (CAP Consulting) ─────────────────────────────────────────────────
+
+export async function fetchEchanges(
+  token: string,
+  config: EchangesConfig,
+  projetId: string,
+): Promise<EchangeEntry[]> {
+  if (!config.databaseId) return [];
+
+  const filter: Record<string, unknown> | undefined = config.projetField
+    ? { property: config.projetField, relation: { contains: projetId } }
+    : undefined;
+
+  const allPages: Array<{ id: string; url: string; properties: Record<string, PropVal> }> = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    if (filter) body.filter = filter;
+    let data: Record<string, unknown>;
+    try {
+      data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    } catch (e) {
+      if (filter && !cursor) {
+        delete body.filter;
+        data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      } else {
+        throw e;
+      }
+    }
+    allPages.push(...((data!.results ?? []) as typeof allPages));
+    cursor = (data!.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+
+  // Résoudre les contacts
+  const contactIds = new Set<string>();
+  for (const page of allPages) {
+    const rels = (page.properties[config.contactField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined;
+    rels?.forEach(r => contactIds.add(r.id));
+  }
+  const contactIdToTitle = contactIds.size > 0 ? await resolvePageTitles(token, contactIds) : new Map<string, string>();
+
+  const results: EchangeEntry[] = [];
+  for (const page of allPages) {
+    const props = page.properties ?? {};
+    const nom = plainText(props[config.nomField]);
+    const date = config.dateField ? (props[config.dateField]?.date as { start?: string } | null)?.start ?? null : null;
+    const canalProp = props[config.canalField];
+    const canal = (canalProp?.select as { name?: string } | undefined)?.name ?? selectName(canalProp);
+    const canalColor = (canalProp?.select as { color?: string } | undefined)?.color ?? selectColor(canalProp);
+    const contactRels = config.contactField
+      ? ((props[config.contactField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined) ?? []
+      : [];
+    const contact = contactRels.map(r => contactIdToTitle.get(r.id) ?? '').filter(Boolean);
+    results.push({ id: page.id, nom, date, canal, canalColor, contact, notion_url: page.url });
+  }
   return results;
 }

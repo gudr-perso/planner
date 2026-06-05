@@ -337,6 +337,7 @@ export type ProjetsConfig = {
   tiersField: string;      // relation → Clients
   typeProjetField: string; // select
   dateDebutField: string;  // date
+  statutField: string;     // status/select
 };
 
 export type ProjetEntry = {
@@ -346,6 +347,8 @@ export type ProjetEntry = {
   tiersId?: string;
   typeProjet: string;
   dateDebut: string | null;
+  statut: string;
+  statutColor?: string;
   notion_url?: string;
 };
 
@@ -358,9 +361,10 @@ export type TachesConfig = {
   statutField: string;           // status (Notion status type)
   prioriteField: string;         // select
   dateEcheanceField: string;     // date
-  planifieLeField: string;       // date
+  planifieLeField: string;       // date (gardé pour rétro-compatibilité)
   projetField: string;           // relation → Projet (pour filtrage)
   statutTermineValue: string;    // valeur "Terminé" dans statut
+  suiviField: string;            // relation → SuiviProjet
 };
 
 export type TacheEntry = {
@@ -374,5 +378,75 @@ export type TacheEntry = {
   prioriteColor?: string;
   dateEcheance: string | null;
   planifieLe: string | null;
+  suivis: string[];              // noms résolus des entrées Suivi liées
+  notion_url?: string;
+};
+
+// ── Sous-tâches (CAP Consulting) ──────────────────────────────────────────────
+
+export type SousTachesConfig = {
+  databaseId: string;
+  nomField: string;
+  statutField: string;
+  prioriteField: string;
+  canalField: string;
+  tacheField: string;            // relation → Tâches
+  statutTermineValue: string;
+};
+
+export type SousTacheEntry = {
+  id: string;
+  nom: string;
+  statut: string;
+  statutColor?: string;
+  priorite: string;
+  prioriteColor?: string;
+  canal: string;
+  canalColor?: string;
+  tacheIds: string[];            // IDs bruts (pour filtrage par projet)
+  tacheNoms: string[];           // noms résolus depuis tâches du projet
+  notion_url?: string;
+};
+
+// ── Suivi Projet (CAP Consulting) ─────────────────────────────────────────────
+
+export type SuiviProjetConfig = {
+  databaseId: string;
+  nomField: string;
+  dateField: string;
+  statutField: string;
+  tacheField: string;            // relation → Tâches
+  statutTermineValue: string;
+};
+
+export type SuiviProjetEntry = {
+  id: string;
+  nom: string;
+  date: string | null;
+  statut: string;
+  statutColor?: string;
+  tacheIds: string[];
+  tacheNoms: string[];
+  notion_url?: string;
+};
+
+// ── Echanges (CAP Consulting) ─────────────────────────────────────────────────
+
+export type EchangesConfig = {
+  databaseId: string;
+  nomField: string;
+  dateField: string;
+  canalField: string;
+  contactField: string;          // relation → contacts
+  projetField: string;           // relation → Projets (pour filtrage)
+};
+
+export type EchangeEntry = {
+  id: string;
+  nom: string;
+  date: string | null;
+  canal: string;
+  canalColor?: string;
+  contact: string[];             // noms résolus
   notion_url?: string;
 };
