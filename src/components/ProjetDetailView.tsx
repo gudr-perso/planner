@@ -245,7 +245,7 @@ function DetailPanel({
       const pdfFontsModule = await import('pdfmake/build/vfs_fonts');
       const pdfMake  = pdfMakeModule.default ?? pdfMakeModule;
       const pdfFonts = pdfFontsModule.default ?? pdfFontsModule;
-      pdfMake.vfs = pdfFonts.pdfMake.vfs;
+      pdfMake.vfs = pdfFonts.pdfMake?.vfs ?? pdfFonts.vfs ?? (pdfFonts as unknown as Record<string, string>);
 
       const contentBlocks = blocksToPdfContent(blocks);
 

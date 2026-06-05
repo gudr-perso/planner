@@ -10,6 +10,10 @@ declare module 'pdfmake/build/pdfmake' {
 }
 
 declare module 'pdfmake/build/vfs_fonts' {
-  const pdfFonts: { pdfMake: { vfs: Record<string, string> } };
+  const pdfFonts: {
+    pdfMake?: { vfs?: Record<string, string> };
+    vfs?: Record<string, string>;
+    [key: string]: unknown;
+  };
   export default pdfFonts;
 }
