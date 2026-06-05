@@ -1590,10 +1590,10 @@ export async function fetchTempsProjet(
     const debut = config.debutField ? (props[config.debutField]?.date as { start?: string } | null)?.start ?? null : null;
     const fin = config.finField ? (props[config.finField]?.date as { start?: string } | null)?.start ?? null : null;
     const dureeMin = config.dureeMinField
-      ? String((props[config.dureeMinField] as Record<string, unknown>)?.number ?? '')
+      ? formulaString(props[config.dureeMinField])
       : '';
     const dureeH = config.dureeHField
-      ? String((props[config.dureeHField] as Record<string, unknown>)?.number ?? '')
+      ? formulaString(props[config.dureeHField])
       : '';
     results.push({ id: page.id, description, debut, fin, dureeMin, dureeH, tacheIds, tacheNoms, notion_url: page.url });
   }
