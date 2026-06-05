@@ -5,7 +5,7 @@ import { useIsMobile, useIsTablet } from '../hooks/useBreakpoint';
 import { load } from '../persistence';
 import { fetchDatabaseSchema, searchNotionDatabase, type NotionSearchResult } from '../notionService';
 
-export type ViewKey = 'home' | 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'todo' | 'partenaires' | 'suivis' | 'temps' | 'tickets' | 'postits' | 'users';
+export type ViewKey = 'home' | 'calendar' | 'rolling' | 'rolling2' | 'gantt' | 'settings' | 'briefing' | 'todo' | 'partenaires' | 'suivis' | 'temps' | 'tickets' | 'postits' | 'users' | 'clients' | 'projets' | 'projet-detail';
 
 // ── Types internes pour la config des bases disponibles ───────────────────────
 interface DbOption { key: string; label: string; databaseId: string }
@@ -473,7 +473,7 @@ export function Toolbar({
   };
 
   // Vues sans planning (pas de filtres projet/personnes)
-  const isNonPlanningView = view === 'home' || view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis' || view === 'tickets' || view === 'temps' || view === 'postits' || view === 'users' || view === 'todo';
+  const isNonPlanningView = view === 'home' || view === 'briefing' || view === 'settings' || view === 'partenaires' || view === 'suivis' || view === 'tickets' || view === 'temps' || view === 'postits' || view === 'users' || view === 'todo' || view === 'clients' || view === 'projets' || view === 'projet-detail';
 
   // ─── Barre de filtres planification (partagée desktop & mobile dropdown) ───
   const planningFilters = !isNonPlanningView ? (

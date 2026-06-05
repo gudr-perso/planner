@@ -311,3 +311,68 @@ export type AssociationEntry = {
   solution: string;
   suivi: string;
 };
+
+// ── Clients (CAP Consulting) ───────────────────────────────────────────────────
+
+export type ClientsConfig = {
+  databaseId: string;
+  titreField: string;      // Raison sociale
+  codeTiersField: string;  // Code tiers
+  lieuField: string;       // Lieu (text)
+};
+
+export type ClientEntry = {
+  id: string;
+  titre: string;
+  codeTiers: string;
+  lieu: string;
+  notion_url?: string;
+};
+
+// ── Projets (CAP Consulting) ──────────────────────────────────────────────────
+
+export type ProjetsConfig = {
+  databaseId: string;
+  nomField: string;
+  tiersField: string;      // relation → Clients
+  typeProjetField: string; // select
+  dateDebutField: string;  // date
+};
+
+export type ProjetEntry = {
+  id: string;
+  nom: string;
+  tiers: string;           // nom du client résolu
+  tiersId?: string;
+  typeProjet: string;
+  dateDebut: string | null;
+  notion_url?: string;
+};
+
+// ── Tâches (CAP Consulting) ───────────────────────────────────────────────────
+
+export type TachesConfig = {
+  databaseId: string;
+  nomField: string;
+  canalField: string;            // select
+  statutField: string;           // status (Notion status type)
+  prioriteField: string;         // select
+  dateEcheanceField: string;     // date
+  planifieLeField: string;       // date
+  projetField: string;           // relation → Projet (pour filtrage)
+  statutTermineValue: string;    // valeur "Terminé" dans statut
+};
+
+export type TacheEntry = {
+  id: string;
+  nom: string;
+  canal: string;
+  canalColor?: string;
+  statut: string;
+  statutColor?: string;
+  priorite: string;
+  prioriteColor?: string;
+  dateEcheance: string | null;
+  planifieLe: string | null;
+  notion_url?: string;
+};

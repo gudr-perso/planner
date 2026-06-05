@@ -31,6 +31,9 @@ import { TempsView } from './components/TempsView';
 import { TicketsView } from './components/TicketsView';
 import { TodoView } from './components/TodoView';
 import { PostItsView } from './components/PostItsView';
+import ClientsView from './components/ClientsView';
+import ProjetsView from './components/ProjetsView';
+import ProjetDetailView from './components/ProjetDetailView';
 import type { PartenaireEntry } from './types';
 
 // Google Client ID stored in localStorage (configured via Settings), never baked into the bundle.
@@ -100,6 +103,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const [notionWriteStatus, setNotionWriteStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
   const [notionWriteMsg, setNotionWriteMsg] = useState<string | null>(null);
   const [partenaireFilter, setPartenaireFilter] = useState<PartenaireEntry | null>(null);
+  const [selectedProjetId, setSelectedProjetId] = useState<string>('');
+  const [selectedProjetNom, setSelectedProjetNom] = useState<string>('');
   const [suivisSearch, setSuivisSearch] = useState('');
   const googleClientId = load<string>('gcalClientId', '');
   const [dataSource, setDataSource] = useState<'demo' | 'notion'>(() => load<'demo' | 'notion'>('dataSource', 'demo'));
@@ -417,8 +422,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               onOpenMobileNav={() => setMobileNavOpen(true)}
             />
             <div className="flex-1 flex min-h-0 relative">
-              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && <UnplannedPanel width={panelWidth} />}
-              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && (
+              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && view !== 'clients' && view !== 'projets' && view !== 'projet-detail' && <UnplannedPanel width={panelWidth} />}
+              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'clients' && view !== 'projets' && view !== 'projet-detail' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
                   style={{ background: 'var(--border)' }}
@@ -453,6 +458,21 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                   : view === 'temps' ? <TempsView refreshKey={viewRefreshKeys['temps'] ?? 0} />
                   : view === 'tickets' ? <TicketsView refreshKey={viewRefreshKeys['tickets'] ?? 0} />
                   : view === 'postits' ? <PostItsView refreshKey={viewRefreshKeys['postits'] ?? 0} />
+                  : view === 'clients' ? <ClientsView />
+                  : view === 'projets' ? (
+                    <ProjetsView onSelectProjet={(id, nom) => {
+                      setSelectedProjetId(id);
+                      setSelectedProjetNom(nom);
+                      setView('projet-detail');
+                    }} />
+                  )
+                  : view === 'projet-detail' ? (
+                    <ProjetDetailView
+                      projetId={selectedProjetId}
+                      projetNom={selectedProjetNom}
+                      onBack={() => setView('projets')}
+                    />
+                  )
                   : (isTablet ? <MobileUnavailable viewName="Le Gantt" /> : <GanttView />)}
               </main>
             </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlarmClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, Home, ListTodo, LogOut, Menu, Pin, Settings, TicketCheck, UserCog, Users, X } from 'lucide-react';
+import { AlarmClock, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, FolderOpen, Home, ListTodo, LogOut, Menu, Pin, Settings, TicketCheck, UserCog, Users, X } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { useAuth } from '../store/useAuthStore';
 import { useIsTablet } from '../hooks/useBreakpoint';
@@ -8,8 +8,11 @@ const PLANNING_VIEWS: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt'];
 
 type NavItemDef = { key: string; icon: React.ReactNode; label: string };
 
-const MAIN_ITEMS: NavItemDef[] = [
-  { key: 'home',        icon: <Home size={17} />,         label: 'Accueil' },
+const HOME_ITEMS: NavItemDef[] = [
+  { key: 'home', icon: <Home size={17} />, label: 'Accueil' },
+];
+
+const CUMA_ITEMS: NavItemDef[] = [
   { key: 'planning',    icon: <CalendarDays size={17} />,  label: 'Planning' },
   { key: 'briefing',    icon: <AlarmClock size={17} />,    label: 'Briefing' },
   { key: 'todo',        icon: <ListTodo size={17} />,      label: 'ToDo' },
@@ -18,6 +21,12 @@ const MAIN_ITEMS: NavItemDef[] = [
   { key: 'suivis',      icon: <FileText size={17} />,      label: 'Suivis' },
   { key: 'temps',       icon: <Clock size={17} />,         label: 'Temps' },
   { key: 'tickets',     icon: <TicketCheck size={17} />,   label: 'Tickets' },
+];
+
+
+const CAP_ITEMS: NavItemDef[] = [
+  { key: 'clients', icon: <Building2 size={17} />, label: 'Clients' },
+  { key: 'projets', icon: <FolderOpen size={17} />, label: 'Projets' },
 ];
 
 const BOTTOM_ITEMS: NavItemDef[] = [
@@ -167,19 +176,71 @@ export function SideNav({
 
           {/* Main sections */}
           <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
-            {MAIN_ITEMS.map((item) => {
-              const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
-              const key = item.key === 'planning' ? lastPlanningView.current : item.key as ViewKey;
-              return (
-                <NavItem
-                  key={item.key}
-                  item={item}
-                  isActive={isActive}
-                  collapsed={false}
-                  onClick={() => handleNavClick(key)}
-                />
-              );
-            })}
+            {/* Accueil */}
+            {HOME_ITEMS.map((item) => (
+              <NavItem
+                key={item.key}
+                item={item}
+                isActive={view === item.key}
+                collapsed={false}
+                onClick={() => handleNavClick(item.key as ViewKey)}
+              />
+            ))}
+
+            {/* ── CUMA ── */}
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+              <div style={{
+                padding: '2px 14px 6px',
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--text-dim, var(--text-muted))',
+                opacity: 0.6,
+              }}>
+                CUMA
+              </div>
+              {CUMA_ITEMS.map((item) => {
+                const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
+                const key = item.key === 'planning' ? lastPlanningView.current : item.key as ViewKey;
+                return (
+                  <NavItem
+                    key={item.key}
+                    item={item}
+                    isActive={isActive}
+                    collapsed={false}
+                    onClick={() => handleNavClick(key)}
+                  />
+                );
+              })}
+            </div>
+
+            {/* ── CAP CONSULTING ── */}
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+              <div style={{
+                padding: '2px 14px 6px',
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--text-dim, var(--text-muted))',
+                opacity: 0.6,
+              }}>
+                CAP Consulting
+              </div>
+              {CAP_ITEMS.map((item) => {
+                const isActive = view === item.key || (item.key === 'projets' && view === 'projet-detail');
+                return (
+                  <NavItem
+                    key={item.key}
+                    item={item}
+                    isActive={isActive}
+                    collapsed={false}
+                    onClick={() => handleNavClick(item.key as ViewKey)}
+                  />
+                );
+              })}
+            </div>
           </div>
 
           {/* Bottom */}
@@ -241,21 +302,77 @@ export function SideNav({
     >
       {/* Main sections */}
       <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
-        {MAIN_ITEMS.map((item) => {
-          const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
-          const handleClick = item.key === 'planning'
-            ? () => onView(lastPlanningView.current)
-            : () => onView(item.key as ViewKey);
-          return (
-            <NavItem
-              key={item.key}
-              item={item}
-              isActive={isActive}
-              collapsed={collapsed}
-              onClick={handleClick}
-            />
-          );
-        })}
+        {/* Accueil */}
+        {HOME_ITEMS.map((item) => (
+          <NavItem
+            key={item.key}
+            item={item}
+            isActive={view === item.key}
+            collapsed={collapsed}
+            onClick={() => onView(item.key as ViewKey)}
+          />
+        ))}
+
+        {/* ── CUMA ── */}
+        <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+          {!collapsed && (
+            <div style={{
+              padding: '2px 14px 6px',
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--text-dim, var(--text-muted))',
+              opacity: 0.6,
+            }}>
+              CUMA
+            </div>
+          )}
+          {CUMA_ITEMS.map((item) => {
+            const isActive = item.key === 'planning' ? isPlanningActive : view === item.key;
+            const handleClick = item.key === 'planning'
+              ? () => onView(lastPlanningView.current)
+              : () => onView(item.key as ViewKey);
+            return (
+              <NavItem
+                key={item.key}
+                item={item}
+                isActive={isActive}
+                collapsed={collapsed}
+                onClick={handleClick}
+              />
+            );
+          })}
+        </div>
+
+        {/* ── CAP CONSULTING ── */}
+        <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+          {!collapsed && (
+            <div style={{
+              padding: '2px 14px 6px',
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--text-dim, var(--text-muted))',
+              opacity: 0.6,
+            }}>
+              CAP Consulting
+            </div>
+          )}
+          {CAP_ITEMS.map((item) => {
+            const isActive = view === item.key || (item.key === 'projets' && view === 'projet-detail');
+            return (
+              <NavItem
+                key={item.key}
+                item={item}
+                isActive={isActive}
+                collapsed={collapsed}
+                onClick={() => onView(item.key as ViewKey)}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Bottom: Settings + Utilisateurs (admin) + Déconnexion + toggle */}

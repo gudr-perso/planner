@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { fetchDatabaseSchema, syncFromNotion } from '../notionService';
 import { save, load } from '../persistence';
 import { downloadConfig, importConfig, uploadConfigToCloud, downloadConfigFromCloud, fetchCloudConfigMeta } from '../configIO';
 import type {
   AssociationsConfig,
   BriefingConfig,
+  ClientsConfig,
   DataBundle,
   NotionConfig,
   NotionExtraField,
@@ -13,8 +14,10 @@ import type {
   NotionStatusMapping,
   PartenairesConfig,
   PostItsConfig,
+  ProjetsConfig,
   Status,
   SuivisConfig,
+  TachesConfig,
   TempsConfig,
   TicketsConfig,
 } from '../types';
@@ -127,6 +130,188 @@ function ExtraFieldCombo({
   );
 }
 
+// ── CAP CONSULTING config sections ───────────────────────────────────────────
+
+function CapClientsSection({ token, clientsConfig, setClientsConfig }: {
+  token: string;
+  clientsConfig: ClientsConfig;
+  setClientsConfig: React.Dispatch<React.SetStateAction<ClientsConfig>>;
+}) {
+  const [schema, setSchema] = useState<NotionPropertySchema[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSchema() {
+    if (!token || !clientsConfig.databaseId) return;
+    setLoading(true);
+    try {
+      const s = await fetchDatabaseSchema(token, clientsConfig.databaseId);
+      setSchema(s);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Base Clients</SectionTitle>
+      <FieldRow label="Database ID">
+        <input
+          className="flex-1 text-xs rounded px-2 py-1.5 font-mono"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={clientsConfig.databaseId}
+          onChange={e => setClientsConfig(p => ({ ...p, databaseId: e.target.value }))}
+          placeholder="ID de la base Clients Notion"
+        />
+        <button
+          onClick={loadSchema}
+          disabled={loading}
+          className="text-xs px-3 py-1.5 rounded"
+          style={{ background: 'var(--border)', color: 'var(--text)' }}
+        >
+          {loading ? '…' : 'Charger'}
+        </button>
+      </FieldRow>
+      <FieldRow label="Raison sociale">
+        <PropSelect value={clientsConfig.titreField} onChange={v => setClientsConfig(p => ({ ...p, titreField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Code tiers">
+        <PropSelect value={clientsConfig.codeTiersField} onChange={v => setClientsConfig(p => ({ ...p, codeTiersField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Lieu">
+        <PropSelect value={clientsConfig.lieuField} onChange={v => setClientsConfig(p => ({ ...p, lieuField: v }))} schema={schema} />
+      </FieldRow>
+    </section>
+  );
+}
+
+function CapProjetsSection({ token, projetsConfig, setProjetsConfig }: {
+  token: string;
+  projetsConfig: ProjetsConfig;
+  setProjetsConfig: React.Dispatch<React.SetStateAction<ProjetsConfig>>;
+}) {
+  const [schema, setSchema] = useState<NotionPropertySchema[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSchema() {
+    if (!token || !projetsConfig.databaseId) return;
+    setLoading(true);
+    try {
+      const s = await fetchDatabaseSchema(token, projetsConfig.databaseId);
+      setSchema(s);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Base Projets</SectionTitle>
+      <FieldRow label="Database ID">
+        <input
+          className="flex-1 text-xs rounded px-2 py-1.5 font-mono"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={projetsConfig.databaseId}
+          onChange={e => setProjetsConfig(p => ({ ...p, databaseId: e.target.value }))}
+          placeholder="ID de la base Projets Notion"
+        />
+        <button
+          onClick={loadSchema}
+          disabled={loading}
+          className="text-xs px-3 py-1.5 rounded"
+          style={{ background: 'var(--border)', color: 'var(--text)' }}
+        >
+          {loading ? '…' : 'Charger'}
+        </button>
+      </FieldRow>
+      <FieldRow label="Nom">
+        <PropSelect value={projetsConfig.nomField} onChange={v => setProjetsConfig(p => ({ ...p, nomField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Tiers (relation)">
+        <PropSelect value={projetsConfig.tiersField} onChange={v => setProjetsConfig(p => ({ ...p, tiersField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Type de projet">
+        <PropSelect value={projetsConfig.typeProjetField} onChange={v => setProjetsConfig(p => ({ ...p, typeProjetField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Date de début">
+        <PropSelect value={projetsConfig.dateDebutField} onChange={v => setProjetsConfig(p => ({ ...p, dateDebutField: v }))} schema={schema} />
+      </FieldRow>
+    </section>
+  );
+}
+
+function CapTachesSection({ token, tachesConfig, setTachesConfig }: {
+  token: string;
+  tachesConfig: TachesConfig;
+  setTachesConfig: React.Dispatch<React.SetStateAction<TachesConfig>>;
+}) {
+  const [schema, setSchema] = useState<NotionPropertySchema[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSchema() {
+    if (!token || !tachesConfig.databaseId) return;
+    setLoading(true);
+    try {
+      const s = await fetchDatabaseSchema(token, tachesConfig.databaseId);
+      setSchema(s);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Base Tâches</SectionTitle>
+      <FieldRow label="Database ID">
+        <input
+          className="flex-1 text-xs rounded px-2 py-1.5 font-mono"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={tachesConfig.databaseId}
+          onChange={e => setTachesConfig(p => ({ ...p, databaseId: e.target.value }))}
+          placeholder="ID de la base Tâches Notion"
+        />
+        <button
+          onClick={loadSchema}
+          disabled={loading}
+          className="text-xs px-3 py-1.5 rounded"
+          style={{ background: 'var(--border)', color: 'var(--text)' }}
+        >
+          {loading ? '…' : 'Charger'}
+        </button>
+      </FieldRow>
+      <FieldRow label="Nom">
+        <PropSelect value={tachesConfig.nomField} onChange={v => setTachesConfig(p => ({ ...p, nomField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Canal">
+        <PropSelect value={tachesConfig.canalField} onChange={v => setTachesConfig(p => ({ ...p, canalField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Statut">
+        <PropSelect value={tachesConfig.statutField} onChange={v => setTachesConfig(p => ({ ...p, statutField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Priorité">
+        <PropSelect value={tachesConfig.prioriteField} onChange={v => setTachesConfig(p => ({ ...p, prioriteField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Date d'échéance">
+        <PropSelect value={tachesConfig.dateEcheanceField} onChange={v => setTachesConfig(p => ({ ...p, dateEcheanceField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Planifié le">
+        <PropSelect value={tachesConfig.planifieLeField} onChange={v => setTachesConfig(p => ({ ...p, planifieLeField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Projet (relation)">
+        <PropSelect value={tachesConfig.projetField} onChange={v => setTachesConfig(p => ({ ...p, projetField: v }))} schema={schema} />
+      </FieldRow>
+      <FieldRow label="Valeur Terminé">
+        <input
+          className="flex-1 text-xs rounded px-2 py-1.5"
+          style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+          value={tachesConfig.statutTermineValue}
+          onChange={e => setTachesConfig(p => ({ ...p, statutTermineValue: e.target.value }))}
+          placeholder="Terminé"
+        />
+      </FieldRow>
+    </section>
+  );
+}
+
 export function SettingsView({
   onSync,
   onGcalClientIdSave,
@@ -195,6 +380,22 @@ export function SettingsView({
   );
   const [postitsSchema, setPostitsSchema] = useState<NotionPropertySchema[]>([]);
   const [postitsLoading, setPostitsLoading] = useState(false);
+
+  const [tab, setTab] = useState<'cuma' | 'cap'>('cuma');
+
+  const [clientsConfig, setClientsConfig] = useState<ClientsConfig>(() =>
+    load<ClientsConfig>('clientsConfig', { databaseId: '', titreField: 'Name', codeTiersField: '', lieuField: '' })
+  );
+  const [projetsConfig, setProjetsConfig] = useState<ProjetsConfig>(() =>
+    load<ProjetsConfig>('projetsConfig', { databaseId: '', nomField: 'Name', tiersField: '', typeProjetField: '', dateDebutField: '' })
+  );
+  const [tachesConfig, setTachesConfig] = useState<TachesConfig>(() =>
+    load<TachesConfig>('tachesConfig', {
+      databaseId: '', nomField: 'Name', canalField: '', statutField: '',
+      prioriteField: '', dateEcheanceField: '', planifieLeField: '',
+      projetField: '', statutTermineValue: 'Terminé',
+    })
+  );
 
   // Local string states for comma-separated inputs (controlled inputs that split on comma break mid-typing)
   const [ticketsStatutsStr, setTicketsStatutsStr] = useState(() =>
@@ -390,6 +591,9 @@ export function SettingsView({
 
   const handleSave = () => {
     save('notionConfig', config);
+    save('clientsConfig', clientsConfig);
+    save('projetsConfig', projetsConfig);
+    save('tachesConfig', tachesConfig);
     flash('Configuration sauvegardée');
   };
 
@@ -511,11 +715,29 @@ export function SettingsView({
     >
       <div className="w-full max-w-3xl mx-auto px-6 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between mb-4 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>⚙ Paramètres</h2>
         </div>
 
-        <div className="space-y-8">
+        {/* ── Onglets ── */}
+        <div className="flex gap-1 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
+          {(['cuma', 'cap'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="text-xs px-4 py-2 font-medium transition rounded-t"
+              style={{
+                background: tab === t ? 'var(--accent)' : 'transparent',
+                color: tab === t ? 'var(--accent-fg)' : 'var(--text-muted)',
+                borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+              }}
+            >
+              {t === 'cuma' ? 'CUMA' : 'CAP CONSULTING'}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'cuma' && <div className="space-y-8">
 
           {/* ── Bannière post-import ── */}
           {importBanner && (
@@ -1367,27 +1589,50 @@ export function SettingsView({
             </section>
           )}
 
-          {/* ── Messages ── */}
-          {error && (
-            <div className="text-xs rounded px-3 py-2" style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid var(--color-error-deep)' }}>
-              ⚠ {error}
-            </div>
-          )}
-          {statusMsg && (
-            <div className="text-xs rounded px-3 py-2" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: '1px solid var(--color-success-deep)' }}>
-              ✓ {statusMsg}
-            </div>
-          )}
+        </div>}
 
-          {/* ── Actions ── */}
-          <div className="flex items-center gap-3 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-            <button
-              onClick={handleSave}
-              className="text-xs px-4 py-2 rounded font-medium transition"
-              style={{ background: 'var(--border)', color: 'var(--text)' }}
-            >
-              Sauvegarder
-            </button>
+        {tab === 'cap' && (
+          <div className="space-y-6">
+            <CapClientsSection
+              token={config.integrationToken}
+              clientsConfig={clientsConfig}
+              setClientsConfig={setClientsConfig}
+            />
+            <CapProjetsSection
+              token={config.integrationToken}
+              projetsConfig={projetsConfig}
+              setProjetsConfig={setProjetsConfig}
+            />
+            <CapTachesSection
+              token={config.integrationToken}
+              tachesConfig={tachesConfig}
+              setTachesConfig={setTachesConfig}
+            />
+          </div>
+        )}
+
+        {/* ── Messages ── */}
+        {error && (
+          <div className="mt-4 text-xs rounded px-3 py-2" style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid var(--color-error-deep)' }}>
+            ⚠ {error}
+          </div>
+        )}
+        {statusMsg && (
+          <div className="mt-4 text-xs rounded px-3 py-2" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: '1px solid var(--color-success-deep)' }}>
+            ✓ {statusMsg}
+          </div>
+        )}
+
+        {/* ── Actions ── */}
+        <div className="flex items-center gap-3 mt-6 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+          <button
+            onClick={handleSave}
+            className="text-xs px-4 py-2 rounded font-medium transition"
+            style={{ background: 'var(--border)', color: 'var(--text)' }}
+          >
+            Sauvegarder
+          </button>
+          {tab === 'cuma' && (
             <button
               onClick={handleSync}
               disabled={loading}
@@ -1396,7 +1641,7 @@ export function SettingsView({
             >
               {loading ? 'Synchronisation…' : 'Synchroniser depuis Notion'}
             </button>
-          </div>
+          )}
         </div>
       </div>
     </div>

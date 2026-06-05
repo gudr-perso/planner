@@ -3,6 +3,8 @@ import type {
   AssociationsConfig,
   BriefingConfig,
   BriefingEntry,
+  ClientEntry,
+  ClientsConfig,
   DataBundle,
   NotionBlock,
   NotionConfig,
@@ -12,11 +14,15 @@ import type {
   Person,
   PostItEntry,
   PostItsConfig,
+  ProjetEntry,
+  ProjetsConfig,
   Project,
   Status,
   SubProject,
   SuivisConfig,
   SuiviEntry,
+  TacheEntry,
+  TachesConfig,
   Task,
   TempsConfig,
   TempsEntry,
@@ -1242,4 +1248,110 @@ export async function fetchAssociations(
 
   entries.sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }));
   return entries;
+}
+
+// ── Clients (CAP Consulting) ──────────────────────────────────────────────────
+
+export async function fetchClients(token: string, config: ClientsConfig): Promise<ClientEntry[]> {
+  if (!config.databaseId) return [];
+  const results: ClientEntry[] = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = {
+      page_size: 100,
+      sorts: [{ property: config.titreField, direction: 'ascending' }],
+    };
+    if (cursor) body.start_cursor = cursor;
+    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    for (const page of (data.results ?? []) as Array<{ id: string; url: string; properties: Record<string, PropVal> }>) {
+      const props = page.properties ?? {};
+      const titre = plainText(props[config.titreField]);
+      const codeTiers = plainText(props[config.codeTiersField]);
+      const lieu = plainText(props[config.lieuField]);
+      results.push({ id: page.id, titre, codeTiers, lieu, notion_url: page.url });
+    }
+    cursor = (data.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+  return results;
+}
+
+// ── Projets (CAP Consulting) ──────────────────────────────────────────────────
+
+async function fetchRelationTitle(token: string, pageId: string): Promise<string> {
+  try {
+    const page = await nGet(token, `/pages/${pageId}`);
+    const props = (page.properties ?? {}) as Record<string, PropVal>;
+    for (const prop of Object.values(props)) {
+      if ((prop as { type?: string })?.type === 'title') {
+        return plainText(prop);
+      }
+    }
+  } catch { /* ignore */ }
+  return '';
+}
+
+export async function fetchProjets(token: string, config: ProjetsConfig): Promise<ProjetEntry[]> {
+  if (!config.databaseId) return [];
+  const results: ProjetEntry[] = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = {
+      page_size: 100,
+      sorts: [{ property: config.nomField, direction: 'ascending' }],
+    };
+    if (cursor) body.start_cursor = cursor;
+    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    for (const page of (data.results ?? []) as Array<{ id: string; url: string; properties: Record<string, PropVal> }>) {
+      const props = page.properties ?? {};
+      const nom = plainText(props[config.nomField]);
+      const tiersRel = props[config.tiersField];
+      const tiersId = (tiersRel?.relation as Array<{ id: string }> | undefined)?.[0]?.id;
+      const tiers = tiersId ? await fetchRelationTitle(token, tiersId) : '';
+      const typeProjet = selectName(props[config.typeProjetField]);
+      const dateDebut = (props[config.dateDebutField]?.date as { start?: string } | null)?.start ?? null;
+      results.push({ id: page.id, nom, tiers, tiersId, typeProjet, dateDebut, notion_url: page.url });
+    }
+    cursor = (data.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+  return results;
+}
+
+// ── Tâches (CAP Consulting) ───────────────────────────────────────────────────
+
+export async function fetchTaches(
+  token: string,
+  config: TachesConfig,
+  projetId?: string,
+): Promise<TacheEntry[]> {
+  if (!config.databaseId) return [];
+  const filter: Record<string, unknown> | undefined = projetId
+    ? { property: config.projetField, relation: { contains: projetId } }
+    : undefined;
+  const results: TacheEntry[] = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (filter) body.filter = filter;
+    if (cursor) body.start_cursor = cursor;
+    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    for (const page of (data.results ?? []) as Array<{ id: string; url: string; properties: Record<string, PropVal> }>) {
+      const props = page.properties ?? {};
+      const nom = plainText(props[config.nomField]);
+      const canalProp = props[config.canalField];
+      const canal = (canalProp?.select as { name?: string } | undefined)?.name ?? '';
+      const canalColor = (canalProp?.select as { color?: string } | undefined)?.color;
+      const statutProp = props[config.statutField];
+      // Notion status type: { status: { name, color } }; fallback to select
+      const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
+      const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
+      const prioriteProp = props[config.prioriteField];
+      const priorite = (prioriteProp?.select as { name?: string } | undefined)?.name ?? '';
+      const prioriteColor = (prioriteProp?.select as { color?: string } | undefined)?.color;
+      const dateEcheance = (props[config.dateEcheanceField]?.date as { start?: string } | null)?.start ?? null;
+      const planifieLe = (props[config.planifieLeField]?.date as { start?: string } | null)?.start ?? null;
+      results.push({ id: page.id, nom, canal, canalColor, statut, statutColor, priorite, prioriteColor, dateEcheance, planifieLe, notion_url: page.url });
+    }
+    cursor = (data.next_cursor as string | null) ?? undefined;
+  } while (cursor);
+  return results;
 }
