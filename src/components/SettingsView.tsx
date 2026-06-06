@@ -821,7 +821,7 @@ export function SettingsView({
     }
   };
 
-  const handleSave = () => {
+  const saveAll = () => {
     save('notionConfig', config);
     save('clientsConfig', clientsConfig);
     save('projetsConfig', projetsConfig);
@@ -831,6 +831,17 @@ export function SettingsView({
     save('echangesConfig', echangesConfig);
     save('documentsConfig', documentsConfig);
     save('tempsProjetConfig', tempsProjetConfig);
+    save('briefingConfig', briefingConfig);
+    save('partenairesConfig', partenairesConfig);
+    save('suivisConfig', suivisConfig);
+    save('tempsConfig', tempsConfig);
+    save('ticketsConfig', ticketsConfig);
+    save('associationsConfig', assocConfig);
+    save('postitsConfig', postitsConfig);
+  };
+
+  const handleSave = () => {
+    saveAll();
     flash('Configuration sauvegardée');
   };
 
@@ -901,6 +912,7 @@ export function SettingsView({
   }, []);
 
   const handleCloudUpload = async () => {
+    saveAll();
     setCloudStatus(s => ({ ...s, saving: true, error: null }));
     try {
       const { saved_at } = await uploadConfigToCloud();
