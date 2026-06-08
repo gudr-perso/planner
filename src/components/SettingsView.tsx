@@ -476,6 +476,7 @@ function CapDocumentsSection({ token, documentsConfig, setDocumentsConfig }: {
       <FieldRow label="Nom"><PropCombo value={documentsConfig.nomField} onChange={v => setDocumentsConfig(p => ({ ...p, nomField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Statut"><PropSelect value={documentsConfig.statutField} onChange={v => setDocumentsConfig(p => ({ ...p, statutField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Date"><PropSelect value={documentsConfig.dateField ?? ''} onChange={v => setDocumentsConfig(p => ({ ...p, dateField: v }))} schema={schema} filter={p => p.type === 'date'} placeholder="(optionnel)" /></FieldRow>
+      <FieldRow label="Projet (texte)"><PropCombo value={documentsConfig.projetNomField ?? ''} onChange={v => setDocumentsConfig(p => ({ ...p, projetNomField: v }))} schema={schema} placeholder="Champ texte ou formule affichant le nom du projet…" /></FieldRow>
       <FieldRow label="Filtre projet"><PropCombo value={documentsConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setDocumentsConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
       <FieldRow label="URL partagée Notion"><PropCombo value={documentsConfig.notionUrlSharedField ?? ''} onChange={v => setDocumentsConfig(p => ({ ...p, notionUrlSharedField: v }))} schema={schema} placeholder="Champ URL partagée (url, formule…)" /></FieldRow>
     </section>
@@ -1538,6 +1539,9 @@ export function SettingsView({
                 </FieldRow>
                 <FieldRow label="Sous-projets">
                   <PropCombo value={tempsConfig.sousProjetField} onChange={v => setTempsConfig(prev => ({ ...prev, sousProjetField: v }))} schema={tempsSchema} placeholder="(relation, optionnel)" />
+                </FieldRow>
+                <FieldRow label="Temps facturable (h)">
+                  <PropCombo value={tempsConfig.facturableHField ?? ''} onChange={v => setTempsConfig(prev => ({ ...prev, facturableHField: v }))} schema={tempsSchema} placeholder="(formule, optionnel)" />
                 </FieldRow>
                 <FieldRow label="Objectif hebdo (h)">
                   <input

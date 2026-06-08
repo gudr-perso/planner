@@ -231,6 +231,7 @@ export type TempsConfig = {
   projetsField: string;
   sousProjetField: string;
   objectifHebdoH: number;
+  facturableHField?: string;
 };
 
 export type TempsEntry = {
@@ -243,6 +244,7 @@ export type TempsEntry = {
   commentaire: string;
   projets: string[];
   sousProjets: string[];
+  facturableH?: string;
 };
 
 // ── Tickets ───────────────────────────────────────────────────────────────────
@@ -447,6 +449,7 @@ export type DocumentsConfig = {
   nomField: string;
   statutField: string;
   dateField?: string;
+  projetNomField?: string;       // champ texte/formule affichant le nom du projet
   projetFilterField?: string;    // champ relation/formula vers Projet (filtre direct)
   projetFilterFieldType?: string;
   notionUrlSharedField?: string; // champ URL partagée Notion
@@ -458,6 +461,7 @@ export type DocumentEntry = {
   statut: string;
   statutColor?: string;
   date?: string | null;
+  projet?: string;
   notion_url?: string;
   notionUrlShared?: string;
 };

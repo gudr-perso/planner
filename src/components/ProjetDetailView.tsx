@@ -239,10 +239,11 @@ function blocksToPdfContent(blocks: NotionBlock[]): PdfContent[] {
       case 'column_list': {
         const cols = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
         if (cols && cols.length > 0) {
-          for (const col of cols) {
+          const colStacks = cols.map(col => {
             const colKids = (col as Record<string, unknown>)._children as NotionBlock[] | undefined;
-            if (colKids && colKids.length > 0) content.push(...blocksToPdfContent(colKids));
-          }
+            return { stack: colKids && colKids.length > 0 ? blocksToPdfContent(colKids) : [{ text: ' ' }], width: '*' };
+          });
+          content.push({ columns: colStacks, columnGap: 16, margin: [0, 4, 0, 4] } as PdfContent);
         }
         break;
       }
@@ -262,6 +263,8 @@ function DetailPanel({
   title,
   url,
   sharedUrl,
+  date,
+  projet,
   blocks,
   blocksLoading,
   blocksError,
@@ -271,6 +274,8 @@ function DetailPanel({
   title: string;
   url: string | null;
   sharedUrl?: string | null;
+  date?: string | null;
+  projet?: string | null;
   blocks: NotionBlock[];
   blocksLoading: boolean;
   blocksError: string | null;
@@ -303,22 +308,28 @@ function DetailPanel({
         }
       }));
 
-      // 2nd pass: fetch children of each column inside column_list
+      // 2nd pass: fetch children of each column inside column_list (always fetch, ignoring has_children)
       const doubleEnriched = await Promise.all(enriched.map(async b => {
         if (b.type !== 'column_list') return b;
         const cols = (b as Record<string, unknown>)._children as NotionBlock[] | undefined;
         if (!cols || cols.length === 0) return b;
         const enrichedCols = await Promise.all(cols.map(async col => {
-          if (!col.has_children) return col;
           try {
             const colKids = await fetchPageBlocks(token, col.id);
-            return { ...col, _children: colKids } as NotionBlock;
-          } catch { return col; }
+            if (colKids.length > 0) return { ...col, _children: colKids } as NotionBlock;
+          } catch { /* ignore */ }
+          return col;
         }));
         return { ...b, _children: enrichedCols } as NotionBlock;
       }));
 
       const contentBlocks = blocksToPdfContent(doubleEnriched);
+
+      const now = new Date();
+      const genTs = now.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const metaLine: PdfContent[] = [];
+      if (projet) metaLine.push({ text: `Projet : ${projet}`, fontSize: 9, color: '#718096', margin: [0, 0, 16, 0] });
+      if (date) metaLine.push({ text: `Date : ${formatDate(date)}`, fontSize: 9, color: '#718096', margin: [0, 0, 0, 0] });
 
       const docDef = {
         pageSize: 'A4' as const,
@@ -332,7 +343,9 @@ function DetailPanel({
           fontSize: 8, color: '#A0AEC0', alignment: 'center' as const, margin: [0, 8, 0, 0],
         }),
         content: [
-          { text: title, fontSize: 20, bold: true, color: '#1A202C', margin: [0, 0, 0, 16] },
+          { text: title, fontSize: 20, bold: true, color: '#1A202C', margin: [0, 0, 0, metaLine.length > 0 ? 6 : 4] },
+          ...(metaLine.length > 0 ? [{ columns: metaLine, margin: [0, 0, 0, 4] as [number,number,number,number] }] : []),
+          { text: `Généré le ${genTs}`, fontSize: 8, color: '#A0AEC0', italics: true, margin: [0, 0, 0, 16] },
           ...contentBlocks,
         ],
         defaultStyle: { fontSize: 10, color: '#1A202C', lineHeight: 1.4 },
@@ -358,6 +371,20 @@ function DetailPanel({
           >
             {title}
           </h2>
+          {(projet || date) && (
+            <div className="flex flex-wrap gap-3 mb-2">
+              {projet && (
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span style={{ fontWeight: 600 }}>Projet :</span> {projet}
+                </span>
+              )}
+              {date && (
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span style={{ fontWeight: 600 }}>Date :</span> {formatDate(date)}
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap gap-3">
             {url && (
               <a
@@ -404,6 +431,20 @@ function DetailPanel({
         </div>
       </div>
       <div className="themed-scroll flex-1 overflow-y-auto px-5 py-5">
+        {(projet || date) && (
+          <div className="flex flex-wrap gap-4 mb-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+            {projet && (
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Projet</span> — {projet}
+              </span>
+            )}
+            {date && (
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Date</span> — {formatDate(date)}
+              </span>
+            )}
+          </div>
+        )}
         {blocksLoading ? (
           <p className="text-xs animate-pulse" style={{ color: 'var(--text-muted)' }}>Chargement…</p>
         ) : blocksError ? (
@@ -451,6 +492,8 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
   const [selectedTitle, setSelectedTitle] = useState('');
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [selectedSharedUrl, setSelectedSharedUrl] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedProjet, setSelectedProjet] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<NotionBlock[]>([]);
   const [blocksLoading, setBlocksLoading] = useState(false);
   const [blocksError, setBlocksError] = useState<string | null>(null);
@@ -479,11 +522,13 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
     [taches],
   );
 
-  const openDetail = useCallback((id: string, title: string, url?: string, sharedUrl?: string) => {
+  const openDetail = useCallback((id: string, title: string, url?: string, sharedUrl?: string, date?: string, projet?: string) => {
     setSelectedId(id);
     setSelectedTitle(title);
     setSelectedUrl(url ?? null);
     setSelectedSharedUrl(sharedUrl ?? null);
+    setSelectedDate(date ?? null);
+    setSelectedProjet(projet ?? null);
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);
@@ -496,6 +541,8 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
   const closeDetail = useCallback(() => {
     setSelectedId(null);
     setSelectedSharedUrl(null);
+    setSelectedDate(null);
+    setSelectedProjet(null);
     setBlocks([]);
     setBlocksError(null);
   }, []);
@@ -634,6 +681,8 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               title={selectedTitle}
               url={selectedUrl}
               sharedUrl={selectedSharedUrl}
+              date={selectedDate}
+              projet={selectedProjet}
               blocks={blocks}
               blocksLoading={blocksLoading}
               blocksError={blocksError}
@@ -1332,7 +1381,7 @@ function DocumentsTab({
   projetCode?: string;
   token: string;
   selectedId: string | null;
-  onSelectRow: (id: string, title: string, url?: string, sharedUrl?: string) => void;
+  onSelectRow: (id: string, title: string, url?: string, sharedUrl?: string, date?: string, projet?: string) => void;
 }) {
   const config = load<DocumentsConfig>('documentsConfig', {
     databaseId: '', nomField: 'Name', statutField: '',
@@ -1341,10 +1390,11 @@ function DocumentsTab({
   const [entries, setEntries] = useState<DocumentEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [sort, setSort] = useState<{ col: 'nom' | 'statut'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
+  const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'date' | 'projet'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
   const [showFilters, setShowFilters] = useState(false);
   const [filterNom, setFilterNom] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
+  const [filterProjet, setFilterProjet] = useState('');
 
   useEffect(() => {
     if (!token || !config.databaseId) return;
@@ -1356,12 +1406,14 @@ function DocumentsTab({
   }, [token, projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allStatuts = useMemo(() => [...new Set(entries.map(e => e.statut).filter(Boolean))].sort(), [entries]);
+  const allProjets = useMemo(() => [...new Set(entries.map(e => e.projet).filter((p): p is string => !!p))].sort(), [entries]);
 
   const filtered = useMemo(() => entries.filter(e => {
     if (filterNom && !e.nom.toLowerCase().includes(filterNom.toLowerCase())) return false;
     if (filterStatut && e.statut !== filterStatut) return false;
+    if (filterProjet && e.projet !== filterProjet) return false;
     return true;
-  }), [entries, filterNom, filterStatut]);
+  }), [entries, filterNom, filterStatut, filterProjet]);
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
     const va = String(a[sort.col] ?? '');
@@ -1380,6 +1432,8 @@ function DocumentsTab({
   const colHeaders: Array<{ key: typeof sort.col; label: string }> = [
     { key: 'nom', label: 'Nom' },
     { key: 'statut', label: 'Statut' },
+    ...(config.projetNomField ? [{ key: 'projet' as const, label: 'Projet' }] : []),
+    ...(config.dateField ? [{ key: 'date' as const, label: 'Date' }] : []),
   ];
 
   return (
@@ -1406,8 +1460,14 @@ function DocumentsTab({
             <option value="">Statut</option>
             {allStatuts.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
-          {(filterNom || filterStatut) && (
-            <button onClick={() => { setFilterNom(''); setFilterStatut(''); }}
+          {allProjets.length > 0 && (
+            <select style={{ ...tabInputStyle, width: 160 }} value={filterProjet} onChange={e => setFilterProjet(e.target.value)}>
+              <option value="">Projet</option>
+              {allProjets.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          )}
+          {(filterNom || filterStatut || filterProjet) && (
+            <button onClick={() => { setFilterNom(''); setFilterStatut(''); setFilterProjet(''); }}
               style={{ ...tabInputStyle, cursor: 'pointer', color: 'var(--accent)' }}>✕ Effacer</button>
           )}
         </div>
@@ -1432,7 +1492,7 @@ function DocumentsTab({
               {sorted.map(e => (
                 <tr
                   key={e.id}
-                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url, e.notionUrlShared)}
+                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url, e.notionUrlShared, e.date ?? undefined, e.projet)}
                   className="cursor-pointer"
                   style={{
                     borderBottom: '1px solid var(--border)',
@@ -1443,13 +1503,15 @@ function DocumentsTab({
                 >
                   <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.nom || '(sans nom)'}</td>
                   <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
+                  {config.projetNomField && <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.projet || '—'}</td>}
+                  {config.dateField && <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date ?? null)}</td>}
                   <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
                   <td className="px-3 py-2"><LienCell url={e.notionUrlShared} /></td>
                 </tr>
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={colHeaders.length + 2} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucun document.
                   </td>
                 </tr>

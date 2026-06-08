@@ -1083,6 +1083,7 @@ export async function fetchTemps(token: string, config: TempsConfig): Promise<Te
         commentaire: config.commentaireField ? plainText(props[config.commentaireField]) : '',
         projets: resolveRels(config.projetsField),
         sousProjets: resolveRels(config.sousProjetField),
+        facturableH: config.facturableHField ? formulaString(props[config.facturableHField]) : undefined,
       });
     }
 
@@ -1633,7 +1634,11 @@ export async function fetchDocuments(
         } else notionUrlShared = plainText(p) || undefined;
       }
     }
-    results.push({ id: page.id, nom, statut, statutColor, notion_url: page.url, notionUrlShared });
+    const date = config.dateField
+      ? (props[config.dateField]?.date as { start?: string } | null)?.start ?? null
+      : null;
+    const projet = config.projetNomField ? plainText(props[config.projetNomField]) || undefined : undefined;
+    results.push({ id: page.id, nom, statut, statutColor, date, projet, notion_url: page.url, notionUrlShared });
   }
   return results;
 }
