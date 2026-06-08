@@ -371,20 +371,6 @@ function DetailPanel({
           >
             {title}
           </h2>
-          {(projet || date) && (
-            <div className="flex flex-wrap gap-3 mb-2">
-              {projet && (
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <span style={{ fontWeight: 600 }}>Projet :</span> {projet}
-                </span>
-              )}
-              {date && (
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <span style={{ fontWeight: 600 }}>Date :</span> {formatDate(date)}
-                </span>
-              )}
-            </div>
-          )}
           <div className="flex flex-wrap gap-3">
             {url && (
               <a
@@ -431,18 +417,14 @@ function DetailPanel({
         </div>
       </div>
       <div className="themed-scroll flex-1 overflow-y-auto px-5 py-5">
-        {(projet || date) && (
-          <div className="flex flex-wrap gap-4 mb-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
-            {projet && (
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Projet</span> — {projet}
-              </span>
-            )}
-            {date && (
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Date</span> — {formatDate(date)}
-              </span>
-            )}
+        {projet && (
+          <div className="flex flex-wrap gap-6 mb-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text)' }}>Projet</span> — {projet}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text)' }}>Date</span> — {date ? formatDate(date) : '—'}
+            </span>
           </div>
         )}
         {blocksLoading ? (
@@ -1433,7 +1415,7 @@ function DocumentsTab({
     { key: 'nom', label: 'Nom' },
     { key: 'statut', label: 'Statut' },
     ...(config.projetNomField ? [{ key: 'projet' as const, label: 'Projet' }] : []),
-    ...(config.dateField ? [{ key: 'date' as const, label: 'Date' }] : []),
+    { key: 'date', label: 'Date' },
   ];
 
   return (
@@ -1504,7 +1486,7 @@ function DocumentsTab({
                   <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.nom || '(sans nom)'}</td>
                   <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
                   {config.projetNomField && <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.projet || '—'}</td>}
-                  {config.dateField && <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date ?? null)}</td>}
+                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date ?? null)}</td>
                   <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
                   <td className="px-3 py-2"><LienCell url={e.notionUrlShared} /></td>
                 </tr>
