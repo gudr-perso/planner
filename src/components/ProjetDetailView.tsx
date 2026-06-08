@@ -294,36 +294,33 @@ function DetailPanel({
       const pdfFonts = pdfFontsModule.default ?? pdfFontsModule;
       pdfMake.vfs = pdfFonts.pdfMake?.vfs ?? pdfFonts.vfs ?? (pdfFonts as unknown as Record<string, string>);
 
-      // Fetch children of blocks that need them for PDF (table rows, columns, callouts)
-      const CHILD_TYPES = new Set(['table', 'column_list', 'callout', 'toggle', 'quote']);
-      const enriched = await Promise.all(blocks.map(async b => {
-        if (!b.has_children || !CHILD_TYPES.has(b.type)) return b;
-        const existing = (b as Record<string, unknown>)._children as NotionBlock[] | undefined;
-        if (existing && existing.length > 0) return b;
-        try {
-          const kids = await fetchPageBlocks(token, b.id);
-          return { ...b, _children: kids } as NotionBlock;
-        } catch {
+      // Enrichissement récursif de l'arbre de blocs pour le PDF : on descend à
+      // tous les niveaux (column_list → column → callout → paragraphes…), sinon
+      // le détail des blocs imbriqués (ex. callouts dans des colonnes) est perdu.
+      // `column`/`column_list` sont fetchés même si has_children est absent/faux.
+      const MAX_DEPTH = 8;
+      const enrichTree = async (list: NotionBlock[], depth: number): Promise<NotionBlock[]> => {
+        if (depth >= MAX_DEPTH) return list;
+        return Promise.all(list.map(async b => {
+          const forceFetch = b.type === 'column' || b.type === 'column_list';
+          let kids = (b as Record<string, unknown>)._children as NotionBlock[] | undefined;
+          if ((b.has_children || forceFetch) && (!kids || kids.length === 0)) {
+            try {
+              kids = await fetchPageBlocks(token, b.id);
+            } catch {
+              kids = kids ?? [];
+            }
+          }
+          if (kids && kids.length > 0) {
+            const enrichedKids = await enrichTree(kids, depth + 1);
+            return { ...b, _children: enrichedKids } as NotionBlock;
+          }
           return b;
-        }
-      }));
-
-      // 2nd pass: fetch children of each column inside column_list (always fetch, ignoring has_children)
-      const doubleEnriched = await Promise.all(enriched.map(async b => {
-        if (b.type !== 'column_list') return b;
-        const cols = (b as Record<string, unknown>)._children as NotionBlock[] | undefined;
-        if (!cols || cols.length === 0) return b;
-        const enrichedCols = await Promise.all(cols.map(async col => {
-          try {
-            const colKids = await fetchPageBlocks(token, col.id);
-            if (colKids.length > 0) return { ...col, _children: colKids } as NotionBlock;
-          } catch { /* ignore */ }
-          return col;
         }));
-        return { ...b, _children: enrichedCols } as NotionBlock;
-      }));
+      };
+      const enrichedBlocks = await enrichTree(blocks, 0);
 
-      const contentBlocks = blocksToPdfContent(doubleEnriched);
+      const contentBlocks = blocksToPdfContent(enrichedBlocks);
 
       const now = new Date();
       const genTs = now.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -1529,6 +1526,7 @@ function TempsRow({ e, selectedId, onSelectRow }: {
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.fin)}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeMin || '—'}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeH || '—'}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)', fontWeight: e.facturableH ? 600 : undefined }}>{e.facturableH || '—'}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
       <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
     </tr>
@@ -1610,6 +1608,8 @@ function TempsProjetTab({
     return <EmptyConfig message="Configurez la base Temps dans les Paramètres > CAP CONSULTING." />;
   }
 
+  const showFacturableH = !!config.facturableHField;
+
   const colHeaders: Array<{ key: typeof sort.col; label: string }> = [
     { key: 'description', label: 'Description' },
     { key: 'debut', label: 'Début session' },
@@ -1617,6 +1617,11 @@ function TempsProjetTab({
     { key: 'dureeMin', label: 'Durée (min)' },
     { key: 'dureeH', label: 'Durée (h)' },
   ];
+
+  function parseH(v: string): number { const n = parseFloat(v.replace(',', '.')); return isNaN(n) ? 0 : n; }
+  function sumDureeH(rows: TempsProjetEntry[]): number { return rows.reduce((s, e) => s + parseH(e.dureeH), 0); }
+  function sumFactH(rows: TempsProjetEntry[]): number { return rows.reduce((s, e) => s + parseH(e.facturableH ?? ''), 0); }
+  function fmtH(n: number): string { return n.toFixed(2); }
 
   return (
     <div className="flex flex-col h-full">
@@ -1680,6 +1685,7 @@ function TempsProjetTab({
                     {label}{sort.col === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
                   </th>
                 ))}
+                {showFacturableH && <th className="text-left px-3 py-2 font-medium">Facturable (h)</th>}
                 <th className="text-left px-3 py-2 font-medium">Tâches</th>
                 <th className="text-left px-3 py-2 font-medium">Lien</th>
               </tr>
@@ -1688,26 +1694,33 @@ function TempsProjetTab({
               {grouped
                 ? grouped.map(([tacheNom, rows]) => (
                     <React.Fragment key={`grp-${tacheNom}`}>
-                      <tr>
-                        <td colSpan={7} style={{
-                          padding: '4px 12px', fontWeight: 700, fontSize: 11,
-                          background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-                          color: 'var(--accent)', borderTop: '1px solid var(--border)',
-                        }}>
+                      <tr style={{ background: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderTop: '1px solid var(--border)' }}>
+                        <td colSpan={4} style={{ padding: '4px 12px', fontWeight: 700, fontSize: 11, color: 'var(--accent)' }}>
                           {tacheNom}
                           <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
                             {rows.length} session{rows.length !== 1 ? 's' : ''}
                           </span>
                         </td>
+                        <td className="px-3 py-1" style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>{fmtH(sumDureeH(rows))} h</td>
+                        {showFacturableH && <td className="px-3 py-1" style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>{fmtH(sumFactH(rows))} h</td>}
+                        <td colSpan={2} />
                       </tr>
                       {rows.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)}
                     </React.Fragment>
                   ))
                 : sorted.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)
               }
+              {sorted.length > 0 && showFacturableH && (
+                <tr style={{ background: 'color-mix(in srgb, var(--accent) 16%, transparent)', borderTop: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                  <td colSpan={4} className="px-3 py-2" style={{ fontWeight: 700, fontSize: 11, color: 'var(--text)' }}>Total</td>
+                  <td className="px-3 py-2" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 11 }}>{fmtH(sumDureeH(sorted))} h</td>
+                  <td className="px-3 py-2" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 11 }}>{fmtH(sumFactH(sorted))} h</td>
+                  <td colSpan={2} />
+                </tr>
+              )}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={showFacturableH ? 8 : 7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune session de temps.
                   </td>
                 </tr>

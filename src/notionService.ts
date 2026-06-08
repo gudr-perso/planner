@@ -1083,7 +1083,6 @@ export async function fetchTemps(token: string, config: TempsConfig): Promise<Te
         commentaire: config.commentaireField ? plainText(props[config.commentaireField]) : '',
         projets: resolveRels(config.projetsField),
         sousProjets: resolveRels(config.sousProjetField),
-        facturableH: config.facturableHField ? formulaString(props[config.facturableHField]) : undefined,
       });
     }
 
@@ -1679,7 +1678,10 @@ export async function fetchTempsProjet(
     const dureeH = config.dureeHField
       ? formulaString(props[config.dureeHField])
       : '';
-    results.push({ id: page.id, description, debut, fin, dureeMin, dureeH, tacheIds, tacheNoms, notion_url: page.url });
+    const facturableH = config.facturableHField
+      ? formulaString(props[config.facturableHField])
+      : undefined;
+    results.push({ id: page.id, description, debut, fin, dureeMin, dureeH, tacheIds, tacheNoms, facturableH, notion_url: page.url });
   }
   return results;
 }

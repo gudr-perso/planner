@@ -231,7 +231,6 @@ export type TempsConfig = {
   projetsField: string;
   sousProjetField: string;
   objectifHebdoH: number;
-  facturableHField?: string;
 };
 
 export type TempsEntry = {
@@ -244,7 +243,6 @@ export type TempsEntry = {
   commentaire: string;
   projets: string[];
   sousProjets: string[];
-  facturableH?: string;
 };
 
 // ── Tickets ───────────────────────────────────────────────────────────────────
@@ -477,6 +475,7 @@ export type TempsProjetConfig = {
   dureeHField: string;             // number (h)
   tacheField: string;              // relation → Tâches
   facturableField?: string;        // checkbox
+  facturableHField?: string;       // formule → temps facturable (h)
   projetFilterField?: string;      // champ relation/formula vers Projet (filtre direct)
   projetFilterFieldType?: string;
 };
@@ -491,6 +490,7 @@ export type TempsProjetEntry = {
   tacheIds: string[];
   tacheNoms: string[];
   facturable?: boolean;
+  facturableH?: string;
   notion_url?: string;
 };
 

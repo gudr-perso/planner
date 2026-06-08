@@ -513,7 +513,8 @@ function CapTempsSection({ token, tempsProjetConfig, setTempsProjetConfig }: {
       <FieldRow label="Durée (min)"><PropSelect value={tempsProjetConfig.dureeMinField} onChange={v => setTempsProjetConfig(p => ({ ...p, dureeMinField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Durée (h)"><PropSelect value={tempsProjetConfig.dureeHField} onChange={v => setTempsProjetConfig(p => ({ ...p, dureeHField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Tâches (relation)"><PropCombo value={tempsProjetConfig.tacheField} onChange={v => setTempsProjetConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
-      <FieldRow label="Facturable"><PropSelect value={tempsProjetConfig.facturableField ?? ''} onChange={v => setTempsProjetConfig(p => ({ ...p, facturableField: v }))} schema={schema} filter={p => p.type === 'checkbox'} placeholder="(optionnel)" /></FieldRow>
+      <FieldRow label="Facturable (coche)"><PropSelect value={tempsProjetConfig.facturableField ?? ''} onChange={v => setTempsProjetConfig(p => ({ ...p, facturableField: v }))} schema={schema} filter={p => p.type === 'checkbox'} placeholder="(optionnel)" /></FieldRow>
+      <FieldRow label="Temps facturable (h)"><PropCombo value={tempsProjetConfig.facturableHField ?? ''} onChange={v => setTempsProjetConfig(p => ({ ...p, facturableHField: v }))} schema={schema} placeholder="(formule, optionnel)" /></FieldRow>
       <FieldRow label="Filtre projet"><PropCombo value={tempsProjetConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setTempsProjetConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
     </section>
   );
@@ -1539,9 +1540,6 @@ export function SettingsView({
                 </FieldRow>
                 <FieldRow label="Sous-projets">
                   <PropCombo value={tempsConfig.sousProjetField} onChange={v => setTempsConfig(prev => ({ ...prev, sousProjetField: v }))} schema={tempsSchema} placeholder="(relation, optionnel)" />
-                </FieldRow>
-                <FieldRow label="Temps facturable (h)">
-                  <PropCombo value={tempsConfig.facturableHField ?? ''} onChange={v => setTempsConfig(prev => ({ ...prev, facturableHField: v }))} schema={tempsSchema} placeholder="(formule, optionnel)" />
                 </FieldRow>
                 <FieldRow label="Objectif hebdo (h)">
                   <input

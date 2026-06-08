@@ -90,9 +90,6 @@ function sumH(entries: TempsEntry[]): number {
   return entries.reduce((acc, e) => acc + parseH(e.dureeH), 0);
 }
 
-function sumFacturableH(entries: TempsEntry[]): number {
-  return entries.reduce((acc, e) => acc + parseH(e.facturableH ?? ''), 0);
-}
 
 
 function formatHM(h: number): string {
@@ -114,11 +111,11 @@ type SortKey = keyof Pick<TempsEntry, 'title' | 'start' | 'end' | 'dureeH' | 'co
 type GroupBy = 'none' | 'projet' | 'jour';
 
 const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const COL_COUNT = 8;
+const COL_COUNT = 7;
 
 // ── Onglet Liste ──────────────────────────────────────────────────────────────
 
-function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFacturable?: boolean }) {
+function ListView({ entries }: { entries: TempsEntry[] }) {
   const [search, setSearch] = useState('');
   const [filterProjet, setFilterProjet] = useState('');
   const [filterSousProjet, setFilterSousProjet] = useState('');
@@ -208,7 +205,6 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
   }, [filtered, groupBy]);
 
   const grandTotalH = groupBy !== 'none' ? sumH(filtered) : 0;
-  const grandTotalFactH = groupBy !== 'none' ? sumFacturableH(filtered) : 0;
 
   const inputStyle: React.CSSProperties = {
     background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)',
@@ -233,9 +229,6 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', width: 1 }}>{formatDateTime(e.start)}</td>
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', width: 1 }}>{formatDateTime(e.end)}</td>
       <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', width: 1 }}>{fmtDec(e.dureeH)}</td>
-      {showFacturable && (
-        <td style={{ padding: '5px 10px', color: 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', width: 1 }}>{e.facturableH ? fmtDec(e.facturableH) : '—'}</td>
-      )}
       <td style={{ padding: '5px 10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.commentaire || '—'}</td>
       <td style={{ padding: '5px 10px', width: 240, maxWidth: 240, overflow: 'hidden' }}>
         {e.projets.map(p => (
@@ -250,8 +243,8 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
     </tr>
   );
 
-  const GroupHeaderRow = ({ label, totalH, totalFactH, groupKey, indent = 0, shade = 12 }: {
-    label: string; totalH: number; totalFactH?: number; groupKey: string; indent?: number; shade?: number;
+  const GroupHeaderRow = ({ label, totalH, groupKey, indent = 0, shade = 12 }: {
+    label: string; totalH: number; groupKey: string; indent?: number; shade?: number;
   }) => {
     const isCollapsed = collapsed.has(groupKey);
     return (
@@ -266,12 +259,7 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
           {label}
         </td>
         <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(totalH)}</td>
-        {showFacturable && (
-          <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums', opacity: 0.7 }}>
-            {totalFactH !== undefined ? fmtDecNum(totalFactH) : '—'}
-          </td>
-        )}
-        <td colSpan={showFacturable ? 3 : 3} />
+        <td colSpan={3} />
       </tr>
     );
   };
@@ -287,7 +275,6 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
             <GroupHeaderRow
               label={projet}
               totalH={sumH(allProjEntries)}
-              totalFactH={showFacturable ? sumFacturableH(allProjEntries) : undefined}
               groupKey={projKey}
               shade={12}
             />
@@ -299,7 +286,6 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
                   <GroupHeaderRow
                     label={sousProjet}
                     totalH={sumH(items)}
-                    totalFactH={showFacturable ? sumFacturableH(items) : undefined}
                     groupKey={spKey}
                     indent={1}
                     shade={6}
@@ -322,7 +308,6 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
             <GroupHeaderRow
               label={formatDayLabel(date)}
               totalH={sumH(items)}
-              totalFactH={showFacturable ? sumFacturableH(items) : undefined}
               groupKey={dayKey}
               shade={10}
             />
@@ -395,13 +380,6 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
               <SortTh col="start" label="Début" />
               <SortTh col="end" label="Fin" />
               <SortTh col="dureeH" label="Temps [h]" />
-              {showFacturable && (
-                <th style={{ cursor: 'default', userSelect: 'none', whiteSpace: 'nowrap', padding: '6px 10px',
-                  color: 'var(--text-muted)', fontSize: 11, fontWeight: 600, textAlign: 'left',
-                  background: 'var(--bg-deep)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0 }}>
-                  Facturable [h]
-                </th>
-              )}
               <SortTh col="commentaire" label="Commentaire" />
               <SortTh col="projets" label="Projets" />
               <SortTh col="sousProjets" label="Sous-projets" />
@@ -417,9 +395,6 @@ function ListView({ entries, showFacturable }: { entries: TempsEntry[]; showFact
               <tr style={{ background: 'color-mix(in srgb, var(--accent) 18%, transparent)', borderTop: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
                 <td colSpan={3} style={{ padding: '7px 10px', fontWeight: 700, color: 'var(--text)', fontSize: 12 }}>Total</td>
                 <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDecNum(grandTotalH)}</td>
-                {showFacturable && (
-                  <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--accent)', fontSize: 12, fontVariantNumeric: 'tabular-nums', opacity: 0.7 }}>{fmtDecNum(grandTotalFactH)}</td>
-                )}
                 <td colSpan={3} />
               </tr>
             )}
@@ -667,7 +642,7 @@ export function TempsView({ refreshKey = 0 }: { refreshKey?: number }) {
       {/* Contenu */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {tab === 'liste' ? (
-          <ListView entries={entries} showFacturable={!!cfg?.facturableHField} />
+          <ListView entries={entries} />
         ) : (
           <StatView entries={entries} objectifH={objectifH} />
         )}
