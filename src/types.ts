@@ -446,8 +446,10 @@ export type DocumentsConfig = {
   databaseId: string;
   nomField: string;
   statutField: string;
+  dateField?: string;
   projetFilterField?: string;    // champ relation/formula vers Projet (filtre direct)
   projetFilterFieldType?: string;
+  notionUrlSharedField?: string; // champ URL partagée Notion
 };
 
 export type DocumentEntry = {
@@ -455,7 +457,9 @@ export type DocumentEntry = {
   nom: string;
   statut: string;
   statutColor?: string;
+  date?: string | null;
   notion_url?: string;
+  notionUrlShared?: string;
 };
 
 // ── Temps Projet (CAP Consulting) ─────────────────────────────────────────────
@@ -468,6 +472,7 @@ export type TempsProjetConfig = {
   dureeMinField: string;           // number (min)
   dureeHField: string;             // number (h)
   tacheField: string;              // relation → Tâches
+  facturableField?: string;        // checkbox
   projetFilterField?: string;      // champ relation/formula vers Projet (filtre direct)
   projetFilterFieldType?: string;
 };
@@ -481,6 +486,7 @@ export type TempsProjetEntry = {
   dureeH: string;
   tacheIds: string[];
   tacheNoms: string[];
+  facturable?: boolean;
   notion_url?: string;
 };
 

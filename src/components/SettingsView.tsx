@@ -475,7 +475,9 @@ function CapDocumentsSection({ token, documentsConfig, setDocumentsConfig }: {
       </FieldRow>
       <FieldRow label="Nom"><PropCombo value={documentsConfig.nomField} onChange={v => setDocumentsConfig(p => ({ ...p, nomField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Statut"><PropSelect value={documentsConfig.statutField} onChange={v => setDocumentsConfig(p => ({ ...p, statutField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Date"><PropSelect value={documentsConfig.dateField ?? ''} onChange={v => setDocumentsConfig(p => ({ ...p, dateField: v }))} schema={schema} filter={p => p.type === 'date'} placeholder="(optionnel)" /></FieldRow>
       <FieldRow label="Filtre projet"><PropCombo value={documentsConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setDocumentsConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
+      <FieldRow label="URL partagée Notion"><PropCombo value={documentsConfig.notionUrlSharedField ?? ''} onChange={v => setDocumentsConfig(p => ({ ...p, notionUrlSharedField: v }))} schema={schema} placeholder="Champ URL partagée (url, formule…)" /></FieldRow>
     </section>
   );
 }
@@ -510,6 +512,7 @@ function CapTempsSection({ token, tempsProjetConfig, setTempsProjetConfig }: {
       <FieldRow label="Durée (min)"><PropSelect value={tempsProjetConfig.dureeMinField} onChange={v => setTempsProjetConfig(p => ({ ...p, dureeMinField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Durée (h)"><PropSelect value={tempsProjetConfig.dureeHField} onChange={v => setTempsProjetConfig(p => ({ ...p, dureeHField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Tâches (relation)"><PropCombo value={tempsProjetConfig.tacheField} onChange={v => setTempsProjetConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
+      <FieldRow label="Facturable"><PropSelect value={tempsProjetConfig.facturableField ?? ''} onChange={v => setTempsProjetConfig(p => ({ ...p, facturableField: v }))} schema={schema} filter={p => p.type === 'checkbox'} placeholder="(optionnel)" /></FieldRow>
       <FieldRow label="Filtre projet"><PropCombo value={tempsProjetConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setTempsProjetConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
     </section>
   );

@@ -114,10 +114,11 @@ type PdfContent = Record<string, unknown>;
 // Roboto ne supporte pas les emoji — on les supprime du texte PDF
 function noEmoji(s: string): string {
   return s
-    .replace(/\p{Extended_Pictographic}/gu, '')  // tous les emoji pictographiques
-    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')        // variation selectors
-    .replace(/\u{200D}/gu, '')                    // zero-width joiner
-    .replace(/\u{20E3}/gu, '')                    // combining enclosing keycap
+    .replace(/\p{Extended_Pictographic}/gu, '')            // emoji pictographiques
+    .replace(/[⌀-➿]/g, '')                       // Misc Technical, Symbols, Dingbats
+    .replace(/[︀-️]/g, '')                       // variation selectors
+    .replace(/‍/g, '')                                // zero-width joiner
+    .replace(/⃣/g, '')                                // combining enclosing keycap
     .trim();
 }
 
@@ -174,15 +175,33 @@ function blocksToPdfContent(blocks: NotionBlock[]): PdfContent[] {
         });
         break;
       case 'callout': {
+        const calloutKids = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
+        const calloutChildContent = calloutKids && calloutKids.length > 0 ? blocksToPdfContent(calloutKids) : [];
+        const calloutInner: PdfContent[] = [];
+        if (rt.length > 0) calloutInner.push({ text: rtPdf, fontSize: 10, color: '#1A202C' });
+        calloutInner.push(...calloutChildContent);
+        // Pas d'icône emoji (non supportée par Roboto → carré .notdef) :
+        // on rend un encadré visible avec barre d'accent + fond teinté.
         content.push({
-          table: { widths: ['auto', '*'], body: [[{ text: '▸', fontSize: 10, color: '#718096', border: [false, false, false, false] }, { text: rtPdf, fontSize: 10, border: [false, false, false, false] }]] },
-          fillColor: '#F8FAFC', layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 6, paddingRight: () => 6, paddingTop: () => 5, paddingBottom: () => 5 },
+          table: {
+            widths: [3, '*'],
+            body: [[
+              { text: '', fillColor: '#60A5FA', border: [false, false, false, false] },
+              { stack: calloutInner.length > 0 ? calloutInner : [{ text: ' ' }], fillColor: '#EFF6FF', border: [false, false, false, false] },
+            ]],
+          },
+          layout: {
+            hLineWidth: () => 0, vLineWidth: () => 0,
+            paddingLeft: (i: number) => (i === 0 ? 0 : 8),
+            paddingRight: (i: number) => (i === 0 ? 0 : 8),
+            paddingTop: () => 6, paddingBottom: () => 6,
+          },
           margin: [0, 6, 0, 6],
         });
         break;
       }
       case 'code':
-        content.push({ text: plainText || ' ', font: 'Courier', fontSize: 8, background: '#F1F5F9', margin: [0, 4, 0, 4], color: '#2D3748', preserveLeadingSpaces: true });
+        content.push({ text: noEmoji(plainText) || ' ', font: 'Courier', fontSize: 8, background: '#F1F5F9', margin: [0, 4, 0, 4], color: '#2D3748', preserveLeadingSpaces: true });
         break;
       case 'divider':
         content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: '#E2E8F0' }], margin: [0, 8, 0, 8] });
@@ -217,6 +236,18 @@ function blocksToPdfContent(blocks: NotionBlock[]): PdfContent[] {
         }
         break;
       }
+      case 'column_list': {
+        const cols = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
+        if (cols && cols.length > 0) {
+          for (const col of cols) {
+            const colKids = (col as Record<string, unknown>)._children as NotionBlock[] | undefined;
+            if (colKids && colKids.length > 0) content.push(...blocksToPdfContent(colKids));
+          }
+        }
+        break;
+      }
+      case 'column':
+        break;
       default:
         if (rt.length > 0) content.push({ text: rtPdf, margin: [0, 2, 0, 4], fontSize: 10, color: '#718096' });
     }
@@ -230,6 +261,7 @@ function blocksToPdfContent(blocks: NotionBlock[]): PdfContent[] {
 function DetailPanel({
   title,
   url,
+  sharedUrl,
   blocks,
   blocksLoading,
   blocksError,
@@ -238,6 +270,7 @@ function DetailPanel({
 }: {
   title: string;
   url: string | null;
+  sharedUrl?: string | null;
   blocks: NotionBlock[];
   blocksLoading: boolean;
   blocksError: string | null;
@@ -270,7 +303,22 @@ function DetailPanel({
         }
       }));
 
-      const contentBlocks = blocksToPdfContent(enriched);
+      // 2nd pass: fetch children of each column inside column_list
+      const doubleEnriched = await Promise.all(enriched.map(async b => {
+        if (b.type !== 'column_list') return b;
+        const cols = (b as Record<string, unknown>)._children as NotionBlock[] | undefined;
+        if (!cols || cols.length === 0) return b;
+        const enrichedCols = await Promise.all(cols.map(async col => {
+          if (!col.has_children) return col;
+          try {
+            const colKids = await fetchPageBlocks(token, col.id);
+            return { ...col, _children: colKids } as NotionBlock;
+          } catch { return col; }
+        }));
+        return { ...b, _children: enrichedCols } as NotionBlock;
+      }));
+
+      const contentBlocks = blocksToPdfContent(doubleEnriched);
 
       const docDef = {
         pageSize: 'A4' as const,
@@ -310,17 +358,30 @@ function DetailPanel({
           >
             {title}
           </h2>
-          {url && (
-            <a
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs hover:underline"
-              style={{ color: 'var(--accent)' }}
-            >
-              Ouvrir dans Notion ↗
-            </a>
-          )}
+          <div className="flex flex-wrap gap-3">
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs hover:underline"
+                style={{ color: 'var(--accent)' }}
+              >
+                Ouvrir dans Notion ↗
+              </a>
+            )}
+            {sharedUrl && (
+              <a
+                href={sharedUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs hover:underline"
+                style={{ color: 'var(--accent)' }}
+              >
+                URL partagée ↗
+              </a>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           {blocks.length > 0 && (
@@ -389,6 +450,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedTitle, setSelectedTitle] = useState('');
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+  const [selectedSharedUrl, setSelectedSharedUrl] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<NotionBlock[]>([]);
   const [blocksLoading, setBlocksLoading] = useState(false);
   const [blocksError, setBlocksError] = useState<string | null>(null);
@@ -417,10 +479,11 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
     [taches],
   );
 
-  const openDetail = useCallback((id: string, title: string, url?: string) => {
+  const openDetail = useCallback((id: string, title: string, url?: string, sharedUrl?: string) => {
     setSelectedId(id);
     setSelectedTitle(title);
     setSelectedUrl(url ?? null);
+    setSelectedSharedUrl(sharedUrl ?? null);
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);
@@ -432,6 +495,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
 
   const closeDetail = useCallback(() => {
     setSelectedId(null);
+    setSelectedSharedUrl(null);
     setBlocks([]);
     setBlocksError(null);
   }, []);
@@ -569,6 +633,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <DetailPanel
               title={selectedTitle}
               url={selectedUrl}
+              sharedUrl={selectedSharedUrl}
               blocks={blocks}
               blocksLoading={blocksLoading}
               blocksError={blocksError}
@@ -1267,7 +1332,7 @@ function DocumentsTab({
   projetCode?: string;
   token: string;
   selectedId: string | null;
-  onSelectRow: (id: string, title: string, url?: string) => void;
+  onSelectRow: (id: string, title: string, url?: string, sharedUrl?: string) => void;
 }) {
   const config = load<DocumentsConfig>('documentsConfig', {
     databaseId: '', nomField: 'Name', statutField: '',
@@ -1359,14 +1424,15 @@ function DocumentsTab({
                     {label}{sort.col === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
                   </th>
                 ))}
-                <th className="text-left px-3 py-2 font-medium">Lien</th>
+                <th className="text-left px-3 py-2 font-medium">Notion</th>
+                <th className="text-left px-3 py-2 font-medium">URL partagée</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map(e => (
                 <tr
                   key={e.id}
-                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url)}
+                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url, e.notionUrlShared)}
                   className="cursor-pointer"
                   style={{
                     borderBottom: '1px solid var(--border)',
@@ -1378,11 +1444,12 @@ function DocumentsTab({
                   <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.nom || '(sans nom)'}</td>
                   <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
                   <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
+                  <td className="px-3 py-2"><LienCell url={e.notionUrlShared} /></td>
                 </tr>
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={4} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucun document.
                   </td>
                 </tr>

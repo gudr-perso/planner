@@ -1621,7 +1621,19 @@ export async function fetchDocuments(
     const statutProp = props[config.statutField];
     const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
     const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
-    results.push({ id: page.id, nom, statut, statutColor, notion_url: page.url });
+    let notionUrlShared: string | undefined;
+    if (config.notionUrlSharedField) {
+      const p = props[config.notionUrlSharedField];
+      if (p) {
+        const type = (p as Record<string, unknown>).type as string | undefined;
+        if (type === 'url') notionUrlShared = ((p as Record<string, unknown>).url as string) || undefined;
+        else if (type === 'formula') {
+          const f = (p as Record<string, unknown>).formula as Record<string, unknown> | undefined;
+          notionUrlShared = (f?.type === 'string' ? f.string as string : undefined) || undefined;
+        } else notionUrlShared = plainText(p) || undefined;
+      }
+    }
+    results.push({ id: page.id, nom, statut, statutColor, notion_url: page.url, notionUrlShared });
   }
   return results;
 }
