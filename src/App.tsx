@@ -149,6 +149,12 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
       setDemoStore(demoExtras);
       setData((prev) => ({ ...planning, googleEvents: prev.googleEvents }));
       setDataLoaded(true);
+      setViewRefreshKeys(prev => {
+        const toRefresh: ViewKey[] = ['briefing', 'postits', 'partenaires', 'suivis', 'temps', 'tickets'];
+        const next = { ...prev };
+        for (const v of toRefresh) next[v] = (prev[v] ?? 0) + 1;
+        return next;
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -184,6 +190,12 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
       setDemoStore(demoExtras);
       setData((prev) => ({ ...planning, googleEvents: prev.googleEvents }));
       setDataLoaded(true);
+      setViewRefreshKeys(prev => {
+        const toRefresh: ViewKey[] = ['briefing', 'postits', 'partenaires', 'suivis', 'temps', 'tickets'];
+        const next = { ...prev };
+        for (const v of toRefresh) next[v] = (prev[v] ?? 0) + 1;
+        return next;
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -192,7 +204,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   }, [dataSource, dataLoaded, dataLoading]);
 
   useEffect(() => {
-    if (DATA_VIEWS.includes(view)) loadPlanningData();
+    loadPlanningData();
   }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleDataSource = useCallback(async () => {
@@ -477,16 +489,16 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                   : view === 'temps' ? <TempsView refreshKey={viewRefreshKeys['temps'] ?? 0} />
                   : view === 'tickets' ? <TicketsView refreshKey={viewRefreshKeys['tickets'] ?? 0} />
                   : view === 'postits' ? <PostItsView refreshKey={viewRefreshKeys['postits'] ?? 0} />
-                  : view === 'clients' ? <ClientsView />
-                  : view === 'projets' ? (
+                  : view === 'clients' ? (dataLoaded || dataSource === 'notion' ? <ClientsView /> : null)
+                  : view === 'projets' ? (dataLoaded || dataSource === 'notion' ? (
                     <ProjetsView onSelectProjet={(id, nom, code) => {
                       setSelectedProjetId(id);
                       setSelectedProjetNom(nom);
                       setSelectedProjetCode(code);
                       setView('projet-detail');
                     }} />
-                  )
-                  : view === 'projet-detail' ? (
+                  ) : null)
+                  : view === 'projet-detail' ? (dataLoaded || dataSource === 'notion' ? (
                     <ProjetDetailView
                       projetId={selectedProjetId}
                       projetNom={selectedProjetNom}
@@ -498,7 +510,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                         setView('projets');
                       }}
                     />
-                  )
+                  ) : null)
                   : (isTablet ? <MobileUnavailable viewName="Le Gantt" /> : <GanttView />)}
               </main>
             </div>
