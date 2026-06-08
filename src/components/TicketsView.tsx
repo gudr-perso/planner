@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { load, save } from '../persistence';
 import { fetchAssociations, fetchTickets, fetchPageBlocks, patchRichTextField } from '../notionService';
+import { getDemoStore } from '../demoData';
 import type { AssociationEntry, AssociationsConfig, NotionBlock, NotionConfig, TicketEntry, TicketsConfig } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
@@ -329,6 +330,12 @@ function TicketsTab({
 
   useEffect(() => {
     if (_ticketsCache !== null && _ticketsCacheKey === refreshKey && _ticketsCacheTermines === showTermines) return;
+    if (!token || !cfg.databaseId) {
+      const demo = getDemoStore();
+      if (demo?.tickets.length) { _ticketsCache = demo.tickets; setEntries(demo.tickets); }
+      setLoading(false);
+      return;
+    }
     load_(showTermines);
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -657,6 +664,12 @@ function AssociationsTab({
     useResizableRightPanel('assocDetailWidth', 420);
 
   const load_ = useCallback((inclTermines: boolean) => {
+    if (!token || !cfg.databaseId) {
+      const demo = getDemoStore();
+      if (demo?.associations.length) setEntries(demo.associations);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     fetchAssociations(token, cfg, inclTermines)
@@ -1017,7 +1030,9 @@ export function TicketsView({ refreshKey = 0 }: { refreshKey?: number }) {
     transition: 'color 120ms',
   });
 
-  const notConfigured = !ticketsCfg?.databaseId;
+  const demo = getDemoStore();
+  const hasDemo = !!demo?.tickets?.length;
+  const notConfigured = !ticketsCfg?.databaseId && !hasDemo;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -1031,14 +1046,14 @@ export function TicketsView({ refreshKey = 0 }: { refreshKey?: number }) {
       {/* Contenu */}
       <div style={{ flex: 1, overflow: 'hidden', background: 'var(--bg)' }}>
         {tab === 'tickets' ? (
-          ticketsCfg ? (
-            <TicketsTab token={token} cfg={ticketsCfg} onAssocClick={handleAssocClick} refreshKey={refreshKey} />
+          (ticketsCfg || hasDemo) ? (
+            <TicketsTab token={token} cfg={ticketsCfg ?? {} as TicketsConfig} onAssocClick={handleAssocClick} refreshKey={refreshKey} />
           ) : (
             <div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>Configurez la base Tickets dans Paramètres</div>
           )
         ) : (
-          assocCfg ? (
-            <AssociationsTab token={token} cfg={assocCfg} initialFilterName={assocFilter} />
+          (assocCfg || demo?.associations?.length) ? (
+            <AssociationsTab token={token} cfg={assocCfg ?? {} as AssociationsConfig} initialFilterName={assocFilter} />
           ) : (
             <div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>Configurez la base Associations dans Paramètres</div>
           )

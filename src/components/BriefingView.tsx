@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { load } from '../persistence';
 import { fetchBriefings, fetchPageBlocks, patchBlockChecked } from '../notionService';
+import { getDemoStore } from '../demoData';
 import type { BriefingConfig, BriefingEntry, NotionBlock, NotionConfig } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
@@ -47,7 +48,12 @@ export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
 
   useEffect(() => {
     if (_briefingCache !== null && _briefingCacheKey === refreshKey) return;
-    if (!token || !briefingCfg?.databaseId) return;
+    if (!token || !briefingCfg?.databaseId) {
+      const demo = getDemoStore();
+      if (demo) { _briefingCache = demo.briefings; _briefingCacheKey = refreshKey; setEntries(demo.briefings); }
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     fetchBriefings(token, briefingCfg)
@@ -62,6 +68,8 @@ export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
 
   const selectEntry = useCallback((id: string) => {
     setSelectedId(id);
+    const demoBlocks = getDemoStore()?.blocks[id];
+    if (demoBlocks) { setBlocks(demoBlocks); setBlocksLoading(false); return; }
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);

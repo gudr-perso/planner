@@ -7,6 +7,7 @@ import { LoginPage } from './components/LoginPage';
 import { SetupPage } from './components/SetupPage';
 import { UsersView } from './components/UsersView';
 import { loadDemoData } from './loadData';
+import { setDemoStore } from './demoData';
 import { fetchGoogleCalendarEvents } from './googleCalendar';
 import { syncFromNotion, patchNotionDates } from './notionService';
 import { save, load } from './persistence';
@@ -144,8 +145,9 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
           return;
         }
       }
-      const d = await loadDemoData();
-      setData((prev) => ({ ...d, googleEvents: prev.googleEvents }));
+      const { demoExtras, ...planning } = await loadDemoData();
+      setDemoStore(demoExtras);
+      setData((prev) => ({ ...planning, googleEvents: prev.googleEvents }));
       setDataLoaded(true);
     } catch (e) {
       setError((e as Error).message);
@@ -178,8 +180,9 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
           return;
         }
       }
-      const d = await loadDemoData();
-      setData((prev) => ({ ...d, googleEvents: prev.googleEvents }));
+      const { demoExtras, ...planning } = await loadDemoData();
+      setDemoStore(demoExtras);
+      setData((prev) => ({ ...planning, googleEvents: prev.googleEvents }));
       setDataLoaded(true);
     } catch (e) {
       setError((e as Error).message);

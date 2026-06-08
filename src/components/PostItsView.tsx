@@ -8,6 +8,7 @@ import {
   fetchPageBlocks,
   patchBlockChecked,
 } from '../notionService';
+import { getDemoStore } from '../demoData';
 import type { NotionBlock, NotionConfig, NotionPropertySchema, PostItEntry, PostItsConfig } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
@@ -61,7 +62,12 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   const loadEntries = useCallback(() => {
-    if (!token || !postitsCfg?.databaseId) return;
+    if (!token || !postitsCfg?.databaseId) {
+      const demo = getDemoStore();
+      if (demo) { _postitsCache = demo.postits; _postitsCacheKey = refreshKey; setEntries(demo.postits); }
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     fetchPostIts(token, postitsCfg)
@@ -91,6 +97,8 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
 
   const selectEntry = useCallback((id: string) => {
     setSelectedId(id);
+    const demoBlocks = getDemoStore()?.blocks[id];
+    if (demoBlocks) { setBlocks(demoBlocks); setBlocksLoading(false); return; }
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);

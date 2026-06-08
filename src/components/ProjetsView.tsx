@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchProjets } from '../notionService';
 import type { NotionConfig, ProjetsConfig, ProjetEntry } from '../types';
+import { getDemoStore } from '../demoData';
 import { useAuth } from '../store/useAuthStore';
 
 function notionColor(color?: string): string {
@@ -51,7 +52,9 @@ export default function ProjetsView({ onSelectProjet }: Props) {
       databaseId: '', nomField: 'Name', tiersField: '', typeProjetField: '', dateDebutField: '', statutField: '',
     });
     if (!notionCfg.integrationToken || !cfg.databaseId) {
-      setError('Configurez la base Projets dans les Paramètres > CAP CONSULTING.');
+      const demo = getDemoStore();
+      if (demo?.projets.length) { _projetsCache = demo.projets; _projetsCacheKey = 'demo'; setProjets(demo.projets); }
+      else setError('Configurez la base Projets dans les Paramètres > CAP CONSULTING.');
       return;
     }
     const cacheKey = cfg.databaseId;

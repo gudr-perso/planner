@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { load, save } from '../persistence';
 import { useIsMobile } from '../hooks/useBreakpoint';
 import { fetchPartenaires } from '../notionService';
+import { getDemoStore } from '../demoData';
 import type { NotionConfig, PartenairesConfig, PartenaireEntry } from '../types';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -57,7 +58,12 @@ export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis
 
   useEffect(() => {
     if (_partenairesCache !== null && _partenairesCacheKey === refreshKey) return;
-    if (!token || !cfg?.databaseId) return;
+    if (!token || !cfg?.databaseId) {
+      const demo = getDemoStore();
+      if (demo) { _partenairesCache = demo.partenaires; _partenairesCacheKey = refreshKey; setEntries(demo.partenaires); }
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     fetchPartenaires(token, cfg)

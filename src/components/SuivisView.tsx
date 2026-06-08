@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { load, save } from '../persistence';
 import { fetchSuivis, fetchPageBlocks, patchBlockChecked } from '../notionService';
+import { getDemoStore } from '../demoData';
 import type { NotionBlock, NotionConfig, PartenaireEntry, SuivisConfig, SuiviEntry } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
@@ -87,7 +88,12 @@ export function SuivisView({
   useEffect(() => {
     const filterId = partenaireFilter?.id;
     if (_suivisCache !== null && _suivisCacheKey === refreshKey && _suivisCacheFilterId === filterId) return;
-    if (!token || !cfg?.databaseId) return;
+    if (!token || !cfg?.databaseId) {
+      const demo = getDemoStore();
+      if (demo) { _suivisCache = demo.suivis; _suivisCacheKey = refreshKey; _suivisCacheFilterId = filterId; setEntries(demo.suivis); }
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     setSelectedId(null);
@@ -104,6 +110,8 @@ export function SuivisView({
 
   const selectEntry = useCallback((id: string) => {
     setSelectedId(id);
+    const demoBlocks = getDemoStore()?.blocks[id];
+    if (demoBlocks) { setBlocks(demoBlocks); setBlocksLoading(false); return; }
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);

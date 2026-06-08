@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchClients } from '../notionService';
 import type { ClientsConfig, ClientEntry, NotionConfig } from '../types';
+import { getDemoStore } from '../demoData';
 
 let _clientsCache: ClientEntry[] | null = null;
 let _clientsCacheKey = '';
@@ -116,7 +117,9 @@ export default function ClientsView() {
       databaseId: '', titreField: 'Name', codeTiersField: '', lieuField: '',
     });
     if (!notionCfg.integrationToken || !cfg.databaseId) {
-      setError('Configurez la base Clients dans les Paramètres > CAP CONSULTING.');
+      const demo = getDemoStore();
+      if (demo?.clients.length) { _clientsCache = demo.clients; _clientsCacheKey = 'demo'; setClients(demo.clients); }
+      else setError('Configurez la base Clients dans les Paramètres > CAP CONSULTING.');
       return;
     }
     const cacheKey = cfg.databaseId;

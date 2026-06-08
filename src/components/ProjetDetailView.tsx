@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchTaches, fetchSousTaches, fetchSuivisProjet, fetchEchanges, fetchDocuments, fetchTempsProjet, fetchPageBlocks } from '../notionService';
+import { getDemoStore } from '../demoData';
 import type {
   DocumentEntry,
   DocumentsConfig,
@@ -485,6 +486,8 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
       projetField: '', statutTermineValue: 'Terminé', suiviField: '',
     });
     if (!token || !config.databaseId) {
+      const demo = getDemoStore();
+      if (demo?.capProjects[projetId]) setTaches(demo.capProjects[projetId].taches);
       setTachesLoading(false);
       return;
     }
@@ -508,6 +511,8 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
     setSelectedSharedUrl(sharedUrl ?? null);
     setSelectedDate(date ?? null);
     setSelectedProjet(projet ?? null);
+    const demoBlocks = getDemoStore()?.blocks[id];
+    if (demoBlocks) { setBlocks(demoBlocks); setBlocksLoading(false); return; }
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);
@@ -869,7 +874,13 @@ function SousTachesTab({
   const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
-    if (!tachesReady || !token || !config.databaseId) return;
+    if (!token || !config.databaseId) {
+      const demo = getDemoStore();
+      if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].sousTaches);
+      setLoading(false);
+      return;
+    }
+    if (!tachesReady) return;
     setLoading(true);
     fetchSousTaches(token, config, tacheIdToName, projetId, projetCode)
       .then(setEntries)
@@ -1075,7 +1086,13 @@ function SuiviProjetTab({
   const [sort, setSort] = useState<{ col: 'nom' | 'date' | 'statut'; dir: 'asc' | 'desc' }>({ col: 'date', dir: 'desc' });
 
   useEffect(() => {
-    if (!tachesReady || !token || !config.databaseId) return;
+    if (!token || !config.databaseId) {
+      const demo = getDemoStore();
+      if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].suiviProjets);
+      setLoading(false);
+      return;
+    }
+    if (!tachesReady) return;
     setLoading(true);
     fetchSuivisProjet(token, config, tacheIdToName, projetId, projetCode)
       .then(setEntries)
@@ -1203,7 +1220,12 @@ function EchangesTab({
   const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
-    if (!token || !config.databaseId) return;
+    if (!token || !config.databaseId) {
+      const demo = getDemoStore();
+      if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].echanges);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetchEchanges(token, config, projetId, projetCode)
       .then(setEntries)
@@ -1376,7 +1398,12 @@ function DocumentsTab({
   const [filterProjet, setFilterProjet] = useState('');
 
   useEffect(() => {
-    if (!token || !config.databaseId) return;
+    if (!token || !config.databaseId) {
+      const demo = getDemoStore();
+      if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].documents);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetchDocuments(token, config, projetId, projetCode)
       .then(setEntries)
@@ -1404,7 +1431,7 @@ function DocumentsTab({
     setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
   }
 
-  if (!config.databaseId) {
+  if (!config.databaseId && !entries.length) {
     return <EmptyConfig message="Configurez la base Documents dans les Paramètres > CAP CONSULTING." />;
   }
 
@@ -1611,7 +1638,13 @@ function TempsProjetTab({
   const [filterDebutTo, setFilterDebutTo] = useState('');
 
   useEffect(() => {
-    if (!tachesReady || !token || !config.databaseId) return;
+    if (!token || !config.databaseId) {
+      const demo = getDemoStore();
+      if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].tempsProjets);
+      setLoading(false);
+      return;
+    }
+    if (!tachesReady) return;
     setLoading(true);
     fetchTempsProjet(token, config, tacheIdToName, projetId, projetCode)
       .then(setEntries)

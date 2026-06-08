@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchTemps } from '../notionService';
+import { getDemoStore } from '../demoData';
 import type { NotionConfig, TempsConfig, TempsEntry } from '../types';
 import { useIsMobile } from '../hooks/useBreakpoint';
 import { MobileListCard } from './MobileListCard';
@@ -569,7 +570,12 @@ export function TempsView({ refreshKey = 0 }: { refreshKey?: number }) {
 
   useEffect(() => {
     if (_tempsCache !== null && _tempsCacheKey === refreshKey) return;
-    if (!token || !cfg?.databaseId) return;
+    if (!token || !cfg?.databaseId) {
+      const demo = getDemoStore();
+      if (demo) { _tempsCache = demo.temps; _tempsCacheKey = refreshKey; setEntries(demo.temps); }
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     fetchTemps(token, cfg)
