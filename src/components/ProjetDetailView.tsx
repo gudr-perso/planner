@@ -1505,6 +1505,49 @@ function DocumentsTab({
 
 // ── TempsProjetTab ────────────────────────────────────────────────────────────
 
+type TempsGroupLevel = 'none' | 'jour' | 'semaine' | 'mois' | 'tache';
+
+function getISOWeekYear(date: Date): { week: number; year: number } {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return {
+    week: Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7),
+    year: d.getUTCFullYear(),
+  };
+}
+
+function getTempsGroupKey(e: TempsProjetEntry, level: TempsGroupLevel): string {
+  if (level === 'none') return '';
+  if (level === 'tache') return e.tacheNoms[0] ?? '(Sans tâche)';
+  const d = e.debut ? new Date(e.debut) : null;
+  if (!d || isNaN(d.getTime())) return '(Sans date)';
+  if (level === 'jour') return d.toISOString().slice(0, 10);
+  if (level === 'semaine') {
+    const { week, year } = getISOWeekYear(d);
+    return `${year}-W${String(week).padStart(2, '0')}`;
+  }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getTempsGroupLabel(key: string, level: TempsGroupLevel): string {
+  if (level === 'tache' || key === '(Sans date)' || key === '(Sans tâche)') return key;
+  if (level === 'jour') {
+    const d = new Date(key + 'T12:00:00');
+    return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  if (level === 'semaine') {
+    const m = key.match(/^(\d{4})-W(\d+)$/);
+    if (m) return `Semaine ${parseInt(m[2])} – ${m[1]}`;
+    return key;
+  }
+  // mois
+  const [y, mo] = key.split('-');
+  return new Date(parseInt(y), parseInt(mo) - 1, 1)
+    .toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+}
+
 function TempsRow({ e, selectedId, onSelectRow }: {
   e: TempsProjetEntry;
   selectedId: string | null;
@@ -1559,7 +1602,8 @@ function TempsProjetTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sort, setSort] = useState<{ col: 'description' | 'debut' | 'fin' | 'dureeMin' | 'dureeH'; dir: 'asc' | 'desc' }>({ col: 'debut', dir: 'desc' });
-  const [groupByTache, setGroupByTache] = useState(false);
+  const [groupLevel1, setGroupLevel1] = useState<TempsGroupLevel>('none');
+  const [groupLevel2, setGroupLevel2] = useState<TempsGroupLevel>('none');
   const [showFilters, setShowFilters] = useState(false);
   const [filterDescription, setFilterDescription] = useState('');
   const [filterTache, setFilterTache] = useState('');
@@ -1590,15 +1634,29 @@ function TempsProjetTab({
   }), [filtered, sort]);
 
   const grouped = useMemo(() => {
-    if (!groupByTache) return null;
+    if (groupLevel1 === 'none') return null;
     const map = new Map<string, TempsProjetEntry[]>();
     for (const e of sorted) {
-      const key = e.tacheNoms[0] ?? '(Sans tâche)';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(e);
+      const k = getTempsGroupKey(e, groupLevel1);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(e);
     }
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'fr'));
-  }, [sorted, groupByTache]);
+    const sorted1 = [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'fr'));
+    return sorted1.map(([key, entries]) => {
+      const sub = groupLevel2 === 'none' ? null : (() => {
+        const subMap = new Map<string, TempsProjetEntry[]>();
+        for (const e of entries) {
+          const k2 = getTempsGroupKey(e, groupLevel2);
+          if (!subMap.has(k2)) subMap.set(k2, []);
+          subMap.get(k2)!.push(e);
+        }
+        return [...subMap.entries()]
+          .sort(([a], [b]) => a.localeCompare(b, 'fr'))
+          .map(([k2, rows]) => ({ key: k2, label: getTempsGroupLabel(k2, groupLevel2), entries: rows }));
+      })();
+      return { key, label: getTempsGroupLabel(key, groupLevel1), entries, sub };
+    });
+  }, [sorted, groupLevel1, groupLevel2]);
 
   function toggleSort(col: typeof sort.col) {
     setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
@@ -1640,17 +1698,56 @@ function TempsProjetTab({
           >
             ▼ Filtres
           </button>
-          <button
-            onClick={() => setGroupByTache(v => !v)}
-            className="text-xs px-2 py-1 rounded"
-            style={{
-              background: groupByTache ? 'var(--accent)' : 'var(--border)',
-              color: groupByTache ? 'var(--accent-fg)' : 'var(--text)',
-            }}
-            title="Regrouper par tâche"
-          >
-            ⊞ Par tâche
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>⊞</span>
+            <select
+              value={groupLevel1}
+              onChange={ev => {
+                const v = ev.target.value as TempsGroupLevel;
+                setGroupLevel1(v);
+                if (v === 'none') setGroupLevel2('none');
+              }}
+              className="text-xs py-1 rounded"
+              style={{
+                padding: '2px 6px',
+                background: groupLevel1 !== 'none' ? 'var(--accent)' : 'var(--border)',
+                color: groupLevel1 !== 'none' ? 'var(--accent-fg)' : 'var(--text)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              title="Grouper par"
+            >
+              <option value="none">Par…</option>
+              <option value="jour">Jour</option>
+              <option value="semaine">Semaine</option>
+              <option value="mois">Mois</option>
+              <option value="tache">Tâche</option>
+            </select>
+            {groupLevel1 !== 'none' && (
+              <>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>puis</span>
+                <select
+                  value={groupLevel2}
+                  onChange={ev => setGroupLevel2(ev.target.value as TempsGroupLevel)}
+                  className="text-xs py-1 rounded"
+                  style={{
+                    padding: '2px 6px',
+                    background: groupLevel2 !== 'none' ? 'var(--accent)' : 'var(--border)',
+                    color: groupLevel2 !== 'none' ? 'var(--accent-fg)' : 'var(--text)',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  title="Puis grouper par"
+                >
+                  <option value="none">—</option>
+                  <option value="jour">Jour</option>
+                  <option value="semaine">Semaine</option>
+                  <option value="mois">Mois</option>
+                  <option value="tache">Tâche</option>
+                </select>
+              </>
+            )}
+          </div>
         </div>
       </div>
       {showFilters && (
@@ -1692,20 +1789,40 @@ function TempsProjetTab({
             </thead>
             <tbody>
               {grouped
-                ? grouped.map(([tacheNom, rows]) => (
-                    <React.Fragment key={`grp-${tacheNom}`}>
-                      <tr style={{ background: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderTop: '1px solid var(--border)' }}>
-                        <td colSpan={4} style={{ padding: '4px 12px', fontWeight: 700, fontSize: 11, color: 'var(--accent)' }}>
-                          {tacheNom}
+                ? grouped.map(({ key, label, entries, sub }) => (
+                    <React.Fragment key={`g1-${key}`}>
+                      {/* Niveau 1 */}
+                      <tr style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', borderTop: '2px solid color-mix(in srgb, var(--accent) 25%, transparent)' }}>
+                        <td colSpan={4} style={{ padding: '5px 12px', fontWeight: 700, fontSize: 11, color: 'var(--accent)' }}>
+                          {label}
                           <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
-                            {rows.length} session{rows.length !== 1 ? 's' : ''}
+                            {entries.length} session{entries.length !== 1 ? 's' : ''}
                           </span>
                         </td>
-                        <td className="px-3 py-1" style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>{fmtH(sumDureeH(rows))} h</td>
-                        {showFacturableH && <td className="px-3 py-1" style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>{fmtH(sumFactH(rows))} h</td>}
+                        <td className="px-3 py-1" style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>{fmtH(sumDureeH(entries))} h</td>
+                        {showFacturableH && <td className="px-3 py-1" style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>{fmtH(sumFactH(entries))} h</td>}
                         <td colSpan={2} />
                       </tr>
-                      {rows.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)}
+                      {sub
+                        ? sub.map(({ key: k2, label: l2, entries: rows }) => (
+                            <React.Fragment key={`g2-${k2}`}>
+                              {/* Niveau 2 */}
+                              <tr style={{ background: 'color-mix(in srgb, var(--accent) 5%, transparent)', borderTop: '1px solid var(--border)' }}>
+                                <td colSpan={4} style={{ padding: '3px 28px', fontWeight: 600, fontSize: 11, color: 'var(--text-muted)' }}>
+                                  {l2}
+                                  <span style={{ fontWeight: 400, marginLeft: 8 }}>
+                                    {rows.length} session{rows.length !== 1 ? 's' : ''}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-1" style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }}>{fmtH(sumDureeH(rows))} h</td>
+                                {showFacturableH && <td className="px-3 py-1" style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }}>{fmtH(sumFactH(rows))} h</td>}
+                                <td colSpan={2} />
+                              </tr>
+                              {rows.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)}
+                            </React.Fragment>
+                          ))
+                        : entries.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)
+                      }
                     </React.Fragment>
                   ))
                 : sorted.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)
