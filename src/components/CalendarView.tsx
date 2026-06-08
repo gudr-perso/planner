@@ -34,11 +34,35 @@ type ZoomHeight = typeof ZOOM_PRESETS[number]['gridHeight'];
 
 const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
+const FR_MONTHS = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+
 // Schedule-X uses colorName as a CSS variable suffix — must be a valid CSS identifier
 function calId(id: string): string {
   return id
     .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip diacritics
-    .replace(/[^a-zA-Z0-9_-]/g, '_');                 // replace invalid chars
+    .replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function getMondayISO(d: Date): string {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const m = new Date(d);
+  m.setDate(d.getDate() + diff);
+  return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}-${String(m.getDate()).padStart(2, '0')}`;
+}
+
+function shiftDays(isoDate: string, n: number): string {
+  const d = new Date(isoDate + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function weekRangeLabel(baseISO: string, numWeeks: number, showWeekends: boolean): string {
+  const start = new Date(baseISO + 'T00:00:00');
+  const end = new Date(baseISO + 'T00:00:00');
+  end.setDate(end.getDate() + (numWeeks - 1) * 7 + (showWeekends ? 6 : 4));
+  const fmt = (d: Date) => `${d.getDate()} ${FR_MONTHS[d.getMonth()]}`;
+  return `${fmt(start)} – ${fmt(end)} ${end.getFullYear()}`;
 }
 
 function CalendarInstance({
@@ -47,7 +71,7 @@ function CalendarInstance({
   dayStart,
   dayEnd,
   showWeekends,
-  numWeeks,
+  selectedDate,
   calendars,
   onEventClick,
 }: {
@@ -56,7 +80,7 @@ function CalendarInstance({
   dayStart: string;
   dayEnd: string;
   showWeekends: boolean;
-  numWeeks: number;
+  selectedDate: string;
   calendars: CalendarsCfg;
   onEventClick: (eventId: string) => void;
 }) {
@@ -71,9 +95,9 @@ function CalendarInstance({
     events,
     calendars,
     plugins: [eventsService],
-    selectedDate: new Date().toISOString().slice(0, 10),
+    selectedDate,
     dayBoundaries: { start: dayStart, end: dayEnd },
-    weekOptions: { gridHeight, nDays: numWeeks * (showWeekends ? 7 : 5) },
+    weekOptions: { gridHeight, nDays: showWeekends ? 7 : 5 },
     callbacks: {
       onEventClick: (e) => onClickRef.current(e.id as string),
     },
@@ -98,6 +122,7 @@ export function CalendarView() {
   const [dayEnd, setDayEnd] = useState(() => load<string>('calDayEnd', '20:00'));
   const [showWeekends, setShowWeekends] = useState(() => load<boolean>('calWeekends', false));
   const [numWeeks, setNumWeeks] = useState<1 | 2 | 3>(() => load<1 | 2 | 3>('calWeeks', 1));
+  const [baseDate, setBaseDate] = useState(() => getMondayISO(new Date()));
 
   const calendars = useMemo((): CalendarsCfg => {
     if (colorBy === 'project') {
@@ -168,6 +193,9 @@ export function CalendarView() {
   const handleDayEnd = (h: string) => { setDayEnd(h); save('calDayEnd', h); };
   const handleWeekends = () => { setShowWeekends(prev => { save('calWeekends', !prev); return !prev; }); };
   const handleNumWeeks = (n: 1 | 2 | 3) => { setNumWeeks(n); save('calWeeks', n); };
+  const handleToday = () => setBaseDate(getMondayISO(new Date()));
+  const handlePrev = () => setBaseDate(d => shiftDays(d, -7));
+  const handleNext = () => setBaseDate(d => shiftDays(d, 7));
 
   const { setNodeRef, isOver } = useDroppable({ id: 'drop-calendar' });
 
@@ -180,6 +208,9 @@ export function CalendarView() {
     fontSize: 11,
     outline: 'none',
   };
+
+  const btnBase: React.CSSProperties = { background: 'var(--bg-deep)', color: 'var(--text-muted)' };
+  const baseKey = `${gridHeight}-${dayStart}-${dayEnd}-${showWeekends}-${colorBy}`;
 
   if (store.dataLoading) return (
     <div className="h-full flex items-center justify-center" style={{ background: 'var(--surface)' }}>
@@ -204,7 +235,7 @@ export function CalendarView() {
               className="text-xs px-2 py-1 rounded transition"
               style={gridHeight === p.gridHeight
                 ? { background: 'var(--accent)', color: 'var(--accent-fg)', fontWeight: 600 }
-                : { background: 'var(--bg-deep)', color: 'var(--text-muted)' }}
+                : btnBase}
             >
               {p.label}
             </button>
@@ -233,12 +264,24 @@ export function CalendarView() {
               className="text-xs px-2 py-1 rounded transition"
               style={numWeeks === n
                 ? { background: 'var(--accent)', color: 'var(--accent-fg)', fontWeight: 600 }
-                : { background: 'var(--bg-deep)', color: 'var(--text-muted)' }}
+                : btnBase}
             >
               {n}S
             </button>
           ))}
         </div>
+
+        {/* Navigation multi-semaines (visible uniquement en mode 2S/3S) */}
+        {numWeeks > 1 && (
+          <div className="flex items-center gap-1.5">
+            <button onClick={handleToday} className="text-xs px-2 py-1 rounded transition" style={btnBase}>Auj.</button>
+            <button onClick={handlePrev} className="text-xs px-2 py-1 rounded transition" style={btnBase}>◀</button>
+            <span className="text-xs" style={{ color: 'var(--text)', minWidth: 130, textAlign: 'center' }}>
+              {weekRangeLabel(baseDate, numWeeks, showWeekends)}
+            </span>
+            <button onClick={handleNext} className="text-xs px-2 py-1 rounded transition" style={btnBase}>▶</button>
+          </div>
+        )}
 
         {/* Weekends toggle */}
         <button
@@ -246,7 +289,7 @@ export function CalendarView() {
           className="text-xs px-2 py-1 rounded transition ml-auto"
           style={showWeekends
             ? { background: 'var(--accent)', color: 'var(--accent-fg)', fontWeight: 600 }
-            : { background: 'var(--bg-deep)', color: 'var(--text-muted)' }}
+            : btnBase}
         >
           Week-ends
         </button>
@@ -259,17 +302,39 @@ export function CalendarView() {
       )}
 
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        <CalendarInstance
-          key={`${gridHeight}-${dayStart}-${dayEnd}-${showWeekends}-${colorBy}-${numWeeks}`}
-          events={events}
-          gridHeight={gridHeight}
-          dayStart={dayStart}
-          dayEnd={dayEnd}
-          showWeekends={showWeekends}
-          numWeeks={numWeeks}
-          calendars={calendars}
-          onEventClick={handleEventClick}
-        />
+        {numWeeks === 1 ? (
+          <CalendarInstance
+            key={`${baseKey}-1`}
+            events={events}
+            gridHeight={gridHeight}
+            dayStart={dayStart}
+            dayEnd={dayEnd}
+            showWeekends={showWeekends}
+            selectedDate={new Date().toISOString().slice(0, 10)}
+            calendars={calendars}
+            onEventClick={handleEventClick}
+          />
+        ) : (
+          <>
+            {/* Cache les headers internes Schedule-X — on fournit notre propre navigation */}
+            <style>{`.sx-multi-week .sx__calendar-header { display: none !important; }`}</style>
+            <div className="sx-multi-week flex-1 min-h-0 overflow-auto flex flex-col">
+              {Array.from({ length: numWeeks }, (_, i) => (
+                <CalendarInstance
+                  key={`${baseKey}-${numWeeks}-${baseDate}-${i}`}
+                  events={events}
+                  gridHeight={gridHeight}
+                  dayStart={dayStart}
+                  dayEnd={dayEnd}
+                  showWeekends={showWeekends}
+                  selectedDate={shiftDays(baseDate, i * 7)}
+                  calendars={calendars}
+                  onEventClick={handleEventClick}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
