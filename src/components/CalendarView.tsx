@@ -47,6 +47,7 @@ function CalendarInstance({
   dayStart,
   dayEnd,
   showWeekends,
+  numWeeks,
   calendars,
   onEventClick,
 }: {
@@ -55,6 +56,7 @@ function CalendarInstance({
   dayStart: string;
   dayEnd: string;
   showWeekends: boolean;
+  numWeeks: number;
   calendars: CalendarsCfg;
   onEventClick: (eventId: string) => void;
 }) {
@@ -71,7 +73,7 @@ function CalendarInstance({
     plugins: [eventsService],
     selectedDate: new Date().toISOString().slice(0, 10),
     dayBoundaries: { start: dayStart, end: dayEnd },
-    weekOptions: { gridHeight, nDays: showWeekends ? 7 : 5 },
+    weekOptions: { gridHeight, nDays: numWeeks * (showWeekends ? 7 : 5) },
     callbacks: {
       onEventClick: (e) => onClickRef.current(e.id as string),
     },
@@ -95,6 +97,7 @@ export function CalendarView() {
   const [dayStart, setDayStart] = useState(() => load<string>('calDayStart', '08:00'));
   const [dayEnd, setDayEnd] = useState(() => load<string>('calDayEnd', '20:00'));
   const [showWeekends, setShowWeekends] = useState(() => load<boolean>('calWeekends', false));
+  const [numWeeks, setNumWeeks] = useState<1 | 2 | 3>(() => load<1 | 2 | 3>('calWeeks', 1));
 
   const calendars = useMemo((): CalendarsCfg => {
     if (colorBy === 'project') {
@@ -164,6 +167,7 @@ export function CalendarView() {
   const handleDayStart = (h: string) => { setDayStart(h); save('calDayStart', h); };
   const handleDayEnd = (h: string) => { setDayEnd(h); save('calDayEnd', h); };
   const handleWeekends = () => { setShowWeekends(prev => { save('calWeekends', !prev); return !prev; }); };
+  const handleNumWeeks = (n: 1 | 2 | 3) => { setNumWeeks(n); save('calWeeks', n); };
 
   const { setNodeRef, isOver } = useDroppable({ id: 'drop-calendar' });
 
@@ -219,6 +223,23 @@ export function CalendarView() {
           </select>
         </div>
 
+        {/* Nombre de semaines */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Sem. :</span>
+          {([1, 2, 3] as const).map((n) => (
+            <button
+              key={n}
+              onClick={() => handleNumWeeks(n)}
+              className="text-xs px-2 py-1 rounded transition"
+              style={numWeeks === n
+                ? { background: 'var(--accent)', color: 'var(--accent-fg)', fontWeight: 600 }
+                : { background: 'var(--bg-deep)', color: 'var(--text-muted)' }}
+            >
+              {n}S
+            </button>
+          ))}
+        </div>
+
         {/* Weekends toggle */}
         <button
           onClick={handleWeekends}
@@ -239,12 +260,13 @@ export function CalendarView() {
 
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         <CalendarInstance
-          key={`${gridHeight}-${dayStart}-${dayEnd}-${showWeekends}-${colorBy}`}
+          key={`${gridHeight}-${dayStart}-${dayEnd}-${showWeekends}-${colorBy}-${numWeeks}`}
           events={events}
           gridHeight={gridHeight}
           dayStart={dayStart}
           dayEnd={dayEnd}
           showWeekends={showWeekends}
+          numWeeks={numWeeks}
           calendars={calendars}
           onEventClick={handleEventClick}
         />
