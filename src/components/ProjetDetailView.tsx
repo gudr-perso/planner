@@ -269,6 +269,7 @@ function DetailPanel({
   blocks,
   blocksLoading,
   blocksError,
+  isClient,
   onClose,
 }: {
   title: string;
@@ -279,6 +280,7 @@ function DetailPanel({
   blocks: NotionBlock[];
   blocksLoading: boolean;
   blocksError: string | null;
+  isClient?: boolean;
   onClose: () => void;
 }) {
   const [exporting, setExporting] = useState(false);
@@ -368,7 +370,7 @@ function DetailPanel({
             {title}
           </h2>
           <div className="flex flex-wrap gap-3">
-            {url && (
+            {url && !isClient && (
               <a
                 href={url}
                 target="_blank"
@@ -585,6 +587,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               taches={taches}
               loading={tachesLoading}
               error={tachesError}
+              isClient={isClient}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -595,6 +598,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               projetCode={projetCode}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
+              isClient={isClient}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -662,6 +666,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               blocks={blocks}
               blocksLoading={blocksLoading}
               blocksError={blocksError}
+              isClient={isClient}
               onClose={closeDetail}
             />
           </div>
@@ -677,12 +682,14 @@ function TachesTab({
   taches,
   loading,
   error,
+  isClient,
   selectedId,
   onSelectRow,
 }: {
   taches: TacheEntry[];
   loading: boolean;
   error: string;
+  isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
@@ -752,7 +759,7 @@ function TachesTab({
                   </th>
                 ))}
                 <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Suivi</th>
-                <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Lien</th>
+                {!isClient && <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Lien</th>}
               </tr>
             </thead>
             <tbody>
@@ -780,12 +787,12 @@ function TachesTab({
                   <td className="px-3 py-2"><Badge label={t.priorite} color={t.prioriteColor} /></td>
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(t.dateEcheance)}</td>
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{t.suivis.join(', ') || '—'}</td>
-                  <td className="px-3 py-2"><LienCell url={t.notion_url} /></td>
+                  {!isClient && <td className="px-3 py-2"><LienCell url={t.notion_url} /></td>}
                 </tr>
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={isClient ? 6 : 7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune tâche{!showTermine ? ' en cours' : ''}.
                   </td>
                 </tr>
@@ -800,8 +807,9 @@ function TachesTab({
 
 // ── SousTachesTab ─────────────────────────────────────────────────────────────
 
-function SousTacheRow({ e, selectedId, onSelectRow }: {
+function SousTacheRow({ e, isClient, selectedId, onSelectRow }: {
   e: SousTacheEntry;
+  isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
@@ -822,7 +830,7 @@ function SousTacheRow({ e, selectedId, onSelectRow }: {
       <td className="px-3 py-2"><Badge label={e.canal} color={e.canalColor} /></td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date)}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
-      <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
+      {!isClient && <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>}
     </tr>
   );
 }
@@ -832,6 +840,7 @@ function SousTachesTab({
   projetCode,
   tacheIdToName,
   tachesReady,
+  isClient,
   selectedId,
   onSelectRow,
 }: {
@@ -839,6 +848,7 @@ function SousTachesTab({
   projetCode?: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
+  isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
@@ -1005,7 +1015,7 @@ function SousTachesTab({
                   </th>
                 ))}
                 <th className="text-left px-3 py-2 font-medium">Tâche liée</th>
-                <th className="text-left px-3 py-2 font-medium">Lien</th>
+                {!isClient && <th className="text-left px-3 py-2 font-medium">Lien</th>}
               </tr>
             </thead>
             <tbody>
@@ -1013,7 +1023,7 @@ function SousTachesTab({
                 ? grouped.map(([tacheNom, rows]) => (
                     <React.Fragment key={`grp-${tacheNom}`}>
                       <tr>
-                        <td colSpan={7} style={{
+                        <td colSpan={isClient ? 6 : 7} style={{
                           padding: '4px 12px', fontWeight: 700, fontSize: 11,
                           background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
                           color: 'var(--accent)', borderTop: '1px solid var(--border)',
@@ -1024,14 +1034,14 @@ function SousTachesTab({
                           </span>
                         </td>
                       </tr>
-                      {rows.map(e => <SousTacheRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)}
+                      {rows.map(e => <SousTacheRow key={e.id} e={e} isClient={isClient} selectedId={selectedId} onSelectRow={onSelectRow} />)}
                     </React.Fragment>
                   ))
-                : sorted.map(e => <SousTacheRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)
+                : sorted.map(e => <SousTacheRow key={e.id} e={e} isClient={isClient} selectedId={selectedId} onSelectRow={onSelectRow} />)
               }
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={isClient ? 6 : 7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune sous-tâche{!showTermine ? ' en cours' : ''}.
                   </td>
                 </tr>
@@ -1476,7 +1486,7 @@ function DocumentsTab({
                     {label}{sort.col === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
                   </th>
                 ))}
-                <th className="text-left px-3 py-2 font-medium">Notion</th>
+                {!isClient && <th className="text-left px-3 py-2 font-medium">Notion</th>}
                 <th className="text-left px-3 py-2 font-medium">URL partagée</th>
               </tr>
             </thead>
@@ -1497,13 +1507,13 @@ function DocumentsTab({
                   <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
                   {config.projetNomField && <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.projet || '—'}</td>}
                   <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date ?? null)}</td>
-                  <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
+                  {!isClient && <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>}
                   <td className="px-3 py-2"><LienCell url={e.notionUrlShared} /></td>
                 </tr>
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={colHeaders.length + 2} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={colHeaders.length + (isClient ? 1 : 2)} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucun document.
                   </td>
                 </tr>
