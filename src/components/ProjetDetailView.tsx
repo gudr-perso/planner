@@ -20,6 +20,7 @@ import type {
 } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
+import { useAuth } from '../store/useAuthStore';
 
 // ── Helpers partagés ──────────────────────────────────────────────────────────
 
@@ -450,6 +451,8 @@ type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges' | 'documents' | 'tem
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export default function ProjetDetailView({ projetId, projetNom, projetCode, onBack }: Props) {
+  const { user } = useAuth();
+  const isClient = !!user?.client_code;
   const [activeTab, setActiveTab] = useState<TabId>('taches');
 
   // Tâches partagées (chargées une fois, utilisées par les sous-onglets)
@@ -528,14 +531,15 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
     closeDetail();
   }
 
-  const tabs: Array<{ id: TabId; label: string }> = [
+  const allTabs: Array<{ id: TabId; label: string; clientHidden?: boolean }> = [
     { id: 'taches', label: 'Tâches' },
     { id: 'sousTaches', label: 'Sous-tâches' },
-    { id: 'suivi', label: 'Suivi' },
-    { id: 'echanges', label: 'Echanges' },
+    { id: 'suivi', label: 'Suivi', clientHidden: true },
+    { id: 'echanges', label: 'Echanges', clientHidden: true },
     { id: 'documents', label: 'Documents' },
     { id: 'temps', label: 'Temps' },
   ];
+  const tabs = allTabs.filter(t => !isClient || !t.clientHidden);
 
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg)' }}>
@@ -595,7 +599,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               onSelectRow={openDetail}
             />
           )}
-          {activeTab === 'suivi' && (
+          {activeTab === 'suivi' && !isClient && (
             <SuiviProjetTab
               projetId={projetId}
               projetCode={projetCode}
@@ -605,7 +609,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               onSelectRow={openDetail}
             />
           )}
-          {activeTab === 'echanges' && (
+          {activeTab === 'echanges' && !isClient && (
             <EchangesTab
               projetId={projetId}
               projetCode={projetCode}
@@ -617,6 +621,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <DocumentsTab
               projetId={projetId}
               projetCode={projetCode}
+              isClient={isClient}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -1354,11 +1359,13 @@ function EchangesTab({
 function DocumentsTab({
   projetId,
   projetCode,
+  isClient,
   selectedId,
   onSelectRow,
 }: {
   projetId: string;
   projetCode?: string;
+  isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string, sharedUrl?: string, date?: string, projet?: string) => void;
 }) {
@@ -1393,11 +1400,12 @@ function DocumentsTab({
   const allProjets = useMemo(() => [...new Set(entries.map(e => e.projet).filter((p): p is string => !!p))].sort(), [entries]);
 
   const filtered = useMemo(() => entries.filter(e => {
+    if (isClient && e.statut !== 'Transmis') return false;
     if (filterNom && !e.nom.toLowerCase().includes(filterNom.toLowerCase())) return false;
     if (filterStatut && e.statut !== filterStatut) return false;
     if (filterProjet && e.projet !== filterProjet) return false;
     return true;
-  }), [entries, filterNom, filterStatut, filterProjet]);
+  }), [entries, isClient, filterNom, filterStatut, filterProjet]);
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
     const va = String(a[sort.col] ?? '');
