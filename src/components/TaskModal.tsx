@@ -43,7 +43,7 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
   const [extraSaving, setExtraSaving] = useState<Record<string, boolean>>({});
   const [extraSaved, setExtraSaved] = useState<Record<string, boolean>>({});
 
-  const notionConfig = load<{ extraFields?: Array<{ label: string; editable?: boolean; notionField?: string }>; statusMappings?: Array<{ internalStatus: string; notionValue: string }>; fieldMap?: { status?: string } } | null>('notionConfig', null);
+  const notionConfig = load<{ extraFields?: Array<{ label: string; editable?: boolean; notionField: string }>; statusMappings?: Array<{ internalStatus: string; notionValue: string }>; fieldMap?: { status?: string } } | null>('notionConfig', null);
   const notionSchema = load<NotionPropertySchema[]>('notionSchema', []);
 
   if (!task) return null;
