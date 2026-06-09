@@ -147,7 +147,7 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
 
   const selectedEntry = entries.find(e => e.id === selectedId);
 
-  if (!token || !postitsCfg?.databaseId) {
+  if (!postitsCfg?.databaseId) {
     return (
       <div className="h-full flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="text-center">

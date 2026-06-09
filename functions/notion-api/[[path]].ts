@@ -1,4 +1,6 @@
+// @ts-ignore
 import { getSessionId, validateSession } from '../api/_lib/session.js';
+// @ts-ignore
 import { decrypt } from '../api/_lib/encryption.js';
 
 interface Env {

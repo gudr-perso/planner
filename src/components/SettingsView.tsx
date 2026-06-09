@@ -952,17 +952,6 @@ export function SettingsView({
       .catch(() => {});
   }, []);
 
-  const handleCloudUpload = async () => {
-    saveAll();
-    setCloudStatus(s => ({ ...s, saving: true, error: null }));
-    try {
-      const { saved_at } = await uploadConfigToCloud();
-      setCloudStatus(s => ({ ...s, saving: false, savedAt: saved_at }));
-    } catch (e) {
-      setCloudStatus(s => ({ ...s, saving: false, error: String(e) }));
-    }
-  };
-
   const handleCloudDownload = async () => {
     setCloudStatus(s => ({ ...s, loading: true, error: null }));
     try {

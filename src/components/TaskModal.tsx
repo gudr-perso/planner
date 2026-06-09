@@ -249,7 +249,7 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
                   try {
                     await patchNotionProperty(
                       task.id,
-                      efConfig.notionField,
+                      efConfig!.notionField,
                       schemaProp?.type ?? 'select',
                       val,
                     );

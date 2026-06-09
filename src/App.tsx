@@ -172,8 +172,6 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     }
   }, [view, refreshPlanningData]);
 
-  const DATA_VIEWS: ViewKey[] = ['calendar', 'gantt', 'rolling', 'rolling2', 'todo'];
-
   const loadPlanningData = useCallback(async () => {
     if (dataLoaded || dataLoading) return;
     setDataLoading(true);
