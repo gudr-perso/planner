@@ -9,12 +9,7 @@ export function exportConfig(): string {
     const key = fullKey.slice(PREFIX.length);
     if (EXCLUDED_KEYS.includes(key)) continue;
     try {
-      const parsed = JSON.parse(localStorage.getItem(fullKey)!);
-      if (key === 'notionConfig' && parsed && typeof parsed === 'object') {
-        result[key] = { ...parsed, integrationToken: '' };
-      } else {
-        result[key] = parsed;
-      }
+      result[key] = JSON.parse(localStorage.getItem(fullKey)!);
     } catch {
       // skip unparseable values
     }
@@ -63,10 +58,18 @@ export async function fetchCloudConfigMeta(): Promise<{ saved_at: string } | nul
   return { saved_at: data.saved_at };
 }
 
-export async function downloadConfigFromCloud(): Promise<void> {
+export async function downloadConfigFromCloud(options?: { reload?: boolean }): Promise<void> {
   const res = await fetch('/api/config');
   if (res.status === 404) throw new Error('Aucune config sauvegardée dans le cloud');
   if (!res.ok) throw new Error(await res.text());
   const { config } = await res.json() as { config: Record<string, unknown>; saved_at: string };
-  importConfig(JSON.stringify(config));
+  if (options?.reload === false) {
+    // Silent write — no page reload (used for auto-sync at login)
+    for (const [key, value] of Object.entries(config)) {
+      if (EXCLUDED_KEYS.includes(key)) continue;
+      localStorage.setItem(PREFIX + key, JSON.stringify(value));
+    }
+  } else {
+    importConfig(JSON.stringify(config));
+  }
 }

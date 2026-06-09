@@ -29,7 +29,6 @@ import type {
 import { STATUS_LABELS, STATUS_COLORS } from '../types';
 
 const DEFAULT_CONFIG: NotionConfig = {
-  integrationToken: '',
   databaseId: '',
   fieldMap: { title: '', assignee: '', date: '', project: '', status: '' },
   statusMappings: [],
@@ -137,8 +136,7 @@ function ExtraFieldCombo({
 
 // ── CAP CONSULTING config sections ───────────────────────────────────────────
 
-function CapClientsSection({ token, clientsConfig, setClientsConfig }: {
-  token: string;
+function CapClientsSection({ clientsConfig, setClientsConfig }: {
   clientsConfig: ClientsConfig;
   setClientsConfig: React.Dispatch<React.SetStateAction<ClientsConfig>>;
 }) {
@@ -146,10 +144,10 @@ function CapClientsSection({ token, clientsConfig, setClientsConfig }: {
   const [loading, setLoading] = useState(false);
 
   async function loadSchema() {
-    if (!token || !clientsConfig.databaseId) return;
+    if (!clientsConfig.databaseId) return;
     setLoading(true);
     try {
-      const s = await fetchDatabaseSchema(token, clientsConfig.databaseId);
+      const s = await fetchDatabaseSchema(clientsConfig.databaseId);
       setSchema(s);
     } finally {
       setLoading(false);
@@ -189,8 +187,7 @@ function CapClientsSection({ token, clientsConfig, setClientsConfig }: {
   );
 }
 
-function CapProjetsSection({ token, projetsConfig, setProjetsConfig }: {
-  token: string;
+function CapProjetsSection({ projetsConfig, setProjetsConfig }: {
   projetsConfig: ProjetsConfig;
   setProjetsConfig: React.Dispatch<React.SetStateAction<ProjetsConfig>>;
 }) {
@@ -198,10 +195,10 @@ function CapProjetsSection({ token, projetsConfig, setProjetsConfig }: {
   const [loading, setLoading] = useState(false);
 
   async function loadSchema() {
-    if (!token || !projetsConfig.databaseId) return;
+    if (!projetsConfig.databaseId) return;
     setLoading(true);
     try {
-      const s = await fetchDatabaseSchema(token, projetsConfig.databaseId);
+      const s = await fetchDatabaseSchema(projetsConfig.databaseId);
       setSchema(s);
     } finally {
       setLoading(false);
@@ -260,8 +257,7 @@ function CapProjetsSection({ token, projetsConfig, setProjetsConfig }: {
   );
 }
 
-function CapTachesSection({ token, tachesConfig, setTachesConfig }: {
-  token: string;
+function CapTachesSection({ tachesConfig, setTachesConfig }: {
   tachesConfig: TachesConfig;
   setTachesConfig: React.Dispatch<React.SetStateAction<TachesConfig>>;
 }) {
@@ -269,10 +265,10 @@ function CapTachesSection({ token, tachesConfig, setTachesConfig }: {
   const [loading, setLoading] = useState(false);
 
   async function loadSchema() {
-    if (!token || !tachesConfig.databaseId) return;
+    if (!tachesConfig.databaseId) return;
     setLoading(true);
     try {
-      const s = await fetchDatabaseSchema(token, tachesConfig.databaseId);
+      const s = await fetchDatabaseSchema(tachesConfig.databaseId);
       setSchema(s);
     } finally {
       setLoading(false);
@@ -333,8 +329,7 @@ function CapTachesSection({ token, tachesConfig, setTachesConfig }: {
   );
 }
 
-function CapSousTachesSection({ token, sousTachesConfig, setSousTachesConfig }: {
-  token: string;
+function CapSousTachesSection({ sousTachesConfig, setSousTachesConfig }: {
   sousTachesConfig: SousTachesConfig;
   setSousTachesConfig: React.Dispatch<React.SetStateAction<SousTachesConfig>>;
 }) {
@@ -342,9 +337,9 @@ function CapSousTachesSection({ token, sousTachesConfig, setSousTachesConfig }: 
   const [loading, setLoading] = useState(false);
 
   async function loadSchema() {
-    if (!token || !sousTachesConfig.databaseId) return;
+    if (!sousTachesConfig.databaseId) return;
     setLoading(true);
-    try { setSchema(await fetchDatabaseSchema(token, sousTachesConfig.databaseId)); } finally { setLoading(false); }
+    try { setSchema(await fetchDatabaseSchema(sousTachesConfig.databaseId)); } finally { setLoading(false); }
   }
 
   return (
@@ -372,8 +367,7 @@ function CapSousTachesSection({ token, sousTachesConfig, setSousTachesConfig }: 
   );
 }
 
-function CapSuiviProjetSection({ token, suiviProjetConfig, setSuiviProjetConfig }: {
-  token: string;
+function CapSuiviProjetSection({ suiviProjetConfig, setSuiviProjetConfig }: {
   suiviProjetConfig: SuiviProjetConfig;
   setSuiviProjetConfig: React.Dispatch<React.SetStateAction<SuiviProjetConfig>>;
 }) {
@@ -381,9 +375,9 @@ function CapSuiviProjetSection({ token, suiviProjetConfig, setSuiviProjetConfig 
   const [loading, setLoading] = useState(false);
 
   async function loadSchema() {
-    if (!token || !suiviProjetConfig.databaseId) return;
+    if (!suiviProjetConfig.databaseId) return;
     setLoading(true);
-    try { setSchema(await fetchDatabaseSchema(token, suiviProjetConfig.databaseId)); } finally { setLoading(false); }
+    try { setSchema(await fetchDatabaseSchema(suiviProjetConfig.databaseId)); } finally { setLoading(false); }
   }
 
   return (
@@ -409,8 +403,7 @@ function CapSuiviProjetSection({ token, suiviProjetConfig, setSuiviProjetConfig 
   );
 }
 
-function CapEchangesSection({ token, echangesConfig, setEchangesConfig }: {
-  token: string;
+function CapEchangesSection({ echangesConfig, setEchangesConfig }: {
   echangesConfig: EchangesConfig;
   setEchangesConfig: React.Dispatch<React.SetStateAction<EchangesConfig>>;
 }) {
@@ -418,9 +411,9 @@ function CapEchangesSection({ token, echangesConfig, setEchangesConfig }: {
   const [loading, setLoading] = useState(false);
 
   async function loadSchema() {
-    if (!token || !echangesConfig.databaseId) return;
+    if (!echangesConfig.databaseId) return;
     setLoading(true);
-    try { setSchema(await fetchDatabaseSchema(token, echangesConfig.databaseId)); } finally { setLoading(false); }
+    try { setSchema(await fetchDatabaseSchema(echangesConfig.databaseId)); } finally { setLoading(false); }
   }
 
   return (
@@ -449,8 +442,7 @@ function CapEchangesSection({ token, echangesConfig, setEchangesConfig }: {
   );
 }
 
-function CapDocumentsSection({ token, documentsConfig, setDocumentsConfig }: {
-  token: string;
+function CapDocumentsSection({ documentsConfig, setDocumentsConfig }: {
   documentsConfig: DocumentsConfig;
   setDocumentsConfig: React.Dispatch<React.SetStateAction<DocumentsConfig>>;
 }) {
@@ -458,9 +450,9 @@ function CapDocumentsSection({ token, documentsConfig, setDocumentsConfig }: {
   const [loading, setLoading] = useState(false);
 
   async function loadSchema() {
-    if (!token || !documentsConfig.databaseId) return;
+    if (!documentsConfig.databaseId) return;
     setLoading(true);
-    try { setSchema(await fetchDatabaseSchema(token, documentsConfig.databaseId)); } finally { setLoading(false); }
+    try { setSchema(await fetchDatabaseSchema(documentsConfig.databaseId)); } finally { setLoading(false); }
   }
 
   return (
@@ -483,8 +475,7 @@ function CapDocumentsSection({ token, documentsConfig, setDocumentsConfig }: {
   );
 }
 
-function CapTempsSection({ token, tempsProjetConfig, setTempsProjetConfig }: {
-  token: string;
+function CapTempsSection({ tempsProjetConfig, setTempsProjetConfig }: {
   tempsProjetConfig: TempsProjetConfig;
   setTempsProjetConfig: React.Dispatch<React.SetStateAction<TempsProjetConfig>>;
 }) {
@@ -492,9 +483,9 @@ function CapTempsSection({ token, tempsProjetConfig, setTempsProjetConfig }: {
   const [loading, setLoading] = useState(false);
 
   async function loadSchema() {
-    if (!token || !tempsProjetConfig.databaseId) return;
+    if (!tempsProjetConfig.databaseId) return;
     setLoading(true);
-    try { setSchema(await fetchDatabaseSchema(token, tempsProjetConfig.databaseId)); } finally { setLoading(false); }
+    try { setSchema(await fetchDatabaseSchema(tempsProjetConfig.databaseId)); } finally { setLoading(false); }
   }
 
   return (
@@ -537,6 +528,43 @@ export function SettingsView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  // Token Notion — stocké côté serveur, jamais en localStorage
+  const [tokenConfigured, setTokenConfigured] = useState<boolean | null>(null);
+  const [tokenInput, setTokenInput] = useState('');
+  const [tokenEditing, setTokenEditing] = useState(false);
+  const [tokenSaving, setTokenSaving] = useState(false);
+  const [tokenSaveStatus, setTokenSaveStatus] = useState<'ok' | 'error' | null>(null);
+
+  useEffect(() => {
+    fetch('/api/secrets/notion_token')
+      .then(r => r.json())
+      .then((d: { exists: boolean }) => setTokenConfigured(d.exists))
+      .catch(() => setTokenConfigured(false));
+  }, []);
+
+  const handleSaveToken = async () => {
+    if (!tokenInput.trim()) return;
+    setTokenSaving(true);
+    setTokenSaveStatus(null);
+    try {
+      const r = await fetch('/api/secrets/notion_token', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: tokenInput.trim() }),
+      });
+      if (!r.ok) throw new Error('Erreur serveur');
+      setTokenConfigured(true);
+      setTokenEditing(false);
+      setTokenInput('');
+      setTokenSaveStatus('ok');
+      setTimeout(() => setTokenSaveStatus(null), 3000);
+    } catch {
+      setTokenSaveStatus('error');
+    } finally {
+      setTokenSaving(false);
+    }
+  };
 
   const DEFAULT_BRIEFING: BriefingConfig = { databaseId: '', titleField: '', dateField: '', summaryField: '' };
   const [gcalClientId, setGcalClientId] = useState<string>(() => load<string>('gcalClientId', ''));
@@ -648,14 +676,14 @@ export function SettingsView({
   };
 
   const handleLoadBriefingSchema = async () => {
-    if (!config.integrationToken || !briefingConfig.databaseId) {
-      setError('Token d\'intégration et ID base Briefing requis');
+    if (!briefingConfig.databaseId) {
+      setError('ID base Briefing requis');
       return;
     }
     setBriefingLoading(true);
     setError(null);
     try {
-      const props = await fetchDatabaseSchema(config.integrationToken, briefingConfig.databaseId);
+      const props = await fetchDatabaseSchema(briefingConfig.databaseId);
       setBriefingSchema(props);
       flash(`${props.length} propriétés chargées (Briefing)`);
     } catch (e) {
@@ -671,14 +699,14 @@ export function SettingsView({
   };
 
   const handleLoadPartenairesSchema = async () => {
-    if (!config.integrationToken || !partenairesConfig.databaseId) {
-      setError('Token d\'intégration et ID base Partenaires requis');
+    if (!partenairesConfig.databaseId) {
+      setError('ID base Partenaires requis');
       return;
     }
     setPartenairesLoading(true);
     setError(null);
     try {
-      const props = await fetchDatabaseSchema(config.integrationToken, partenairesConfig.databaseId);
+      const props = await fetchDatabaseSchema(partenairesConfig.databaseId);
       setPartenairesSchema(props);
       flash(`${props.length} propriétés chargées (Partenaires)`);
     } catch (e) {
@@ -694,14 +722,14 @@ export function SettingsView({
   };
 
   const handleLoadSuivisSchema = async () => {
-    if (!config.integrationToken || !suivisConfig.databaseId) {
-      setError('Token d\'intégration et ID base Suivis requis');
+    if (!suivisConfig.databaseId) {
+      setError('ID base Suivis requis');
       return;
     }
     setSuivisLoading(true);
     setError(null);
     try {
-      const props = await fetchDatabaseSchema(config.integrationToken, suivisConfig.databaseId);
+      const props = await fetchDatabaseSchema(suivisConfig.databaseId);
       setSuivisSchema(props);
       flash(`${props.length} propriétés chargées (Suivis)`);
     } catch (e) {
@@ -717,14 +745,14 @@ export function SettingsView({
   };
 
   const handleLoadTempsSchema = async () => {
-    if (!config.integrationToken || !tempsConfig.databaseId) {
-      setError('Token d\'intégration et ID base Temps requis');
+    if (!tempsConfig.databaseId) {
+      setError('ID base Temps requis');
       return;
     }
     setTempsLoading(true);
     setError(null);
     try {
-      const props = await fetchDatabaseSchema(config.integrationToken, tempsConfig.databaseId);
+      const props = await fetchDatabaseSchema(tempsConfig.databaseId);
       setTempsSchema(props);
       flash(`${props.length} propriétés chargées (Temps)`);
     } catch (e) {
@@ -740,14 +768,14 @@ export function SettingsView({
   };
 
   const handleLoadTicketsSchema = async () => {
-    if (!config.integrationToken || !ticketsConfig.databaseId) {
-      setError('Token d\'intégration et ID base Tickets requis');
+    if (!ticketsConfig.databaseId) {
+      setError('ID base Tickets requis');
       return;
     }
     setTicketsLoading(true);
     setError(null);
     try {
-      const props = await fetchDatabaseSchema(config.integrationToken, ticketsConfig.databaseId);
+      const props = await fetchDatabaseSchema(ticketsConfig.databaseId);
       setTicketsSchema(props);
       flash(`${props.length} propriétés chargées (Tickets)`);
     } catch (e) {
@@ -763,14 +791,14 @@ export function SettingsView({
   };
 
   const handleLoadAssocSchema = async () => {
-    if (!config.integrationToken || !assocConfig.databaseId) {
-      setError('Token d\'intégration et ID base Associations requis');
+    if (!assocConfig.databaseId) {
+      setError('ID base Associations requis');
       return;
     }
     setAssocLoading(true);
     setError(null);
     try {
-      const props = await fetchDatabaseSchema(config.integrationToken, assocConfig.databaseId);
+      const props = await fetchDatabaseSchema(assocConfig.databaseId);
       setAssocSchema(props);
       flash(`${props.length} propriétés chargées (Associations)`);
     } catch (e) {
@@ -786,13 +814,13 @@ export function SettingsView({
   };
 
   const handleLoadPostitsSchema = async () => {
-    if (!config.integrationToken || !postitsConfig.databaseId) {
-      setError('Token d\'intégration et ID base Post-its requis');
+    if (!postitsConfig.databaseId) {
+      setError('ID base Post-its requis');
       return;
     }
     setPostitsLoading(true);
     try {
-      const s = await fetchDatabaseSchema(config.integrationToken, postitsConfig.databaseId);
+      const s = await fetchDatabaseSchema(postitsConfig.databaseId);
       setPostitsSchema(s);
       flash(`Schéma Post-its chargé — ${s.length} propriétés`);
     } catch (e) {
@@ -808,14 +836,14 @@ export function SettingsView({
   };
 
   const handleLoadSchema = async () => {
-    if (!config.integrationToken || !config.databaseId) {
-      setError('Token et ID de base de données requis');
+    if (!config.databaseId) {
+      setError('ID de base de données requis');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const props = await fetchDatabaseSchema(config.integrationToken, config.databaseId);
+      const props = await fetchDatabaseSchema(config.databaseId);
       setSchema(props);
       save('notionSchema', props);
       flash(`${props.length} propriétés chargées`);
@@ -845,13 +873,21 @@ export function SettingsView({
     save('postitsConfig', postitsConfig);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     saveAll();
-    flash('Configuration sauvegardée');
+    setCloudStatus(s => ({ ...s, saving: true, error: null }));
+    try {
+      const { saved_at } = await uploadConfigToCloud();
+      setCloudStatus(s => ({ ...s, saving: false, savedAt: saved_at }));
+      flash('Configuration sauvegardée et synchronisée');
+    } catch {
+      setCloudStatus(s => ({ ...s, saving: false, error: 'Erreur sync cloud' }));
+      flash('Configuration sauvegardée (sync cloud échouée)');
+    }
   };
 
   const handleSync = async () => {
-    if (!config.integrationToken || !config.databaseId) {
+    if (!config.databaseId) {
       setError('Configuration incomplète');
       return;
     }
@@ -937,8 +973,8 @@ export function SettingsView({
   };
 
   useEffect(() => {
-    if (importBanner && config.integrationToken && config.databaseId && schema.length === 0) {
-      fetchDatabaseSchema(config.integrationToken, config.databaseId)
+    if (importBanner && config.databaseId && schema.length === 0) {
+      fetchDatabaseSchema(config.databaseId)
         .then(setSchema)
         .catch(() => {});
     }
@@ -1009,20 +1045,12 @@ export function SettingsView({
           <SectionTitle>Sync Cloud</SectionTitle>
           <div className="flex items-center gap-3">
             <button
-              onClick={handleCloudUpload}
-              disabled={cloudStatus.saving}
-              className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
-              style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-            >
-              {cloudStatus.saving ? '…' : '↑ Envoyer vers le cloud'}
-            </button>
-            <button
               onClick={handleCloudDownload}
               disabled={cloudStatus.loading}
               className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
               style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
             >
-              {cloudStatus.loading ? '…' : '↓ Télécharger depuis le cloud'}
+              {cloudStatus.loading ? '…' : '↓ Restaurer depuis le cloud'}
             </button>
           </div>
           {cloudStatus.savedAt && (
@@ -1036,7 +1064,7 @@ export function SettingsView({
             </p>
           )}
           <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            Les clefs API (tokens Notion et Google) ne sont pas incluses.
+            La config est synchronisée automatiquement à chaque sauvegarde. Ce bouton permet de restaurer manuellement depuis le cloud.
           </p>
         </section>
 
@@ -1085,15 +1113,47 @@ export function SettingsView({
           <section>
             <SectionTitle>Connexion Notion</SectionTitle>
             <FieldRow label="Token d'intégration">
-              <input
-                type="password"
-                value={config.integrationToken}
-                onChange={e => setConfig(prev => ({ ...prev, integrationToken: e.target.value }))}
-                placeholder="secret_xxx…"
-                className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
-                style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
-              />
+              {tokenConfigured && !tokenEditing ? (
+                <div className="flex items-center gap-3 flex-1">
+                  <span className="text-xs" style={{ color: 'var(--color-success)' }}>Token configuré ✓</span>
+                  <button
+                    onClick={() => setTokenEditing(true)}
+                    className="text-xs px-2 py-1 rounded"
+                    style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                  >Modifier</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-1">
+                  <input
+                    type="password"
+                    value={tokenInput}
+                    onChange={e => setTokenInput(e.target.value)}
+                    placeholder="secret_xxx…"
+                    className="flex-1 text-xs rounded px-2 py-1.5 outline-none font-mono"
+                    style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  />
+                  <button
+                    onClick={handleSaveToken}
+                    disabled={tokenSaving || !tokenInput.trim()}
+                    className="text-xs px-3 py-1.5 rounded font-medium transition disabled:opacity-50"
+                    style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+                  >{tokenSaving ? '…' : 'Enregistrer'}</button>
+                  {tokenEditing && (
+                    <button
+                      onClick={() => { setTokenEditing(false); setTokenInput(''); }}
+                      className="text-xs px-2 py-1 rounded"
+                      style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                    >Annuler</button>
+                  )}
+                </div>
+              )}
             </FieldRow>
+            {tokenSaveStatus === 'ok' && (
+              <p className="text-xs ml-[calc(9rem+0.75rem)] mt-1" style={{ color: 'var(--color-success)' }}>Token enregistré avec succès</p>
+            )}
+            {tokenSaveStatus === 'error' && (
+              <p className="text-xs ml-[calc(9rem+0.75rem)] mt-1" style={{ color: 'var(--color-error)' }}>Erreur lors de l'enregistrement</p>
+            )}
             <FieldRow label="ID base de données">
               <input
                 type="text"
@@ -1121,6 +1181,7 @@ export function SettingsView({
               Créez une intégration interne sur{' '}
               <span style={{ color: 'var(--accent)' }}>notion.so/my-integrations</span>,
               partagez votre base de données avec elle, puis collez le token.
+              Le token est chiffré et stocké côté serveur — jamais dans le navigateur.
             </p>
           </section>
 
@@ -1848,42 +1909,34 @@ export function SettingsView({
         {tab === 'cap' && (
           <div className="space-y-6">
             <CapClientsSection
-              token={config.integrationToken}
               clientsConfig={clientsConfig}
               setClientsConfig={setClientsConfig}
             />
             <CapProjetsSection
-              token={config.integrationToken}
               projetsConfig={projetsConfig}
               setProjetsConfig={setProjetsConfig}
             />
             <CapTachesSection
-              token={config.integrationToken}
               tachesConfig={tachesConfig}
               setTachesConfig={setTachesConfig}
             />
             <CapSousTachesSection
-              token={config.integrationToken}
               sousTachesConfig={sousTachesConfig}
               setSousTachesConfig={setSousTachesConfig}
             />
             <CapSuiviProjetSection
-              token={config.integrationToken}
               suiviProjetConfig={suiviProjetConfig}
               setSuiviProjetConfig={setSuiviProjetConfig}
             />
             <CapEchangesSection
-              token={config.integrationToken}
               echangesConfig={echangesConfig}
               setEchangesConfig={setEchangesConfig}
             />
             <CapDocumentsSection
-              token={config.integrationToken}
               documentsConfig={documentsConfig}
               setDocumentsConfig={setDocumentsConfig}
             />
             <CapTempsSection
-              token={config.integrationToken}
               tempsProjetConfig={tempsProjetConfig}
               setTempsProjetConfig={setTempsProjetConfig}
             />
@@ -1906,11 +1959,22 @@ export function SettingsView({
         <div className="flex items-center gap-3 mt-6 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
           <button
             onClick={handleSave}
-            className="text-xs px-4 py-2 rounded font-medium transition"
+            disabled={cloudStatus.saving}
+            className="text-xs px-4 py-2 rounded font-medium transition disabled:opacity-50"
             style={{ background: 'var(--border)', color: 'var(--text)' }}
           >
-            Sauvegarder
+            {cloudStatus.saving ? 'Sauvegarde…' : 'Sauvegarder'}
           </button>
+          {cloudStatus.savedAt && !cloudStatus.saving && (
+            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              ✓ Sync {new Date(cloudStatus.savedAt + 'Z').toLocaleTimeString()}
+            </span>
+          )}
+          {cloudStatus.error && (
+            <span className="text-[11px]" style={{ color: 'var(--color-error, #e53e3e)' }}>
+              ⚠ {cloudStatus.error}
+            </span>
+          )}
           {tab === 'cuma' && (
             <button
               onClick={handleSync}

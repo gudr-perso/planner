@@ -8,7 +8,6 @@ import type {
   EchangeEntry,
   EchangesConfig,
   NotionBlock,
-  NotionConfig,
   NotionRichText,
   SousTacheEntry,
   SousTachesConfig,
@@ -270,7 +269,6 @@ function DetailPanel({
   blocksLoading,
   blocksError,
   onClose,
-  token,
 }: {
   title: string;
   url: string | null;
@@ -281,7 +279,6 @@ function DetailPanel({
   blocksLoading: boolean;
   blocksError: string | null;
   onClose: () => void;
-  token: string;
 }) {
   const [exporting, setExporting] = useState(false);
 
@@ -307,7 +304,7 @@ function DetailPanel({
           let kids = (b as Record<string, unknown>)._children as NotionBlock[] | undefined;
           if ((b.has_children || forceFetch) && (!kids || kids.length === 0)) {
             try {
-              kids = await fetchPageBlocks(token, b.id);
+              kids = await fetchPageBlocks(b.id);
             } catch {
               kids = kids ?? [];
             }
@@ -432,7 +429,7 @@ function DetailPanel({
         ) : blocks.length === 0 ? (
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>(Page vide)</p>
         ) : (
-          <NotionBlockRenderer blocks={blocks} token={token} />
+          <NotionBlockRenderer blocks={blocks} />
         )}
       </div>
     </>
@@ -453,11 +450,6 @@ type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges' | 'documents' | 'tem
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export default function ProjetDetailView({ projetId, projetNom, projetCode, onBack }: Props) {
-  const notionCfg = load<NotionConfig>('notionConfig', {
-    integrationToken: '', databaseId: '', fieldMap: {}, statusMappings: [],
-  });
-  const token = notionCfg.integrationToken;
-
   const [activeTab, setActiveTab] = useState<TabId>('taches');
 
   // Tâches partagées (chargées une fois, utilisées par les sous-onglets)
@@ -485,7 +477,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
       prioriteField: '', dateEcheanceField: '', planifieLeField: '',
       projetField: '', statutTermineValue: 'Terminé', suiviField: '',
     });
-    if (!token || !config.databaseId) {
+    if (!config.databaseId) {
       const demo = getDemoStore();
       if (demo?.capProjects[projetId]) setTaches(demo.capProjects[projetId].taches);
       setTachesLoading(false);
@@ -493,11 +485,11 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
     }
     setTachesLoading(true);
     setTachesError('');
-    fetchTaches(token, config, projetId)
+    fetchTaches(config, projetId)
       .then(data => { setTaches(data); })
       .catch(e => setTachesError(String(e)))
       .finally(() => setTachesLoading(false));
-  }, [projetId, token]);
+  }, [projetId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tacheIdToName = useMemo(
     () => new Map(taches.map(t => [t.id, t.nom])),
@@ -516,11 +508,11 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);
-    fetchPageBlocks(token, id)
+    fetchPageBlocks(id)
       .then(setBlocks)
       .catch(e => setBlocksError((e as Error).message))
       .finally(() => setBlocksLoading(false));
-  }, [token]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const closeDetail = useCallback(() => {
     setSelectedId(null);
@@ -597,7 +589,6 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <SousTachesTab
               projetId={projetId}
               projetCode={projetCode}
-              token={token}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
               selectedId={selectedId}
@@ -608,7 +599,6 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <SuiviProjetTab
               projetId={projetId}
               projetCode={projetCode}
-              token={token}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
               selectedId={selectedId}
@@ -619,7 +609,6 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <EchangesTab
               projetId={projetId}
               projetCode={projetCode}
-              token={token}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -628,7 +617,6 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <DocumentsTab
               projetId={projetId}
               projetCode={projetCode}
-              token={token}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -637,7 +625,6 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <TempsProjetTab
               projetId={projetId}
               projetCode={projetCode}
-              token={token}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
               selectedId={selectedId}
@@ -671,7 +658,6 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               blocksLoading={blocksLoading}
               blocksError={blocksError}
               onClose={closeDetail}
-              token={token}
             />
           </div>
         )}
@@ -839,7 +825,6 @@ function SousTacheRow({ e, selectedId, onSelectRow }: {
 function SousTachesTab({
   projetId,
   projetCode,
-  token,
   tacheIdToName,
   tachesReady,
   selectedId,
@@ -847,7 +832,6 @@ function SousTachesTab({
 }: {
   projetId: string;
   projetCode?: string;
-  token: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
   selectedId: string | null;
@@ -874,7 +858,7 @@ function SousTachesTab({
   const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
-    if (!token || !config.databaseId) {
+    if (!config.databaseId) {
       const demo = getDemoStore();
       if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].sousTaches);
       setLoading(false);
@@ -882,11 +866,11 @@ function SousTachesTab({
     }
     if (!tachesReady) return;
     setLoading(true);
-    fetchSousTaches(token, config, tacheIdToName, projetId, projetCode)
+    fetchSousTaches(config, tacheIdToName, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [tachesReady, token, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tachesReady, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allStatuts = useMemo(() => [...new Set(entries.map(e => e.statut).filter(Boolean))].sort(), [entries]);
   const allPriorites = useMemo(() => [...new Set(entries.map(e => e.priorite).filter(Boolean))].sort(), [entries]);
@@ -1060,7 +1044,6 @@ function SousTachesTab({
 function SuiviProjetTab({
   projetId,
   projetCode,
-  token,
   tacheIdToName,
   tachesReady,
   selectedId,
@@ -1068,7 +1051,6 @@ function SuiviProjetTab({
 }: {
   projetId: string;
   projetCode?: string;
-  token: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
   selectedId: string | null;
@@ -1086,7 +1068,7 @@ function SuiviProjetTab({
   const [sort, setSort] = useState<{ col: 'nom' | 'date' | 'statut'; dir: 'asc' | 'desc' }>({ col: 'date', dir: 'desc' });
 
   useEffect(() => {
-    if (!token || !config.databaseId) {
+    if (!config.databaseId) {
       const demo = getDemoStore();
       if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].suiviProjets);
       setLoading(false);
@@ -1094,11 +1076,11 @@ function SuiviProjetTab({
     }
     if (!tachesReady) return;
     setLoading(true);
-    fetchSuivisProjet(token, config, tacheIdToName, projetId, projetCode)
+    fetchSuivisProjet(config, tacheIdToName, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [tachesReady, token, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tachesReady, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() =>
     showTermine ? entries : entries.filter(e => e.statut !== config.statutTermineValue),
@@ -1191,13 +1173,11 @@ function SuiviProjetTab({
 function EchangesTab({
   projetId,
   projetCode,
-  token,
   selectedId,
   onSelectRow,
 }: {
   projetId: string;
   projetCode?: string;
-  token: string;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
@@ -1220,18 +1200,18 @@ function EchangesTab({
   const [filterDateTo, setFilterDateTo] = useState('');
 
   useEffect(() => {
-    if (!token || !config.databaseId) {
+    if (!config.databaseId) {
       const demo = getDemoStore();
       if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].echanges);
       setLoading(false);
       return;
     }
     setLoading(true);
-    fetchEchanges(token, config, projetId, projetCode)
+    fetchEchanges(config, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [token, projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allCanaux = useMemo(() => [...new Set(entries.map(e => e.canal).filter(Boolean))].sort(), [entries]);
 
@@ -1374,13 +1354,11 @@ function EchangesTab({
 function DocumentsTab({
   projetId,
   projetCode,
-  token,
   selectedId,
   onSelectRow,
 }: {
   projetId: string;
   projetCode?: string;
-  token: string;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string, sharedUrl?: string, date?: string, projet?: string) => void;
 }) {
@@ -1398,18 +1376,18 @@ function DocumentsTab({
   const [filterProjet, setFilterProjet] = useState('');
 
   useEffect(() => {
-    if (!token || !config.databaseId) {
+    if (!config.databaseId) {
       const demo = getDemoStore();
       if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].documents);
       setLoading(false);
       return;
     }
     setLoading(true);
-    fetchDocuments(token, config, projetId, projetCode)
+    fetchDocuments(config, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [token, projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allStatuts = useMemo(() => [...new Set(entries.map(e => e.statut).filter(Boolean))].sort(), [entries]);
   const allProjets = useMemo(() => [...new Set(entries.map(e => e.projet).filter((p): p is string => !!p))].sort(), [entries]);
@@ -1606,7 +1584,6 @@ function TempsRow({ e, selectedId, onSelectRow }: {
 function TempsProjetTab({
   projetId,
   projetCode,
-  token,
   tacheIdToName,
   tachesReady,
   selectedId,
@@ -1614,7 +1591,6 @@ function TempsProjetTab({
 }: {
   projetId: string;
   projetCode?: string;
-  token: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
   selectedId: string | null;
@@ -1638,7 +1614,7 @@ function TempsProjetTab({
   const [filterDebutTo, setFilterDebutTo] = useState('');
 
   useEffect(() => {
-    if (!token || !config.databaseId) {
+    if (!config.databaseId) {
       const demo = getDemoStore();
       if (demo?.capProjects[projetId]) setEntries(demo.capProjects[projetId].tempsProjets);
       setLoading(false);
@@ -1646,11 +1622,11 @@ function TempsProjetTab({
     }
     if (!tachesReady) return;
     setLoading(true);
-    fetchTempsProjet(token, config, tacheIdToName, projetId, projetCode)
+    fetchTempsProjet(config, tacheIdToName, projetId, projetCode)
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [tachesReady, token, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tachesReady, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() => entries.filter(e => {
     if (filterDescription && !e.description.toLowerCase().includes(filterDescription.toLowerCase())) return false;

@@ -2,16 +2,14 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { fetchPageBlocks } from '../notionService';
 import type { NotionBlock, NotionRichText } from '../types';
 
-// ── Context (token + todo handler propagés à tous les sous-composants) ─────────
+// ── Context (todo handler propagé à tous les sous-composants) ─────────
 type BlockCtxType = {
-  token: string;
   onToggleTodo?: (blockId: string, checked: boolean) => void;
 };
-const BlockCtx = createContext<BlockCtxType>({ token: '' });
+const BlockCtx = createContext<BlockCtxType>({});
 
 // ── Hook : enfants pré-chargés ou fetch lazy ────────────────────────────────
 function useBlockChildren(block: NotionBlock, fetchOnMount: boolean) {
-  const { token } = useContext(BlockCtx);
   const preloaded = (block as Record<string, unknown>)._children as NotionBlock[] | undefined;
   const [kids, setKids] = useState<NotionBlock[]>(preloaded ?? []);
   const [loading, setLoading] = useState(false);
@@ -19,10 +17,10 @@ function useBlockChildren(block: NotionBlock, fetchOnMount: boolean) {
   const didFetch = useRef(preloaded !== undefined);
 
   const doFetch = () => {
-    if (didFetch.current || !block.has_children || !token) return;
+    if (didFetch.current || !block.has_children) return;
     didFetch.current = true;
     setLoading(true);
-    fetchPageBlocks(token, block.id)
+    fetchPageBlocks(block.id)
       .then(setKids)
       .catch(() => { /* silencieux */ })
       .finally(() => setLoading(false));
@@ -131,7 +129,6 @@ function ToggleArrow({ open }: { open: boolean }) {
 
 // ── Hook partagé pour fetch d'enfants de toggle ─────────────────────────────────
 function useToggleKids(block: NotionBlock) {
-  const { token } = useContext(BlockCtx);
   const [kids, setKids] = useState<NotionBlock[]>(
     () => ((block as Record<string, unknown>)._children as NotionBlock[]) ?? []
   );
@@ -141,10 +138,10 @@ function useToggleKids(block: NotionBlock) {
   );
 
   const fetchKids = (open: boolean) => {
-    if (open && !fetched.current && token) {
+    if (open && !fetched.current) {
       fetched.current = true;
       setLoading(true);
-      fetchPageBlocks(token, block.id)
+      fetchPageBlocks(block.id)
         .then(setKids)
         .catch(() => { /* silencieux */ })
         .finally(() => setLoading(false));
@@ -231,7 +228,7 @@ function ToggleableHeading({ block, level }: { block: NotionBlock; level: 1 | 2 
 // _children = contenu de l'onglet)
 
 function TabContentPane({ tab }: { tab: NotionBlock }) {
-  const { onToggleTodo, token } = useContext(BlockCtx);
+  const { onToggleTodo } = useContext(BlockCtx);
   const [kids, setKids] = useState<NotionBlock[]>(
     () => ((tab as Record<string, unknown>)._children as NotionBlock[]) ?? []
   );
@@ -241,10 +238,10 @@ function TabContentPane({ tab }: { tab: NotionBlock }) {
   );
 
   useEffect(() => {
-    if (fetched.current || !token) return;
+    if (fetched.current) return;
     fetched.current = true;
     setLoading(true);
-    fetchPageBlocks(token, tab.id)
+    fetchPageBlocks(tab.id)
       .then(setKids)
       .catch(() => { /* silencieux */ })
       .finally(() => setLoading(false));
@@ -256,7 +253,6 @@ function TabContentPane({ tab }: { tab: NotionBlock }) {
 }
 
 function TabBlock({ block }: { block: NotionBlock }) {
-  const { token } = useContext(BlockCtx);
   const [activeIdx, setActiveIdx] = useState(0);
   const [tabs, setTabs] = useState<NotionBlock[]>(
     () => ((block as Record<string, unknown>)._children as NotionBlock[]) ?? []
@@ -267,10 +263,10 @@ function TabBlock({ block }: { block: NotionBlock }) {
   );
 
   useEffect(() => {
-    if (fetched.current || !token) return;
+    if (fetched.current) return;
     fetched.current = true;
     setTabsLoading(true);
-    fetchPageBlocks(token, block.id)
+    fetchPageBlocks(block.id)
       .then(setTabs)
       .catch(() => { /* silencieux */ })
       .finally(() => setTabsLoading(false));
@@ -605,21 +601,17 @@ function BlockItem({ block, listIndex }: {
 export function NotionBlockRenderer({
   blocks,
   onToggleTodo,
-  token,
 }: {
   blocks: NotionBlock[];
   onToggleTodo?: (blockId: string, checked: boolean) => void;
-  token?: string;
 }) {
-  // Hérite du contexte parent si pas de token explicite (appels récursifs)
   const parentCtx = useContext(BlockCtx);
-  const effectiveToken = token ?? parentCtx.token;
   const effectiveOnToggleTodo = onToggleTodo ?? parentCtx.onToggleTodo;
 
   let listCounter = 0;
 
   return (
-    <BlockCtx.Provider value={{ token: effectiveToken, onToggleTodo: effectiveOnToggleTodo }}>
+    <BlockCtx.Provider value={{ onToggleTodo: effectiveOnToggleTodo }}>
       <div style={{ color: 'var(--text)', lineHeight: '1.6', fontSize: 14 }}>
         {blocks.map((block, idx) => {
           if (block.type === 'numbered_list_item') {

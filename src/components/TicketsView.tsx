@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { load, save } from '../persistence';
 import { fetchAssociations, fetchTickets, fetchPageBlocks, patchRichTextField } from '../notionService';
 import { getDemoStore } from '../demoData';
-import type { AssociationEntry, AssociationsConfig, NotionBlock, NotionConfig, TicketEntry, TicketsConfig } from '../types';
+import type { AssociationEntry, AssociationsConfig, NotionBlock, TicketEntry, TicketsConfig } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
 import { useIsMobile } from '../hooks/useBreakpoint';
@@ -86,13 +86,11 @@ const btnStyle = (active?: boolean): React.CSSProperties => ({
 
 function TicketModal({
   ticket,
-  token,
   memoField,
   onClose,
   onAssocClick,
 }: {
   ticket: TicketEntry;
-  token: string;
   memoField: string;
   onClose: () => void;
   onAssocClick: (assocId: string, assocName: string) => void;
@@ -106,21 +104,21 @@ function TicketModal({
   const [blocksError, setBlocksError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token || !ticket.id) return;
+    if (!ticket.id) return;
     setBlocksLoading(true);
     setBlocksError(null);
-    fetchPageBlocks(token, ticket.id)
+    fetchPageBlocks(ticket.id)
       .then(setBlocks)
       .catch(e => setBlocksError((e as Error).message))
       .finally(() => setBlocksLoading(false));
-  }, [token, ticket.id]);
+  }, [ticket.id]);
 
   const handleSaveMemo = async () => {
-    if (!token || !memoField) return;
+    if (!memoField) return;
     setSaving(true);
     setSaveStatus(null);
     try {
-      await patchRichTextField(token, ticket.id, memoField, memo);
+      await patchRichTextField(ticket.id, memoField, memo);
       setSaveStatus('ok');
       setTimeout(() => setSaveStatus(null), 2000);
     } catch {
@@ -238,7 +236,7 @@ function TicketModal({
           ) : blocks.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic' }}>(Page vide)</p>
           ) : (
-            <NotionBlockRenderer blocks={blocks} token={token} />
+            <NotionBlockRenderer blocks={blocks} />
           )}
         </div>
       </div>
@@ -285,12 +283,10 @@ let _ticketsCacheTermines = false;
 type TicketSortKey = keyof Pick<TicketEntry, 'ticketId' | 'sujet' | 'codeAssoc' | 'statut' | 'priorite' | 'niveau' | 'dateModif' | 'demandeur' | 'zone' | 'memo'>;
 
 function TicketsTab({
-  token,
   cfg,
   onAssocClick,
   refreshKey = 0,
 }: {
-  token: string;
   cfg: TicketsConfig;
   onAssocClick: (id: string, name: string) => void;
   refreshKey?: number;
@@ -317,7 +313,7 @@ function TicketsTab({
   const load_ = useCallback((inclTermines: boolean) => {
     setLoading(true);
     setError(null);
-    fetchTickets(token, cfg, inclTermines)
+    fetchTickets(cfg, inclTermines)
       .then(data => {
         _ticketsCache = data;
         _ticketsCacheKey = refreshKey;
@@ -326,11 +322,11 @@ function TicketsTab({
       })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [token, cfg, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cfg, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (_ticketsCache !== null && _ticketsCacheKey === refreshKey && _ticketsCacheTermines === showTermines) return;
-    if (!token || !cfg.databaseId) {
+    if (!cfg.databaseId) {
       const demo = getDemoStore();
       if (demo?.tickets.length) { _ticketsCache = demo.tickets; setEntries(demo.tickets); }
       setLoading(false);
@@ -509,7 +505,7 @@ function TicketsTab({
         </div>
 
         {modalTicket && (
-          <TicketModal ticket={modalTicket} token={token} memoField={cfg.memoField} onClose={() => setModalTicket(null)} onAssocClick={onAssocClick} />
+          <TicketModal ticket={modalTicket} memoField={cfg.memoField} onClose={() => setModalTicket(null)} onAssocClick={onAssocClick} />
         )}
       </div>
     );
@@ -623,7 +619,6 @@ function TicketsTab({
       {modalTicket && (
         <TicketModal
           ticket={modalTicket}
-          token={token}
           memoField={cfg.memoField}
           onClose={() => setModalTicket(null)}
           onAssocClick={onAssocClick}
@@ -638,11 +633,9 @@ function TicketsTab({
 type AssocSortKey = keyof Pick<AssociationEntry, 'nom' | 'code' | 'statut' | 'priorite' | 'solution' | 'suivi'>;
 
 function AssociationsTab({
-  token,
   cfg,
   initialFilterName,
 }: {
-  token: string;
   cfg: AssociationsConfig;
   initialFilterName?: string;
 }) {
@@ -664,7 +657,7 @@ function AssociationsTab({
     useResizableRightPanel('assocDetailWidth', 420);
 
   const load_ = useCallback((inclTermines: boolean) => {
-    if (!token || !cfg.databaseId) {
+    if (!cfg.databaseId) {
       const demo = getDemoStore();
       if (demo?.associations.length) setEntries(demo.associations);
       setLoading(false);
@@ -672,11 +665,11 @@ function AssociationsTab({
     }
     setLoading(true);
     setError(null);
-    fetchAssociations(token, cfg, inclTermines)
+    fetchAssociations(cfg, inclTermines)
       .then(setEntries)
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [token, cfg]);
+  }, [cfg]);
 
   useEffect(() => { load_(showTermines); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -727,11 +720,11 @@ function AssociationsTab({
   };
 
   const handleSaveSolution = async () => {
-    if (!selectedEntry || !token || !cfg.solutionField) return;
+    if (!selectedEntry || !cfg.solutionField) return;
     setSaving(true);
     setSaveStatus(null);
     try {
-      await patchRichTextField(token, selectedEntry.id, cfg.solutionField, editSolution);
+      await patchRichTextField(selectedEntry.id, cfg.solutionField, editSolution);
       setEntries(prev => prev.map(e => e.id === selectedEntry.id ? { ...e, solution: editSolution } : e));
       setSaveStatus('ok');
       setTimeout(() => setSaveStatus(null), 2000);
@@ -831,10 +824,10 @@ function AssociationsTab({
               <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
                 <button
                   onClick={async () => {
-                    if (!token || !cfg.solutionField) return;
+                    if (!cfg.solutionField) return;
                     setSaving(true); setSaveStatus(null);
                     try {
-                      await patchRichTextField(token, detailEntry.id, cfg.solutionField, editSolution);
+                      await patchRichTextField(detailEntry.id, cfg.solutionField, editSolution);
                       setEntries(prev => prev.map(e => e.id === detailEntry.id ? { ...e, solution: editSolution } : e));
                       setSaveStatus('ok');
                       setTimeout(() => setSaveStatus(null), 2000);
@@ -1009,10 +1002,8 @@ function AssociationsTab({
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export function TicketsView({ refreshKey = 0 }: { refreshKey?: number }) {
-  const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const ticketsCfg = load<TicketsConfig | null>('ticketsConfig', null);
   const assocCfg = load<AssociationsConfig | null>('associationsConfig', null);
-  const token = notionCfg?.integrationToken ?? '';
 
   const [tab, setTab] = useState<'tickets' | 'associations'>('tickets');
   const [assocFilter, setAssocFilter] = useState<string>('');
@@ -1047,13 +1038,13 @@ export function TicketsView({ refreshKey = 0 }: { refreshKey?: number }) {
       <div style={{ flex: 1, overflow: 'hidden', background: 'var(--bg)' }}>
         {tab === 'tickets' ? (
           (ticketsCfg || hasDemo) ? (
-            <TicketsTab token={token} cfg={ticketsCfg ?? {} as TicketsConfig} onAssocClick={handleAssocClick} refreshKey={refreshKey} />
+            <TicketsTab cfg={ticketsCfg ?? {} as TicketsConfig} onAssocClick={handleAssocClick} refreshKey={refreshKey} />
           ) : (
             <div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>Configurez la base Tickets dans Paramètres</div>
           )
         ) : (
           (assocCfg || demo?.associations?.length) ? (
-            <AssociationsTab token={token} cfg={assocCfg ?? {} as AssociationsConfig} initialFilterName={assocFilter} />
+            <AssociationsTab cfg={assocCfg ?? {} as AssociationsConfig} initialFilterName={assocFilter} />
           ) : (
             <div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>Configurez la base Associations dans Paramètres</div>
           )

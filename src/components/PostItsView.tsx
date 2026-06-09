@@ -9,7 +9,7 @@ import {
   patchBlockChecked,
 } from '../notionService';
 import { getDemoStore } from '../demoData';
-import type { NotionBlock, NotionConfig, NotionPropertySchema, PostItEntry, PostItsConfig } from '../types';
+import type { NotionBlock, NotionPropertySchema, PostItEntry, PostItsConfig } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
 
@@ -42,9 +42,7 @@ let _postitsCache: PostItEntry[] | null = null;
 let _postitsCacheKey = -1;
 
 export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
-  const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const postitsCfg = load<PostItsConfig | null>('postitsConfig', null);
-  const token = notionCfg?.integrationToken ?? '';
 
   const { width: detailWidth, containerRef, onMouseDown: onPanelResize } = useResizableRightPanel('postitsDetailWidth', 480);
 
@@ -62,7 +60,7 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
   const [statusUpdating, setStatusUpdating] = useState(false);
 
   const loadEntries = useCallback(() => {
-    if (!token || !postitsCfg?.databaseId) {
+    if (!postitsCfg?.databaseId) {
       const demo = getDemoStore();
       if (demo) { _postitsCache = demo.postits; _postitsCacheKey = refreshKey; setEntries(demo.postits); }
       setLoading(false);
@@ -70,7 +68,7 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
     }
     setLoading(true);
     setError(null);
-    fetchPostIts(token, postitsCfg)
+    fetchPostIts(postitsCfg)
       .then(data => {
         _postitsCache = data;
         _postitsCacheKey = refreshKey;
@@ -78,7 +76,7 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
       })
       .catch(e => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [token, postitsCfg, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [postitsCfg, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (_postitsCache !== null && _postitsCacheKey === refreshKey) return;
@@ -86,8 +84,8 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!token || !postitsCfg?.databaseId || !postitsCfg.statusField) return;
-    fetchDatabaseSchema(token, postitsCfg.databaseId).then(schema => {
+    if (!postitsCfg?.databaseId || !postitsCfg.statusField) return;
+    fetchDatabaseSchema(postitsCfg.databaseId).then(schema => {
       const prop = schema.find((p: NotionPropertySchema) => p.name === postitsCfg.statusField);
       if (prop?.options) {
         setStatusOptions(prop.options.map((o: { name: string }) => o.name));
@@ -102,11 +100,11 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);
-    fetchPageBlocks(token, id)
+    fetchPageBlocks(id)
       .then(setBlocks)
       .catch(e => setBlocksError((e as Error).message))
       .finally(() => setBlocksLoading(false));
-  }, [token]);
+  }, []);
 
   const handleToggleTodo = useCallback((blockId: string, checked: boolean) => {
     setBlocks(prev => prev.map(b =>
@@ -115,7 +113,7 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
         : b
     ));
     setTodoStatus('saving');
-    patchBlockChecked(token, blockId, checked)
+    patchBlockChecked(blockId, checked)
       .then(() => { setTodoStatus('ok'); setTimeout(() => setTodoStatus(null), 1500); })
       .catch(() => {
         setBlocks(prev => prev.map(b =>
@@ -126,16 +124,16 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
         setTodoStatus('error');
         setTimeout(() => setTodoStatus(null), 3000);
       });
-  }, [token]);
+  }, []);
 
   const handleStatusChange = useCallback(async (entry: PostItEntry, newStatus: string) => {
     if (!postitsCfg?.statusField) return;
     setStatusUpdating(true);
     try {
-      await patchPostItStatus(token, entry.id, postitsCfg.statusField, newStatus, 'status');
+      await patchPostItStatus(entry.id, postitsCfg.statusField, newStatus, 'status');
     } catch {
       try {
-        await patchPostItStatus(token, entry.id, postitsCfg.statusField, newStatus, 'select');
+        await patchPostItStatus(entry.id, postitsCfg.statusField, newStatus, 'select');
       } catch (e2) {
         console.error('patchPostItStatus failed', e2);
         setStatusUpdating(false);
@@ -145,7 +143,7 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
     setStatusUpdating(false);
     loadEntries();
     setSelectedId(null);
-  }, [token, postitsCfg, loadEntries]);
+  }, [postitsCfg, loadEntries]);
 
   const selectedEntry = entries.find(e => e.id === selectedId);
 
@@ -330,7 +328,7 @@ export function PostItsView({ refreshKey = 0 }: { refreshKey?: number }) {
             ) : blocks.length === 0 ? (
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>(Page vide)</p>
             ) : (
-              <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} token={token} />
+              <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} />
             )}
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { load } from '../persistence';
 import { fetchBriefings, fetchPageBlocks, patchBlockChecked } from '../notionService';
 import { getDemoStore } from '../demoData';
-import type { BriefingConfig, BriefingEntry, NotionBlock, NotionConfig } from '../types';
+import type { BriefingConfig, BriefingEntry, NotionBlock } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
 import { useIsMobile } from '../hooks/useBreakpoint';
@@ -29,9 +29,7 @@ let _briefingCache: BriefingEntry[] | null = null;
 let _briefingCacheKey = -1;
 
 export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
-  const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const briefingCfg = load<BriefingConfig | null>('briefingConfig', null);
-  const token = notionCfg?.integrationToken ?? '';
   const isMobile = useIsMobile();
 
   const { width: detailWidth, containerRef, onMouseDown: onPanelResize } = useResizableRightPanel('briefingDetailWidth', 480);
@@ -48,7 +46,7 @@ export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
 
   useEffect(() => {
     if (_briefingCache !== null && _briefingCacheKey === refreshKey) return;
-    if (!token || !briefingCfg?.databaseId) {
+    if (!briefingCfg?.databaseId) {
       const demo = getDemoStore();
       if (demo) { _briefingCache = demo.briefings; _briefingCacheKey = refreshKey; setEntries(demo.briefings); }
       setLoading(false);
@@ -56,7 +54,7 @@ export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
     }
     setLoading(true);
     setError(null);
-    fetchBriefings(token, briefingCfg)
+    fetchBriefings(briefingCfg)
       .then(data => {
         _briefingCache = data;
         _briefingCacheKey = refreshKey;
@@ -73,11 +71,11 @@ export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);
-    fetchPageBlocks(token, id)
+    fetchPageBlocks(id)
       .then(setBlocks)
       .catch(e => setBlocksError((e as Error).message))
       .finally(() => setBlocksLoading(false));
-  }, [token]);
+  }, []);
 
   const handleToggleTodo = useCallback((blockId: string, checked: boolean) => {
     // Mise à jour optimiste
@@ -87,7 +85,7 @@ export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
         : b
     ));
     setTodoStatus('saving');
-    patchBlockChecked(token, blockId, checked)
+    patchBlockChecked(blockId, checked)
       .then(() => {
         setTodoStatus('ok');
         setTimeout(() => setTodoStatus(null), 1500);
@@ -102,11 +100,11 @@ export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
         setTodoStatus('error');
         setTimeout(() => setTodoStatus(null), 3000);
       });
-  }, [token]);
+  }, []);
 
   const selectedEntry = entries.find(e => e.id === selectedId);
 
-  if (!token || !briefingCfg?.databaseId) {
+  if (!briefingCfg?.databaseId) {
     return (
       <div className="h-full flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="text-center">
@@ -173,7 +171,7 @@ export function BriefingView({ refreshKey = 0 }: { refreshKey?: number }) {
         ) : blocks.length === 0 ? (
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>(Page vide)</p>
         ) : (
-          <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} token={token} />
+          <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} />
         )}
       </div>
     </>

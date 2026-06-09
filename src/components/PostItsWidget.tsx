@@ -9,7 +9,7 @@ import {
   patchBlockChecked,
   createPostIt,
 } from '../notionService';
-import type { NotionBlock, NotionConfig, NotionPropertySchema, PostItEntry, PostItsConfig } from '../types';
+import type { NotionBlock, NotionPropertySchema, PostItEntry, PostItsConfig } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 
 const NOTION_COLORS: Record<string, string> = {
@@ -43,14 +43,12 @@ function PostItPopup({
   entry,
   statusOptions,
   doneValue,
-  token,
   onClose,
   onStatusChange,
 }: {
   entry: PostItEntry;
   statusOptions: string[];
   doneValue: string | null;
-  token: string;
   onClose: () => void;
   onStatusChange: (newStatus: string) => void;
 }) {
@@ -62,18 +60,18 @@ function PostItPopup({
 
   useEffect(() => {
     setBlocksLoading(true);
-    fetchPageBlocks(token, entry.id)
+    fetchPageBlocks(entry.id)
       .then(setBlocks)
       .catch(() => {})
       .finally(() => setBlocksLoading(false));
-  }, [entry.id, token]);
+  }, [entry.id]);
 
   const handleToggleTodo = (blockId: string, checked: boolean) => {
     setBlocks(prev => prev.map(b =>
       b.id === blockId ? { ...b, to_do: { ...(b.to_do as Record<string, unknown>), checked } } : b
     ));
     setTodoStatus('saving');
-    patchBlockChecked(token, blockId, checked)
+    patchBlockChecked(blockId, checked)
       .then(() => { setTodoStatus('ok'); setTimeout(() => setTodoStatus(null), 1500); })
       .catch(() => {
         setBlocks(prev => prev.map(b =>
@@ -220,7 +218,7 @@ function PostItPopup({
           ) : blocks.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>(Page vide)</p>
           ) : (
-            <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} token={token} />
+            <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} />
           )}
         </div>
       </div>
@@ -234,13 +232,11 @@ function PostItCreatePopup({
   statusOptions,
   onClose,
   onCreated,
-  token,
   config,
 }: {
   statusOptions: string[];
   onClose: () => void;
   onCreated: () => void;
-  token: string;
   config: PostItsConfig;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -260,7 +256,7 @@ function PostItCreatePopup({
     setSaving(true);
     setErr(null);
     try {
-      await createPostIt(token, config, { title: title.trim(), dueDate, status, content });
+      await createPostIt(config, { title: title.trim(), dueDate, status, content });
       onCreated();
       onClose();
     } catch (e) {
@@ -463,9 +459,7 @@ function PostItCard({ entry, onClick }: { entry: PostItEntry; onClick: () => voi
 // ── Widget principal ───────────────────────────────────────────────────────────
 
 export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
-  const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const postitsCfg = load<PostItsConfig | null>('postitsConfig', null);
-  const token = notionCfg?.integrationToken ?? '';
 
   const [entries, setEntries] = useState<PostItEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -474,9 +468,9 @@ export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
   const [showCreate, setShowCreate] = useState(false);
 
   const loadEntries = () => {
-    if (!token || !postitsCfg?.databaseId) return;
+    if (!postitsCfg?.databaseId) return;
     setLoading(true);
-    fetchPostIts(token, postitsCfg)
+    fetchPostIts(postitsCfg)
       .then(setEntries)
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -487,8 +481,8 @@ export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!token || !postitsCfg?.databaseId || !postitsCfg.statusField) return;
-    fetchDatabaseSchema(token, postitsCfg.databaseId).then(schema => {
+    if (!postitsCfg?.databaseId || !postitsCfg.statusField) return;
+    fetchDatabaseSchema(postitsCfg.databaseId).then(schema => {
       const prop = schema.find((p: NotionPropertySchema) => p.name === postitsCfg.statusField);
       if (prop?.options) {
         setStatusOptions(prop.options.map((o: { name: string }) => o.name));
@@ -499,17 +493,17 @@ export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
   const handleStatusChange = async (entry: PostItEntry, newStatus: string) => {
     if (!postitsCfg?.statusField) return;
     try {
-      await patchPostItStatus(token, entry.id, postitsCfg.statusField, newStatus, 'status');
+      await patchPostItStatus(entry.id, postitsCfg.statusField, newStatus, 'status');
     } catch {
       try {
-        await patchPostItStatus(token, entry.id, postitsCfg.statusField, newStatus, 'select');
+        await patchPostItStatus(entry.id, postitsCfg.statusField, newStatus, 'select');
       } catch { return; }
     }
     setSelectedEntry(null);
     loadEntries();
   };
 
-  if (!token || !postitsCfg?.databaseId) return null;
+  if (!postitsCfg?.databaseId) return null;
 
   return (
     <>
@@ -564,7 +558,6 @@ export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
           doneValue={postitsCfg?.statusDoneValue
             ?? statusOptions.find(o => /termin/i.test(o))
             ?? null}
-          token={token}
           onClose={() => setSelectedEntry(null)}
           onStatusChange={val => handleStatusChange(selectedEntry, val)}
         />
@@ -576,7 +569,6 @@ export function PostItsWidget({ refreshKey }: { refreshKey?: number }) {
           statusOptions={statusOptions}
           onClose={() => setShowCreate(false)}
           onCreated={loadEntries}
-          token={token}
           config={postitsCfg}
         />
       )}

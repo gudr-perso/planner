@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { load, save } from '../persistence';
 import { fetchSuivis, fetchPageBlocks, patchBlockChecked } from '../notionService';
 import { getDemoStore } from '../demoData';
-import type { NotionBlock, NotionConfig, PartenaireEntry, SuivisConfig, SuiviEntry } from '../types';
+import type { NotionBlock, PartenaireEntry, SuivisConfig, SuiviEntry } from '../types';
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
 import { useIsMobile } from '../hooks/useBreakpoint';
@@ -60,9 +60,7 @@ export function SuivisView({
   onClearFilter?: () => void;
   refreshKey?: number;
 }) {
-  const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const cfg = load<SuivisConfig | null>('suivisConfig', null);
-  const token = notionCfg?.integrationToken ?? '';
 
   const isMobile = useIsMobile();
   const { width: detailWidth, containerRef, onMouseDown: onPanelResize } =
@@ -88,7 +86,7 @@ export function SuivisView({
   useEffect(() => {
     const filterId = partenaireFilter?.id;
     if (_suivisCache !== null && _suivisCacheKey === refreshKey && _suivisCacheFilterId === filterId) return;
-    if (!token || !cfg?.databaseId) {
+    if (!cfg?.databaseId) {
       const demo = getDemoStore();
       if (demo) { _suivisCache = demo.suivis; _suivisCacheKey = refreshKey; _suivisCacheFilterId = filterId; setEntries(demo.suivis); }
       setLoading(false);
@@ -97,7 +95,7 @@ export function SuivisView({
     setLoading(true);
     setError(null);
     setSelectedId(null);
-    fetchSuivis(token, cfg, filterId)
+    fetchSuivis(cfg, filterId)
       .then(data => {
         _suivisCache = data;
         _suivisCacheKey = refreshKey;
@@ -115,18 +113,18 @@ export function SuivisView({
     setBlocks([]);
     setBlocksError(null);
     setBlocksLoading(true);
-    fetchPageBlocks(token, id)
+    fetchPageBlocks(id)
       .then(setBlocks)
       .catch(e => setBlocksError((e as Error).message))
       .finally(() => setBlocksLoading(false));
-  }, [token]);
+  }, []);
 
   const handleToggleTodo = useCallback((blockId: string, checked: boolean) => {
     setBlocks(prev => prev.map(b =>
       b.id === blockId ? { ...b, to_do: { ...(b.to_do as Record<string, unknown>), checked } } : b
     ));
     setTodoStatus('saving');
-    patchBlockChecked(token, blockId, checked)
+    patchBlockChecked(blockId, checked)
       .then(() => { setTodoStatus('ok'); setTimeout(() => setTodoStatus(null), 1500); })
       .catch(() => {
         setBlocks(prev => prev.map(b =>
@@ -135,7 +133,7 @@ export function SuivisView({
         setTodoStatus('error');
         setTimeout(() => setTodoStatus(null), 3000);
       });
-  }, [token]);
+  }, []);
 
   // Unique suivi values for filter dropdown
   const suivisValues = useMemo(() => {
@@ -170,7 +168,7 @@ export function SuivisView({
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  if (!token || !cfg?.databaseId) {
+  if (!cfg?.databaseId) {
     return (
       <div className="h-full flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="text-center">
@@ -240,7 +238,7 @@ export function SuivisView({
         ) : blocks.length === 0 ? (
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>(Page vide)</p>
         ) : (
-          <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} token={token} />
+          <NotionBlockRenderer blocks={blocks} onToggleTodo={handleToggleTodo} />
         )}
       </div>
     </>

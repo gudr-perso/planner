@@ -3,7 +3,7 @@ import { load, save } from '../persistence';
 import { useIsMobile } from '../hooks/useBreakpoint';
 import { fetchPartenaires } from '../notionService';
 import { getDemoStore } from '../demoData';
-import type { NotionConfig, PartenairesConfig, PartenaireEntry } from '../types';
+import type { PartenairesConfig, PartenaireEntry } from '../types';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,9 +34,7 @@ let _partenairesCacheKey = -1;
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis: (p: PartenaireEntry) => void; refreshKey?: number }) {
-  const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const cfg = load<PartenairesConfig | null>('partenairesConfig', null);
-  const token = notionCfg?.integrationToken ?? '';
 
   const [entries, setEntries] = useState<PartenaireEntry[]>(_partenairesCache ?? []);
   const [loading, setLoading] = useState(_partenairesCache === null);
@@ -58,7 +56,7 @@ export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis
 
   useEffect(() => {
     if (_partenairesCache !== null && _partenairesCacheKey === refreshKey) return;
-    if (!token || !cfg?.databaseId) {
+    if (!cfg?.databaseId) {
       const demo = getDemoStore();
       if (demo) { _partenairesCache = demo.partenaires; _partenairesCacheKey = refreshKey; setEntries(demo.partenaires); }
       setLoading(false);
@@ -66,7 +64,7 @@ export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis
     }
     setLoading(true);
     setError(null);
-    fetchPartenaires(token, cfg)
+    fetchPartenaires(cfg)
       .then(data => {
         _partenairesCache = data;
         _partenairesCacheKey = refreshKey;
@@ -123,7 +121,7 @@ export function PartenairesView({ onOpenSuivis, refreshKey = 0 }: { onOpenSuivis
     });
   };
 
-  if (!token || !cfg?.databaseId) {
+  if (!cfg?.databaseId) {
     return (
       <div className="h-full flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="text-center">

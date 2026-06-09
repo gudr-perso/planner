@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchTemps } from '../notionService';
 import { getDemoStore } from '../demoData';
-import type { NotionConfig, TempsConfig, TempsEntry } from '../types';
+import type { TempsConfig, TempsEntry } from '../types';
 import { useIsMobile } from '../hooks/useBreakpoint';
 import { MobileListCard } from './MobileListCard';
 
@@ -559,9 +559,7 @@ let _tempsCacheKey = -1;
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export function TempsView({ refreshKey = 0 }: { refreshKey?: number }) {
-  const notionCfg = load<NotionConfig | null>('notionConfig', null);
   const cfg = load<TempsConfig | null>('tempsConfig', null);
-  const token = notionCfg?.integrationToken ?? '';
 
   const [entries, setEntries] = useState<TempsEntry[]>(_tempsCache ?? []);
   const [loading, setLoading] = useState(_tempsCache === null);
@@ -570,7 +568,7 @@ export function TempsView({ refreshKey = 0 }: { refreshKey?: number }) {
 
   useEffect(() => {
     if (_tempsCache !== null && _tempsCacheKey === refreshKey) return;
-    if (!token || !cfg?.databaseId) {
+    if (!cfg?.databaseId) {
       const demo = getDemoStore();
       if (demo) { _tempsCache = demo.temps; _tempsCacheKey = refreshKey; setEntries(demo.temps); }
       setLoading(false);
@@ -578,7 +576,7 @@ export function TempsView({ refreshKey = 0 }: { refreshKey?: number }) {
     }
     setLoading(true);
     setError(null);
-    fetchTemps(token, cfg)
+    fetchTemps(cfg)
       .then(data => {
         _tempsCache = data;
         _tempsCacheKey = refreshKey;

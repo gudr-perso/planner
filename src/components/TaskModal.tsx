@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { STATUS_LABELS, STATUS_COLORS } from '../types';
-import type { NotionConfig, NotionPropertySchema } from '../types';
+import type { NotionPropertySchema } from '../types';
 import { load } from '../persistence';
 import { patchNotionProperty } from '../notionService';
 
@@ -43,7 +43,7 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
   const [extraSaving, setExtraSaving] = useState<Record<string, boolean>>({});
   const [extraSaved, setExtraSaved] = useState<Record<string, boolean>>({});
 
-  const notionConfig = load<NotionConfig | null>('notionConfig', null);
+  const notionConfig = load<{ extraFields?: Array<{ label: string; editable?: boolean; notionField?: string }>; statusMappings?: Array<{ internalStatus: string; notionValue: string }>; fieldMap?: { status?: string } } | null>('notionConfig', null);
   const notionSchema = load<NotionPropertySchema[]>('notionSchema', []);
 
   if (!task) return null;
@@ -218,7 +218,7 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
             <div className="pt-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
               {Object.entries(task.extraFields).map(([label, value]) => {
                 const efConfig = notionConfig?.extraFields?.find(ef => ef.label === label);
-                const isEditable = efConfig?.editable && notionConfig?.integrationToken && efConfig.notionField;
+                const isEditable = efConfig?.editable && efConfig.notionField;
                 if (!isEditable) {
                   return (
                     <Row key={label} label={label}>
@@ -245,11 +245,9 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
                   || null;
 
                 const handleSaveExtra = async (val: string) => {
-                  if (!notionConfig?.integrationToken) return;
                   setExtraSaving(prev => ({ ...prev, [label]: true }));
                   try {
                     await patchNotionProperty(
-                      notionConfig.integrationToken,
                       task.id,
                       efConfig.notionField,
                       schemaProp?.type ?? 'select',

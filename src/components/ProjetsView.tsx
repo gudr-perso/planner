@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchProjets } from '../notionService';
-import type { NotionConfig, ProjetsConfig, ProjetEntry } from '../types';
+import type { ProjetsConfig, ProjetEntry } from '../types';
 import { getDemoStore } from '../demoData';
 import { useAuth } from '../store/useAuthStore';
 
@@ -45,13 +45,10 @@ export default function ProjetsView({ onSelectProjet }: Props) {
   }>({ col: 'nom', dir: 'asc' });
 
   useEffect(() => {
-    const notionCfg = load<NotionConfig>('notionConfig', {
-      integrationToken: '', databaseId: '', fieldMap: {}, statusMappings: [],
-    });
     const cfg = load<ProjetsConfig>('projetsConfig', {
       databaseId: '', nomField: 'Name', tiersField: '', typeProjetField: '', dateDebutField: '', statutField: '',
     });
-    if (!notionCfg.integrationToken || !cfg.databaseId) {
+    if (!cfg.databaseId) {
       const demo = getDemoStore();
       if (demo?.projets.length) { _projetsCache = demo.projets; _projetsCacheKey = 'demo'; setProjets(demo.projets); }
       else setError('Configurez la base Projets dans les Paramètres > CAP CONSULTING.');
@@ -63,7 +60,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
       return;
     }
     setLoading(true);
-    fetchProjets(notionCfg.integrationToken, cfg, user?.client_code)
+    fetchProjets(cfg, user?.client_code)
       .then(data => {
         _projetsCache = data;
         _projetsCacheKey = cacheKey;

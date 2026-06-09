@@ -11,6 +11,7 @@ import { setDemoStore } from './demoData';
 import { fetchGoogleCalendarEvents } from './googleCalendar';
 import { syncFromNotion, patchNotionDates } from './notionService';
 import { save, load } from './persistence';
+import { uploadConfigToCloud, downloadConfigFromCloud, fetchCloudConfigMeta } from './configIO';
 import type { DataBundle, GoogleEvent, NotionConfig } from './types';
 import { UnplannedPanel } from './components/UnplannedPanel';
 import { CalendarView } from './components/CalendarView';
@@ -138,7 +139,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     try {
       if (dataSource === 'notion') {
         const cfg = load<NotionConfig | null>('notionConfig', null);
-        if (cfg?.integrationToken && cfg?.databaseId) {
+        if (cfg?.databaseId) {
           const d = await syncFromNotion(cfg);
           setData((prev) => ({ ...d, googleEvents: prev.googleEvents }));
           setDataLoaded(true);
@@ -179,7 +180,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     try {
       if (dataSource === 'notion') {
         const cfg = load<NotionConfig | null>('notionConfig', null);
-        if (cfg?.integrationToken && cfg?.databaseId) {
+        if (cfg?.databaseId) {
           const d = await syncFromNotion(cfg);
           setData((prev) => ({ ...d, googleEvents: prev.googleEvents }));
           setDataLoaded(true);
@@ -210,7 +211,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const toggleDataSource = useCallback(async () => {
     if (dataSource === 'demo') {
       const cfg = load<NotionConfig | null>('notionConfig', null);
-      if (!cfg?.integrationToken || !cfg?.databaseId) { setView('settings'); return; }
+      if (!cfg?.databaseId) { setView('settings'); return; }
       setDataSource('notion');
       save('dataSource', 'notion');
       setDataLoaded(false);
@@ -292,10 +293,10 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const writeNotion = useCallback((taskId: string, startISO: string, endISO: string) => {
     if (dataSource !== 'notion') return;
     const cfg = load<NotionConfig | null>('notionConfig', null);
-    if (!cfg?.integrationToken || !cfg.fieldMap?.date) return;
+    if (!cfg?.fieldMap?.date) return;
     setNotionWriteStatus('saving');
     setNotionWriteMsg(null);
-    patchNotionDates(cfg.integrationToken, taskId, cfg.fieldMap.date, startISO, endISO)
+    patchNotionDates(taskId, cfg.fieldMap.date, startISO, endISO)
       .then(() => {
         setNotionWriteStatus('ok');
         setTimeout(() => setNotionWriteStatus(null), 2000);
@@ -554,6 +555,33 @@ export default function App() {
   _registerLogout(() => setAuthUser(null));
 
   useEffect(() => {
+    async function migrateAndSyncConfig() {
+      try {
+        // One-shot migration: if token still in localStorage from before this change, move it to server
+        const notionCfg = load<(NotionConfig & { integrationToken?: string }) | null>('notionConfig', null);
+        if (notionCfg?.integrationToken) {
+          await fetch('/api/secrets/notion_token', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: notionCfg.integrationToken }),
+          });
+          const { integrationToken: _removed, ...cleaned } = notionCfg;
+          save('notionConfig', cleaned);
+        }
+
+        // Auto-sync: download config from D1 into localStorage (source of truth)
+        try {
+          await downloadConfigFromCloud({ reload: false });
+        } catch {
+          // No config saved yet — upload local config so D1 has a baseline
+          const meta = await fetchCloudConfigMeta().catch(() => null);
+          if (!meta?.saved_at) {
+            await uploadConfigToCloud().catch(() => {});
+          }
+        }
+      } catch { /* offline */ }
+    }
+
     async function checkAuth() {
       try {
         // Check if setup needed first (no users)
@@ -567,6 +595,7 @@ export default function App() {
         if (meRes.ok) {
           const { user } = await meRes.json();
           setAuthUser(user);
+          await migrateAndSyncConfig();
         }
       } catch { /* offline or no API */ }
       setAuthLoading(false);

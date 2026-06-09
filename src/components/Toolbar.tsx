@@ -61,19 +61,10 @@ function GlobalSearch({ dataSource }: { dataSource: 'demo' | 'notion' }) {
   }, [open]);
 
   const doSearch = useCallback(async (q: string, db: DbOption) => {
-    const token = load<{ integrationToken?: string }>('notionConfig', {}).integrationToken;
-    if (!token) {
-      setError('Token Notion manquant (configurer dans Paramètres)');
-      setResults([]);
-      setOpen(true);
-      setLoading(false);
-      return;
-    }
-
     let titleProp = titlePropCache[db.databaseId];
     if (!titleProp) {
       try {
-        const schema = await fetchDatabaseSchema(token, db.databaseId);
+        const schema = await fetchDatabaseSchema(db.databaseId);
         const found = schema.find(p => p.type === 'title');
         titleProp = found?.name ?? 'Name';
         setTitlePropCache(prev => ({ ...prev, [db.databaseId]: titleProp! }));
@@ -83,7 +74,7 @@ function GlobalSearch({ dataSource }: { dataSource: 'demo' | 'notion' }) {
     }
 
     try {
-      const res = await searchNotionDatabase(token, db.databaseId, q, titleProp);
+      const res = await searchNotionDatabase(db.databaseId, q, titleProp);
       setResults(res);
       setError(null);
     } catch (err) {

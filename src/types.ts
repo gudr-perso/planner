@@ -101,7 +101,6 @@ export type NotionExtraField = {
 };
 
 export type NotionConfig = {
-  integrationToken: string;
   databaseId: string;
   fieldMap: Partial<NotionFieldMap>;
   statusMappings: NotionStatusMapping[];

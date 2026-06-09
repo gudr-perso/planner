@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { load } from '../persistence';
 import { fetchClients } from '../notionService';
-import type { ClientsConfig, ClientEntry, NotionConfig } from '../types';
+import type { ClientsConfig, ClientEntry } from '../types';
 import { getDemoStore } from '../demoData';
 
 let _clientsCache: ClientEntry[] | null = null;
@@ -110,13 +110,10 @@ export default function ClientsView() {
   );
 
   useEffect(() => {
-    const notionCfg = load<NotionConfig>('notionConfig', {
-      integrationToken: '', databaseId: '', fieldMap: {}, statusMappings: [],
-    });
     const cfg = load<ClientsConfig>('clientsConfig', {
       databaseId: '', titreField: 'Name', codeTiersField: '', lieuField: '',
     });
-    if (!notionCfg.integrationToken || !cfg.databaseId) {
+    if (!cfg.databaseId) {
       const demo = getDemoStore();
       if (demo?.clients.length) { _clientsCache = demo.clients; _clientsCacheKey = 'demo'; setClients(demo.clients); }
       else setError('Configurez la base Clients dans les Paramètres > CAP CONSULTING.');
@@ -128,7 +125,7 @@ export default function ClientsView() {
       return;
     }
     setLoading(true);
-    fetchClients(notionCfg.integrationToken, cfg)
+    fetchClients(cfg)
       .then(data => {
         _clientsCache = data;
         _clientsCacheKey = cacheKey;

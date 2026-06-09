@@ -43,16 +43,14 @@ import type {
 
 const API = '/notion-api';
 
-function hdrs(token: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'Notion-Version': '2022-06-28',
-  };
-}
+// Token is injected server-side by the /notion-api proxy — never sent from the client
+const NOTION_HEADERS: HeadersInit = {
+  'Content-Type': 'application/json',
+  'Notion-Version': '2022-06-28',
+};
 
-async function nGet(token: string, path: string) {
-  const res = await fetch(`${API}${path}`, { headers: hdrs(token) });
+async function nGet(path: string) {
+  const res = await fetch(`${API}${path}`, { headers: NOTION_HEADERS });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as Record<string, unknown>)?.message as string ?? `Notion ${res.status}`);
@@ -60,10 +58,10 @@ async function nGet(token: string, path: string) {
   return res.json() as Promise<Record<string, unknown>>;
 }
 
-async function nPost(token: string, path: string, body: unknown) {
+async function nPost(path: string, body: unknown) {
   const res = await fetch(`${API}${path}`, {
     method: 'POST',
-    headers: hdrs(token),
+    headers: NOTION_HEADERS,
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -73,10 +71,10 @@ async function nPost(token: string, path: string, body: unknown) {
   return res.json() as Promise<Record<string, unknown>>;
 }
 
-async function nPatch(token: string, path: string, body: unknown) {
+async function nPatch(path: string, body: unknown) {
   const res = await fetch(`${API}${path}`, {
     method: 'PATCH',
-    headers: hdrs(token),
+    headers: NOTION_HEADERS,
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -101,7 +99,6 @@ function sxDateToNotion(sx: string): string {
 }
 
 export async function patchNotionProperty(
-  token: string,
   pageId: string,
   fieldName: string,
   fieldType: string,
@@ -115,19 +112,18 @@ export async function patchNotionProperty(
   } else {
     propValue = { select: { name: value } };
   }
-  await nPatch(token, `/pages/${pageId}`, {
+  await nPatch(`/pages/${pageId}`, {
     properties: { [fieldName]: propValue },
   });
 }
 
 export async function patchNotionDates(
-  token: string,
   pageId: string,
   dateFieldName: string,
   start: string,
   end: string,
 ): Promise<void> {
-  await nPatch(token, `/pages/${pageId}`, {
+  await nPatch(`/pages/${pageId}`, {
     properties: {
       [dateFieldName]: { date: { start: sxDateToNotion(start), end: sxDateToNotion(end) } },
     },
@@ -141,7 +137,6 @@ export interface NotionSearchResult {
 }
 
 export async function searchNotionDatabase(
-  token: string,
   databaseId: string,
   query: string,
   titlePropName: string,
@@ -150,7 +145,7 @@ export async function searchNotionDatabase(
     filter: { property: titlePropName, title: { contains: query } },
     page_size: 20,
   };
-  const res = await nPost(token, `/databases/${databaseId}/query`, body);
+  const res = await nPost(`/databases/${databaseId}/query`, body);
   const results = (res.results ?? []) as Array<Record<string, unknown>>;
   return results.map((page) => {
     const props = page.properties as Record<string, Record<string, unknown>>;
@@ -160,8 +155,8 @@ export async function searchNotionDatabase(
   });
 }
 
-export async function fetchDatabaseSchema(token: string, databaseId: string): Promise<NotionPropertySchema[]> {
-  const data = await nGet(token, `/databases/${databaseId}`);
+export async function fetchDatabaseSchema(databaseId: string): Promise<NotionPropertySchema[]> {
+  const data = await nGet(`/databases/${databaseId}`);
   const props = data.properties as Record<string, Record<string, unknown>>;
   return Object.entries(props).map(([name, prop]) => {
     const type = prop.type as string;
@@ -310,12 +305,12 @@ function simpleProjectName(prop: PropVal): string {
 }
 
 // Resolve Notion page IDs → titles in parallel (cap 100, timeout 5s per page)
-async function resolvePageTitles(token: string, ids: Iterable<string>): Promise<Map<string, string>> {
+async function resolvePageTitles(ids: Iterable<string>): Promise<Map<string, string>> {
   const unique = Array.from(new Set(ids)).slice(0, 100);
   const result = new Map<string, string>();
   const withTimeout = (id: string) =>
     Promise.race([
-      nGet(token, `/pages/${id}`).then((page) => {
+      nGet(`/pages/${id}`).then((page) => {
         const props = page.properties as Record<string, PropVal>;
         const titleProp = Object.values(props).find(p => p?.type === 'title');
         result.set(id, plainText(titleProp) || id.slice(0, 8));
@@ -338,7 +333,7 @@ const DEFAULT_PERSON_COLORS: Record<string, string> = {
 };
 
 export async function syncFromNotion(config: NotionConfig): Promise<DataBundle> {
-  const { integrationToken: token, databaseId, fieldMap, statusMappings } = config;
+  const { databaseId, fieldMap, statusMappings } = config;
 
   // 1. Paginate through all task pages, excluding "done" statuses
   // Build server-side filter: exclude every Notion value that maps to internalStatus 'done'
@@ -365,14 +360,14 @@ export async function syncFromNotion(config: NotionConfig): Promise<DataBundle> 
 
     let res: Record<string, unknown>;
     try {
-      res = await nPost(token, `/databases/${databaseId}/query`, body);
+      res = await nPost(`/databases/${databaseId}/query`, body);
     } catch (e) {
       if (activeFilter && !cursor) {
         // Filter was rejected (likely wrong property type) — retry without filter
         console.warn('[Notion] Filtre serveur rejeté, fallback sans filtre:', e);
         activeFilter = undefined;
         delete body.filter;
-        res = await nPost(token, `/databases/${databaseId}/query`, body);
+        res = await nPost(`/databases/${databaseId}/query`, body);
       } else {
         throw e;
       }
@@ -413,7 +408,7 @@ export async function syncFromNotion(config: NotionConfig): Promise<DataBundle> 
   // Resolve in one parallel batch
   console.log('[Notion] Relation IDs à résoudre:', allRelIds.size, [...allRelIds].slice(0, 5));
   const relIdToTitle = allRelIds.size > 0
-    ? await resolvePageTitles(token, allRelIds)
+    ? await resolvePageTitles(allRelIds)
     : new Map<string, string>();
   console.log('[Notion] Titres résolus:', Object.fromEntries(relIdToTitle));
 
@@ -540,7 +535,7 @@ export async function syncFromNotion(config: NotionConfig): Promise<DataBundle> 
 
 // ── Briefing ───────────────────────────────────────────────────────────────────
 
-export async function fetchBriefings(token: string, config: BriefingConfig): Promise<BriefingEntry[]> {
+export async function fetchBriefings(config: BriefingConfig): Promise<BriefingEntry[]> {
   const entries: BriefingEntry[] = [];
   let cursor: string | undefined;
 
@@ -563,7 +558,7 @@ export async function fetchBriefings(token: string, config: BriefingConfig): Pro
 
     let res: Record<string, unknown>;
     try {
-      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      res = await nPost(`/databases/${config.databaseId}/query`, body);
     } catch (e) {
       if (activeFilter && !cursor) {
         // Le type "status" a été rejeté → on tente "select"
@@ -571,12 +566,12 @@ export async function fetchBriefings(token: string, config: BriefingConfig): Pro
         if (activeFilter) {
           body.filter = activeFilter;
           try {
-            res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+            res = await nPost(`/databases/${config.databaseId}/query`, body);
           } catch {
             // Dernier fallback : sans filtre
             delete body.filter;
             activeFilter = undefined;
-            res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+            res = await nPost(`/databases/${config.databaseId}/query`, body);
           }
         } else {
           throw e;
@@ -610,24 +605,24 @@ export async function fetchBriefings(token: string, config: BriefingConfig): Pro
   return entries;
 }
 
-export async function fetchPageBlocks(token: string, pageId: string): Promise<NotionBlock[]> {
+export async function fetchPageBlocks(pageId: string): Promise<NotionBlock[]> {
   const blocks: NotionBlock[] = [];
   let cursor: string | undefined;
   do {
     const path = `/blocks/${pageId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`;
-    const res = await nGet(token, path);
+    const res = await nGet(path);
     blocks.push(...((res.results as NotionBlock[]) ?? []));
     cursor = res.has_more ? String(res.next_cursor) : undefined;
   } while (cursor);
   return blocks;
 }
 
-export async function patchBlockChecked(token: string, blockId: string, checked: boolean): Promise<void> {
-  await nPatch(token, `/blocks/${blockId}`, { to_do: { checked } });
+export async function patchBlockChecked(blockId: string, checked: boolean): Promise<void> {
+  await nPatch(`/blocks/${blockId}`, { to_do: { checked } });
 }
 
-export async function patchRichTextField(token: string, pageId: string, fieldName: string, value: string): Promise<void> {
-  await nPatch(token, `/pages/${pageId}`, {
+export async function patchRichTextField(pageId: string, fieldName: string, value: string): Promise<void> {
+  await nPatch(`/pages/${pageId}`, {
     properties: {
       [fieldName]: { rich_text: [{ type: 'text', text: { content: value } }] },
     },
@@ -636,7 +631,7 @@ export async function patchRichTextField(token: string, pageId: string, fieldNam
 
 // ── Post-its ───────────────────────────────────────────────────────────────────
 
-export async function fetchPostIts(token: string, config: PostItsConfig): Promise<PostItEntry[]> {
+export async function fetchPostIts(config: PostItsConfig): Promise<PostItEntry[]> {
   const entries: PostItEntry[] = [];
   let cursor: string | undefined;
 
@@ -658,18 +653,18 @@ export async function fetchPostIts(token: string, config: PostItsConfig): Promis
 
     let res: Record<string, unknown>;
     try {
-      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      res = await nPost(`/databases/${config.databaseId}/query`, body);
     } catch (e) {
       if (activeFilter && !cursor) {
         activeFilter = buildFilter('select');
         if (activeFilter) {
           body.filter = activeFilter;
           try {
-            res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+            res = await nPost(`/databases/${config.databaseId}/query`, body);
           } catch {
             delete body.filter;
             activeFilter = undefined;
-            res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+            res = await nPost(`/databases/${config.databaseId}/query`, body);
           }
         } else {
           throw e;
@@ -730,13 +725,12 @@ export async function fetchPostIts(token: string, config: PostItsConfig): Promis
 }
 
 export async function patchPostItStatus(
-  token: string,
   pageId: string,
   statusFieldName: string,
   value: string,
   fieldType: 'status' | 'select' = 'status',
 ): Promise<void> {
-  await nPatch(token, `/pages/${pageId}`, {
+  await nPatch(`/pages/${pageId}`, {
     properties: {
       [statusFieldName]: fieldType === 'status'
         ? { status: { name: value } }
@@ -746,7 +740,6 @@ export async function patchPostItStatus(
 }
 
 export async function createPostIt(
-  token: string,
   config: PostItsConfig,
   data: { title: string; dueDate: string; status: string; content: string },
 ): Promise<void> {
@@ -772,13 +765,13 @@ export async function createPostIt(
 
   let page: { id: string };
   try {
-    page = await nPost(token, '/pages', buildPageBody('status')) as { id: string };
+    page = await nPost('/pages', buildPageBody('status')) as { id: string };
   } catch {
-    page = await nPost(token, '/pages', buildPageBody('select')) as { id: string };
+    page = await nPost('/pages', buildPageBody('select')) as { id: string };
   }
 
   if (data.content.trim() && page.id) {
-    await nPatch(token, `/blocks/${page.id}/children`, {
+    await nPatch(`/blocks/${page.id}/children`, {
       children: [
         { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: data.content } }] } },
       ],
@@ -788,7 +781,7 @@ export async function createPostIt(
 
 // ── Partenaires ───────────────────────────────────────────────────────────────
 
-export async function fetchPartenaires(token: string, config: PartenairesConfig): Promise<PartenaireEntry[]> {
+export async function fetchPartenaires(config: PartenairesConfig): Promise<PartenaireEntry[]> {
   const entries: PartenaireEntry[] = [];
   let cursor: string | undefined;
 
@@ -801,11 +794,11 @@ export async function fetchPartenaires(token: string, config: PartenairesConfig)
 
     let res: Record<string, unknown>;
     try {
-      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      res = await nPost(`/databases/${config.databaseId}/query`, body);
     } catch (e) {
       // Fallback sans tri si le champ de titre est mal configuré
       if (!cursor) {
-        res = await nPost(token, `/databases/${config.databaseId}/query`, { page_size: 100 });
+        res = await nPost(`/databases/${config.databaseId}/query`, { page_size: 100 });
       } else {
         throw e;
       }
@@ -880,7 +873,6 @@ export async function fetchPartenaires(token: string, config: PartenairesConfig)
 // ── Suivis ────────────────────────────────────────────────────────────────────
 
 export async function fetchSuivis(
-  token: string,
   config: SuivisConfig,
   partenairePageId?: string,
 ): Promise<SuiviEntry[]> {
@@ -899,13 +891,13 @@ export async function fetchSuivis(
 
     let res: Record<string, unknown>;
     try {
-      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      res = await nPost(`/databases/${config.databaseId}/query`, body);
     } catch (e) {
       if (filter && !cursor) {
         // Fallback sans filtre si la relation est rejetée
         console.warn('[Notion] Filtre relation rejeté, fallback sans filtre:', e);
         delete body.filter;
-        res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+        res = await nPost(`/databases/${config.databaseId}/query`, body);
       } else {
         throw e;
       }
@@ -934,7 +926,7 @@ export async function fetchSuivis(
       if (config.contactField) collectRels(config.contactField);
     }
 
-    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(token, relIds) : new Map<string, string>();
+    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(relIds) : new Map<string, string>();
 
     for (const page of pages) {
       const props = page.properties;
@@ -1019,7 +1011,7 @@ function formulaString(prop: PropVal): string {
   return '';
 }
 
-export async function fetchTemps(token: string, config: TempsConfig): Promise<TempsEntry[]> {
+export async function fetchTemps(config: TempsConfig): Promise<TempsEntry[]> {
   const entries: TempsEntry[] = [];
   let cursor: string | undefined;
 
@@ -1038,7 +1030,7 @@ export async function fetchTemps(token: string, config: TempsConfig): Promise<Te
     if (filter) body.filter = filter;
     if (config.startField) body.sorts = [{ property: config.startField, direction: 'descending' }];
 
-    const res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    const res = await nPost(`/databases/${config.databaseId}/query`, body);
 
     const pages = (res.results ?? []) as Array<{ id: string; properties: Record<string, PropVal> }>;
 
@@ -1053,7 +1045,7 @@ export async function fetchTemps(token: string, config: TempsConfig): Promise<Te
       if (config.projetsField) addRels(config.projetsField);
       if (config.sousProjetField) addRels(config.sousProjetField);
     }
-    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(token, relIds) : new Map<string, string>();
+    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(relIds) : new Map<string, string>();
 
     for (const page of pages) {
       const props = page.properties;
@@ -1106,7 +1098,6 @@ function multiSelectNames(prop: PropVal): string[] {
 }
 
 export async function fetchTickets(
-  token: string,
   config: TicketsConfig,
   includeTermines = false,
 ): Promise<TicketEntry[]> {
@@ -1131,11 +1122,11 @@ export async function fetchTickets(
 
     let res: Record<string, unknown>;
     try {
-      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      res = await nPost(`/databases/${config.databaseId}/query`, body);
     } catch (e) {
       if (filter && !cursor) {
         delete body.filter;
-        res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+        res = await nPost(`/databases/${config.databaseId}/query`, body);
       } else {
         throw e;
       }
@@ -1149,7 +1140,7 @@ export async function fetchTickets(
       const rels = (page.properties[config.associationField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined;
       rels?.forEach(r => relIds.add(r.id));
     }
-    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(token, relIds) : new Map<string, string>();
+    const relIdToTitle = relIds.size > 0 ? await resolvePageTitles(relIds) : new Map<string, string>();
 
     for (const page of pages) {
       const props = page.properties;
@@ -1201,7 +1192,6 @@ export async function fetchTickets(
 }
 
 export async function fetchAssociations(
-  token: string,
   config: AssociationsConfig,
   includeTermines = false,
 ): Promise<AssociationEntry[]> {
@@ -1227,10 +1217,10 @@ export async function fetchAssociations(
 
     let res: Record<string, unknown>;
     try {
-      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      res = await nPost(`/databases/${config.databaseId}/query`, body);
     } catch {
       delete body.filter;
-      res = await nPost(token, `/databases/${config.databaseId}/query`, body);
+      res = await nPost(`/databases/${config.databaseId}/query`, body);
     }
 
     const pages = (res!.results ?? []) as Array<{ id: string; properties: Record<string, PropVal> }>;
@@ -1262,7 +1252,7 @@ export async function fetchAssociations(
 
 // ── Clients (CAP Consulting) ──────────────────────────────────────────────────
 
-export async function fetchClients(token: string, config: ClientsConfig): Promise<ClientEntry[]> {
+export async function fetchClients(config: ClientsConfig): Promise<ClientEntry[]> {
   if (!config.databaseId) return [];
   const results: ClientEntry[] = [];
   let cursor: string | undefined;
@@ -1272,7 +1262,7 @@ export async function fetchClients(token: string, config: ClientsConfig): Promis
       sorts: [{ property: config.titreField, direction: 'ascending' }],
     };
     if (cursor) body.start_cursor = cursor;
-    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    const data = await nPost(`/databases/${config.databaseId}/query`, body);
     for (const page of (data.results ?? []) as Array<{ id: string; url: string; properties: Record<string, PropVal> }>) {
       const props = page.properties ?? {};
       const titre = plainText(props[config.titreField]);
@@ -1287,9 +1277,9 @@ export async function fetchClients(token: string, config: ClientsConfig): Promis
 
 // ── Projets (CAP Consulting) ──────────────────────────────────────────────────
 
-async function fetchRelationTitle(token: string, pageId: string): Promise<string> {
+async function fetchRelationTitle(pageId: string): Promise<string> {
   try {
-    const page = await nGet(token, `/pages/${pageId}`);
+    const page = await nGet(`/pages/${pageId}`);
     const props = (page.properties ?? {}) as Record<string, PropVal>;
     for (const prop of Object.values(props)) {
       if ((prop as { type?: string })?.type === 'title') {
@@ -1300,7 +1290,7 @@ async function fetchRelationTitle(token: string, pageId: string): Promise<string
   return '';
 }
 
-export async function fetchProjets(token: string, config: ProjetsConfig, clientCode?: string | null): Promise<ProjetEntry[]> {
+export async function fetchProjets(config: ProjetsConfig, clientCode?: string | null): Promise<ProjetEntry[]> {
   if (!config.databaseId) return [];
   const results: ProjetEntry[] = [];
   let cursor: string | undefined;
@@ -1320,13 +1310,13 @@ export async function fetchProjets(token: string, config: ProjetsConfig, clientC
     };
     if (cursor) body.start_cursor = cursor;
     if (clientFilter) body.filter = clientFilter;
-    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    const data = await nPost(`/databases/${config.databaseId}/query`, body);
     for (const page of (data.results ?? []) as Array<{ id: string; url: string; properties: Record<string, PropVal> }>) {
       const props = page.properties ?? {};
       const nom = plainText(props[config.nomField]);
       const tiersRel = props[config.tiersField];
       const tiersId = (tiersRel?.relation as Array<{ id: string }> | undefined)?.[0]?.id;
-      const tiers = tiersId ? await fetchRelationTitle(token, tiersId) : '';
+      const tiers = tiersId ? await fetchRelationTitle(tiersId) : '';
       const typeProjet = selectName(props[config.typeProjetField]);
       const dateDebut = (props[config.dateDebutField]?.date as { start?: string } | null)?.start ?? null;
       const statut = config.statutField ? selectName(props[config.statutField]) : '';
@@ -1342,7 +1332,6 @@ export async function fetchProjets(token: string, config: ProjetsConfig, clientC
 // ── Tâches (CAP Consulting) ───────────────────────────────────────────────────
 
 export async function fetchTaches(
-  token: string,
   config: TachesConfig,
   projetId?: string,
 ): Promise<TacheEntry[]> {
@@ -1356,7 +1345,7 @@ export async function fetchTaches(
     const body: Record<string, unknown> = { page_size: 100 };
     if (filter) body.filter = filter;
     if (cursor) body.start_cursor = cursor;
-    const data = await nPost(token, `/databases/${config.databaseId}/query`, body);
+    const data = await nPost(`/databases/${config.databaseId}/query`, body);
     allPages.push(...((data.results ?? []) as typeof allPages));
     cursor = (data.next_cursor as string | null) ?? undefined;
   } while (cursor);
@@ -1369,7 +1358,7 @@ export async function fetchTaches(
       rels?.forEach(r => suiviRelIds.add(r.id));
     }
   }
-  const suiviIdToTitle = suiviRelIds.size > 0 ? await resolvePageTitles(token, suiviRelIds) : new Map<string, string>();
+  const suiviIdToTitle = suiviRelIds.size > 0 ? await resolvePageTitles(suiviRelIds) : new Map<string, string>();
 
   const results: TacheEntry[] = [];
   for (const page of allPages) {
@@ -1426,7 +1415,6 @@ function buildProjetFilter(
 }
 
 async function queryWithFilter(
-  token: string,
   databaseId: string,
   filter: Record<string, unknown> | undefined,
 ): Promise<Array<{ id: string; url: string; properties: Record<string, PropVal> }>> {
@@ -1436,7 +1424,7 @@ async function queryWithFilter(
     const body: Record<string, unknown> = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
     if (filter) body.filter = filter;
-    const data = await nPost(token, `/databases/${databaseId}/query`, body);
+    const data = await nPost(`/databases/${databaseId}/query`, body);
     allPages.push(...((data.results ?? []) as typeof allPages));
     cursor = (data.next_cursor as string | null) ?? undefined;
   } while (cursor);
@@ -1446,7 +1434,6 @@ async function queryWithFilter(
 // ── Sous-tâches (CAP Consulting) ──────────────────────────────────────────────
 
 export async function fetchSousTaches(
-  token: string,
   config: SousTachesConfig,
   tacheIdToName: Map<string, string>,
   projetId?: string,
@@ -1458,7 +1445,7 @@ export async function fetchSousTaches(
     ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
     : undefined;
 
-  const allPages = await queryWithFilter(token, config.databaseId, filter);
+  const allPages = await queryWithFilter(config.databaseId, filter);
 
   const results: SousTacheEntry[] = [];
   for (const page of allPages) {
@@ -1490,7 +1477,6 @@ export async function fetchSousTaches(
 // ── Suivi Projet (CAP Consulting) ─────────────────────────────────────────────
 
 export async function fetchSuivisProjet(
-  token: string,
   config: SuiviProjetConfig,
   tacheIdToName: Map<string, string>,
   projetId?: string,
@@ -1502,7 +1488,7 @@ export async function fetchSuivisProjet(
     ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
     : undefined;
 
-  const allPages = await queryWithFilter(token, config.databaseId, filter);
+  const allPages = await queryWithFilter(config.databaseId, filter);
 
   const results: SuiviProjetEntry[] = [];
   for (const page of allPages) {
@@ -1527,7 +1513,6 @@ export async function fetchSuivisProjet(
 // ── Echanges (CAP Consulting) ─────────────────────────────────────────────────
 
 export async function fetchEchanges(
-  token: string,
   config: EchangesConfig,
   projetId: string,
   projetCode?: string,
@@ -1541,7 +1526,7 @@ export async function fetchEchanges(
       ? { property: config.projetField, relation: { contains: projetId } }
       : undefined;
 
-  const allPages = await queryWithFilter(token, config.databaseId, filter);
+  const allPages = await queryWithFilter(config.databaseId, filter);
 
   // Résoudre les contacts
   const contactIds = new Set<string>();
@@ -1549,7 +1534,7 @@ export async function fetchEchanges(
     const rels = (page.properties[config.contactField] as Record<string, unknown>)?.relation as Array<{ id: string }> | undefined;
     rels?.forEach(r => contactIds.add(r.id));
   }
-  const contactIdToTitle = contactIds.size > 0 ? await resolvePageTitles(token, contactIds) : new Map<string, string>();
+  const contactIdToTitle = contactIds.size > 0 ? await resolvePageTitles(contactIds) : new Map<string, string>();
 
   // Résoudre les relations Suivi et Tâche
   const allSuiviIds = new Set<string>();
@@ -1566,8 +1551,8 @@ export async function fetchEchanges(
     }
   }
   const [suiviTitles, tacheTitles] = await Promise.all([
-    resolvePageTitles(token, allSuiviIds),
-    resolvePageTitles(token, allTacheIds),
+    resolvePageTitles(allSuiviIds),
+    resolvePageTitles(allTacheIds),
   ]);
 
   const results: EchangeEntry[] = [];
@@ -1601,7 +1586,6 @@ export async function fetchEchanges(
 // ── Documents (CAP Consulting) ────────────────────────────────────────────────
 
 export async function fetchDocuments(
-  token: string,
   config: DocumentsConfig,
   projetId: string,
   projetCode?: string,
@@ -1612,7 +1596,7 @@ export async function fetchDocuments(
     ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
     : undefined;
 
-  const allPages = await queryWithFilter(token, config.databaseId, filter);
+  const allPages = await queryWithFilter(config.databaseId, filter);
 
   const results: DocumentEntry[] = [];
   for (const page of allPages) {
@@ -1645,7 +1629,6 @@ export async function fetchDocuments(
 // ── Temps Projet (CAP Consulting) ─────────────────────────────────────────────
 
 export async function fetchTempsProjet(
-  token: string,
   config: TempsProjetConfig,
   tacheIdToName: Map<string, string>,
   projetId?: string,
@@ -1657,7 +1640,7 @@ export async function fetchTempsProjet(
     ? buildProjetFilter(config.projetFilterField, config.projetFilterFieldType ?? '', projetId, projetCode)
     : undefined;
 
-  const allPages = await queryWithFilter(token, config.databaseId, filter);
+  const allPages = await queryWithFilter(config.databaseId, filter);
 
   const results: TempsProjetEntry[] = [];
   for (const page of allPages) {
