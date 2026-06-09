@@ -157,7 +157,17 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
         return next;
       });
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      if (/notion.*(40[13])|token notion/i.test(msg)) {
+        setDataSource('demo');
+        save('dataSource', 'demo');
+        const { demoExtras, ...planning } = await loadDemoData();
+        setDemoStore(demoExtras);
+        setData((prev) => ({ ...planning, googleEvents: prev.googleEvents }));
+        setDataLoaded(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setPlanningRefreshing(false);
     }
@@ -196,7 +206,17 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
         return next;
       });
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      if (/notion.*(40[13])|token notion/i.test(msg)) {
+        setDataSource('demo');
+        save('dataSource', 'demo');
+        const { demoExtras, ...planning } = await loadDemoData();
+        setDemoStore(demoExtras);
+        setData((prev) => ({ ...planning, googleEvents: prev.googleEvents }));
+        setDataLoaded(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setDataLoading(false);
     }
