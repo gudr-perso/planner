@@ -54,7 +54,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
       else setError('Configurez la base Projets dans les Paramètres > CAP CONSULTING.');
       return;
     }
-    const cacheKey = cfg.databaseId;
+    const cacheKey = `${cfg.databaseId}:${user?.client_code ?? ''}`;
     if (_projetsCache && _projetsCacheKey === cacheKey) {
       setProjets(_projetsCache);
       return;
@@ -68,7 +68,7 @@ export default function ProjetsView({ onSelectProjet }: Props) {
       })
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user?.client_code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() =>
     projets.filter(p =>
