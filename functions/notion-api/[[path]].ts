@@ -27,14 +27,14 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     return new Response(JSON.stringify({ error: 'Non authentifié' }), { status: 401, headers: h });
   }
 
-  // Fetch and decrypt the Notion token for this user
+  // Fetch and decrypt the shared Notion token (configured by admin, used by all)
   const row = await env.DB.prepare(
-    'SELECT value FROM user_secrets WHERE user_id = ? AND key = ?'
-  ).bind(user.id, 'notion_token').first<{ value: string }>();
+    'SELECT value FROM shared_secrets WHERE key = ?'
+  ).bind('notion_token').first<{ value: string }>();
 
   if (!row) {
     const h = new Headers(CORS);
-    return new Response(JSON.stringify({ error: 'Token Notion non configuré' }), { status: 403, headers: h });
+    return new Response(JSON.stringify({ error: 'Token Notion non configuré (demandez à l\'administrateur)' }), { status: 403, headers: h });
   }
 
   const token = await decrypt(row.value, env.SECRETS_ENCRYPTION_KEY);

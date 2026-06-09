@@ -1,8 +1,8 @@
+// Config globale partagée — lecture pour tous, écriture admin uniquement
 export async function onRequestGet(ctx) {
-  const userId = ctx.data.user.id;
   const row = await ctx.env.DB.prepare(
-    'SELECT config, saved_at FROM user_configs WHERE user_id = ?'
-  ).bind(userId).first();
+    'SELECT config, saved_at FROM shared_config WHERE id = 1'
+  ).first();
 
   if (!row) {
     return new Response(JSON.stringify({ error: 'Aucune config sauvegardée' }), {
@@ -17,7 +17,13 @@ export async function onRequestGet(ctx) {
 }
 
 export async function onRequestPut(ctx) {
-  const userId = ctx.data.user.id;
+  if (ctx.data.user.role !== 'admin') {
+    return new Response(JSON.stringify({ error: 'Réservé aux administrateurs' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   let body;
   try {
     body = await ctx.request.json();
@@ -32,9 +38,9 @@ export async function onRequestPut(ctx) {
   const savedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
   await ctx.env.DB.prepare(
-    `INSERT INTO user_configs (user_id, config, saved_at) VALUES (?, ?, ?)
-     ON CONFLICT(user_id) DO UPDATE SET config = excluded.config, saved_at = excluded.saved_at`
-  ).bind(userId, configJson, savedAt).run();
+    `INSERT INTO shared_config (id, config, saved_at) VALUES (1, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET config = excluded.config, saved_at = excluded.saved_at`
+  ).bind(configJson, savedAt).run();
 
   return new Response(JSON.stringify({ ok: true, saved_at: savedAt }), {
     headers: { 'Content-Type': 'application/json' },
