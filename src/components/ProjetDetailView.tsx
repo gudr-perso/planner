@@ -636,6 +636,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               projetCode={projetCode}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
+              isClient={isClient}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -1571,8 +1572,9 @@ function getTempsGroupLabel(key: string, level: TempsGroupLevel): string {
     .toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 }
 
-function TempsRow({ e, selectedId, onSelectRow }: {
+function TempsRow({ e, isClient, selectedId, onSelectRow }: {
   e: TempsProjetEntry;
+  isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
@@ -1594,7 +1596,7 @@ function TempsRow({ e, selectedId, onSelectRow }: {
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeH || '—'}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)', fontWeight: e.facturableH ? 600 : undefined }}>{e.facturableH || '—'}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
-      <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>
+      {!isClient && <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>}
     </tr>
   );
 }
@@ -1604,6 +1606,7 @@ function TempsProjetTab({
   projetCode,
   tacheIdToName,
   tachesReady,
+  isClient,
   selectedId,
   onSelectRow,
 }: {
@@ -1611,6 +1614,7 @@ function TempsProjetTab({
   projetCode?: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
+  isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
@@ -1811,7 +1815,7 @@ function TempsProjetTab({
                 ))}
                 {showFacturableH && <th className="text-left px-3 py-2 font-medium">Facturable (h)</th>}
                 <th className="text-left px-3 py-2 font-medium">Tâches</th>
-                <th className="text-left px-3 py-2 font-medium">Lien</th>
+                {!isClient && <th className="text-left px-3 py-2 font-medium">Lien</th>}
               </tr>
             </thead>
             <tbody>
@@ -1828,7 +1832,7 @@ function TempsProjetTab({
                         </td>
                         <td className="px-3 py-1" style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>{fmtH(sumDureeH(entries))} h</td>
                         {showFacturableH && <td className="px-3 py-1" style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>{fmtH(sumFactH(entries))} h</td>}
-                        <td colSpan={2} />
+                        <td colSpan={isClient ? 1 : 2} />
                       </tr>
                       {sub
                         ? sub.map(({ key: k2, label: l2, entries: rows }) => (
@@ -1843,28 +1847,28 @@ function TempsProjetTab({
                                 </td>
                                 <td className="px-3 py-1" style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }}>{fmtH(sumDureeH(rows))} h</td>
                                 {showFacturableH && <td className="px-3 py-1" style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 600 }}>{fmtH(sumFactH(rows))} h</td>}
-                                <td colSpan={2} />
+                                <td colSpan={isClient ? 1 : 2} />
                               </tr>
-                              {rows.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)}
+                              {rows.map(e => <TempsRow key={e.id} e={e} isClient={isClient} selectedId={selectedId} onSelectRow={onSelectRow} />)}
                             </React.Fragment>
                           ))
-                        : entries.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)
+                        : entries.map(e => <TempsRow key={e.id} e={e} isClient={isClient} selectedId={selectedId} onSelectRow={onSelectRow} />)
                       }
                     </React.Fragment>
                   ))
-                : sorted.map(e => <TempsRow key={e.id} e={e} selectedId={selectedId} onSelectRow={onSelectRow} />)
+                : sorted.map(e => <TempsRow key={e.id} e={e} isClient={isClient} selectedId={selectedId} onSelectRow={onSelectRow} />)
               }
               {sorted.length > 0 && showFacturableH && (
                 <tr style={{ background: 'color-mix(in srgb, var(--accent) 16%, transparent)', borderTop: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
                   <td colSpan={4} className="px-3 py-2" style={{ fontWeight: 700, fontSize: 11, color: 'var(--text)' }}>Total</td>
                   <td className="px-3 py-2" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 11 }}>{fmtH(sumDureeH(sorted))} h</td>
                   <td className="px-3 py-2" style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 11 }}>{fmtH(sumFactH(sorted))} h</td>
-                  <td colSpan={2} />
+                  <td colSpan={isClient ? 1 : 2} />
                 </tr>
               )}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={showFacturableH ? 8 : 7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={showFacturableH ? (isClient ? 7 : 8) : (isClient ? 6 : 7)} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune session de temps.
                   </td>
                 </tr>
