@@ -153,6 +153,8 @@ function CapClientsSection({ clientsConfig, setClientsConfig }: {
       setLoading(false);
     }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSchema(); }, []);
 
   return (
     <section>
@@ -204,6 +206,8 @@ function CapProjetsSection({ projetsConfig, setProjetsConfig }: {
       setLoading(false);
     }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSchema(); }, []);
 
   return (
     <section>
@@ -274,6 +278,8 @@ function CapTachesSection({ tachesConfig, setTachesConfig }: {
       setLoading(false);
     }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSchema(); }, []);
 
   return (
     <section>
@@ -341,6 +347,8 @@ function CapSousTachesSection({ sousTachesConfig, setSousTachesConfig }: {
     setLoading(true);
     try { setSchema(await fetchDatabaseSchema(sousTachesConfig.databaseId)); } finally { setLoading(false); }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSchema(); }, []);
 
   return (
     <section>
@@ -379,6 +387,8 @@ function CapSuiviProjetSection({ suiviProjetConfig, setSuiviProjetConfig }: {
     setLoading(true);
     try { setSchema(await fetchDatabaseSchema(suiviProjetConfig.databaseId)); } finally { setLoading(false); }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSchema(); }, []);
 
   return (
     <section>
@@ -415,6 +425,8 @@ function CapEchangesSection({ echangesConfig, setEchangesConfig }: {
     setLoading(true);
     try { setSchema(await fetchDatabaseSchema(echangesConfig.databaseId)); } finally { setLoading(false); }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSchema(); }, []);
 
   return (
     <section>
@@ -454,6 +466,8 @@ function CapDocumentsSection({ documentsConfig, setDocumentsConfig }: {
     setLoading(true);
     try { setSchema(await fetchDatabaseSchema(documentsConfig.databaseId)); } finally { setLoading(false); }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSchema(); }, []);
 
   return (
     <section className="mb-8">
@@ -487,6 +501,8 @@ function CapTempsSection({ tempsProjetConfig, setTempsProjetConfig }: {
     setLoading(true);
     try { setSchema(await fetchDatabaseSchema(tempsProjetConfig.databaseId)); } finally { setLoading(false); }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSchema(); }, []);
 
   return (
     <section className="mb-8">
@@ -542,6 +558,28 @@ export function SettingsView({
       .then((d: { exists: boolean }) => setTokenConfigured(d.exists))
       .catch(() => setTokenConfigured(false));
   }, []);
+
+  // Auto-chargement des schémas au montage si les databaseId sont déjà configurés
+  useEffect(() => {
+    const loadAll = async () => {
+      const loads: Array<[string, (s: NotionPropertySchema[]) => void]> = [
+        [briefingConfig.databaseId, setBriefingSchema],
+        [partenairesConfig.databaseId, setPartenairesSchema],
+        [suivisConfig.databaseId, setSuivisSchema],
+        [tempsConfig.databaseId, setTempsSchema],
+        [ticketsConfig.databaseId, setTicketsSchema],
+        [assocConfig.databaseId, setAssocSchema],
+        [postitsConfig.databaseId, setPostitsSchema],
+        [config.databaseId, setSchema],
+      ];
+      await Promise.allSettled(
+        loads
+          .filter(([id]) => !!id)
+          .map(([id, setter]) => fetchDatabaseSchema(id).then(setter).catch(() => {}))
+      );
+    };
+    loadAll();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSaveToken = async () => {
     if (!tokenInput.trim()) return;
