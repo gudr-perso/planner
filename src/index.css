@@ -264,6 +264,18 @@ html, body, #root {
   border-left: 3px solid var(--accent) !important;
 }
 
+/* Ent-tête semaine (jour + date) plus compacte : padding réduit et pastille de date
+   plus petite (par défaut 2em + police extra-large => ent-tête très épaisse). */
+.sx__week-grid__date {
+  padding: 3px 0 !important;
+  gap: 0 !important;
+}
+.sx__week-grid__date-number {
+  font-size: 0.9rem !important;
+  height: 1.5em !important;
+  width: 1.5em !important;
+}
+
 /* Gantt task-react tweak */
 .gantt-task-list-wrapper,
 .gantt-wrapper,

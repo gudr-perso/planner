@@ -93,7 +93,14 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewKey>(() => {
-    if (localStorage.getItem('planner:_justImported')) return 'settings';
+    // Consomme le flag d'import ici (strictement one-shot) : on le retire de localStorage
+    // pour qu'il ne survive jamais à un rechargement et ne renvoie pas en boucle aux Paramètres.
+    // La bannière d'import est relayée via sessionStorage (durée de vie = l'onglet).
+    if (localStorage.getItem('planner:_justImported')) {
+      localStorage.removeItem('planner:_justImported');
+      sessionStorage.setItem('planner:_showImportBanner', '1');
+      return 'settings';
+    }
     const v = load<ViewKey>('view', 'home');
     if (v === 'projet-detail' && !load<string>('selectedProjetId', '')) return 'projets';
     return v;
@@ -106,6 +113,9 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const [gcalError, setGcalError] = useState<string | null>(null);
   const [notionWriteStatus, setNotionWriteStatus] = useState<'saving' | 'ok' | 'error' | null>(null);
   const [notionWriteMsg, setNotionWriteMsg] = useState<string | null>(null);
+  // Erreur de sync Notion non bloquante (token expiré/non autorisé) : bandeau dismissible,
+  // contrairement à `error` qui remplace tout l'écran.
+  const [notionSyncError, setNotionSyncError] = useState<string | null>(null);
   const [partenaireFilter, setPartenaireFilter] = useState<PartenaireEntry | null>(null);
   const [selectedProjetId, setSelectedProjetId] = useState<string>(() => load<string>('selectedProjetId', ''));
   const [selectedProjetNom, setSelectedProjetNom] = useState<string>(() => load<string>('selectedProjetNom', ''));
@@ -139,9 +149,37 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const [planningRefreshing, setPlanningRefreshing] = useState(false);
   const [viewRefreshKeys, setViewRefreshKeys] = useState<Partial<Record<ViewKey, number>>>({});
 
+  // Récupère les events Google Agenda (fenêtre : dimanche dernier −7j → +6 mois).
+  // Réutilisé par l'effet automatique (sur changement de token) ET par le bouton Refresh.
+  const fetchGcal = useCallback((token: string) => {
+    const now = new Date();
+    const startOfLastWeek = new Date(now);
+    const dayOfWeek = now.getDay(); // 0=Sun
+    startOfLastWeek.setDate(now.getDate() - dayOfWeek - 7);
+    startOfLastWeek.setHours(0, 0, 0, 0);
+    const sixMonths = new Date(now);
+    sixMonths.setMonth(sixMonths.getMonth() + 6);
+    setGcalLoading(true);
+    setGcalError(null);
+    return fetchGoogleCalendarEvents(token, startOfLastWeek.toISOString(), sixMonths.toISOString())
+      .then((events: GoogleEvent[]) => {
+        setData((prev) => prev ? { ...prev, googleEvents: events } : prev);
+        setGcalLoading(false);
+      })
+      .catch((e: Error) => {
+        setGcalError(e.message);
+        setGcalLoading(false);
+        if (e.message.includes('401') || e.message.includes('403')) {
+          setGcalToken(null);
+          save('gcalToken', null);
+        }
+      });
+  }, []);
+
   const refreshPlanningData = useCallback(async () => {
     setPlanningRefreshing(true);
     setDataLoaded(false);
+    setNotionSyncError(null);
     try {
       if (dataSource === 'notion') {
         const cfg = load<NotionConfig | null>('notionConfig', null);
@@ -165,8 +203,11 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     } catch (e) {
       const msg = (e as Error).message;
       if (/notion.*(40[13])|token notion/i.test(msg)) {
-        setDataSource('demo');
-        save('dataSource', 'demo');
+        // Échec de sync Notion (token expiré / non autorisé) : on affiche les données démo
+        // pour ne pas laisser l'écran vide, MAIS on NE persiste PAS 'demo' comme préférence
+        // (sinon l'utilisateur reste collé en mode démo à chaque rechargement). Bandeau
+        // non bloquant pour qu'il puisse se reconnecter.
+        setNotionSyncError(msg);
         const { demoExtras, ...planning } = await loadDemoData();
         setDemoStore(demoExtras);
         setData((prev) => ({ ...planning, googleEvents: prev.googleEvents }));
@@ -176,8 +217,10 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
       }
     } finally {
       setPlanningRefreshing(false);
+      // Le bouton Refresh recharge aussi l'agenda Google (et pas seulement Notion/démo).
+      if (gcalToken) fetchGcal(gcalToken);
     }
-  }, [dataSource]);
+  }, [dataSource, gcalToken, fetchGcal]);
 
   const handleRefresh = useCallback(() => {
     const PLANNING: ViewKey[] = ['calendar', 'gantt', 'rolling', 'rolling2', 'todo'];
@@ -191,6 +234,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const loadPlanningData = useCallback(async () => {
     if (dataLoaded || dataLoading) return;
     setDataLoading(true);
+    setNotionSyncError(null);
     try {
       if (dataSource === 'notion') {
         const cfg = load<NotionConfig | null>('notionConfig', null);
@@ -214,8 +258,9 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     } catch (e) {
       const msg = (e as Error).message;
       if (/notion.*(40[13])|token notion/i.test(msg)) {
-        setDataSource('demo');
-        save('dataSource', 'demo');
+        // Voir refreshPlanningData : on affiche la démo sans persister 'demo', et on
+        // remonte l'erreur Notion (bandeau) plutôt que de basculer silencieusement.
+        setNotionSyncError(msg);
         const { demoExtras, ...planning } = await loadDemoData();
         setDemoStore(demoExtras);
         setData((prev) => ({ ...planning, googleEvents: prev.googleEvents }));
@@ -274,29 +319,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     if (!gcalToken || !data) return;
     if (lastGcalFetchToken.current === gcalToken) return;
     lastGcalFetchToken.current = gcalToken;
-    const now = new Date();
-    const startOfLastWeek = new Date(now);
-    const dayOfWeek = now.getDay(); // 0=Sun
-    startOfLastWeek.setDate(now.getDate() - dayOfWeek - 7); // go back to last Sunday
-    startOfLastWeek.setHours(0, 0, 0, 0);
-    const sixMonths = new Date(now);
-    sixMonths.setMonth(sixMonths.getMonth() + 6);
-    setGcalLoading(true);
-    setGcalError(null);
-    fetchGoogleCalendarEvents(gcalToken, startOfLastWeek.toISOString(), sixMonths.toISOString())
-      .then((events: GoogleEvent[]) => {
-        setData((prev) => prev ? { ...prev, googleEvents: events } : prev);
-        setGcalLoading(false);
-      })
-      .catch((e: Error) => {
-        setGcalError(e.message);
-        setGcalLoading(false);
-        if (e.message.includes('401') || e.message.includes('403')) {
-          setGcalToken(null);
-          save('gcalToken', null);
-        }
-      });
-  }, [gcalToken, data]); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchGcal(gcalToken);
+  }, [gcalToken, data, fetchGcal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useGoogleLogin({
     scope: 'https://www.googleapis.com/auth/calendar.readonly',
@@ -315,9 +339,19 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   const setFilters: StoreCtx['setFilters'] = (f) => setFiltersState((prev) => ({ ...prev, ...f }));
 
   const writeNotion = useCallback((taskId: string, startISO: string, endISO: string) => {
-    if (dataSource !== 'notion') return;
+    // Rendre visibles les cas où l'écriture est silencieusement ignorée, au lieu d'un
+    // `return` muet (sinon l'utilisateur croit avoir enregistré dans Notion).
+    if (dataSource !== 'notion') {
+      setNotionWriteStatus('error');
+      setNotionWriteMsg('Mode démo : modification locale seulement, non écrite dans Notion.');
+      return;
+    }
     const cfg = load<NotionConfig | null>('notionConfig', null);
-    if (!cfg?.fieldMap?.date) return;
+    if (!cfg?.fieldMap?.date) {
+      setNotionWriteStatus('error');
+      setNotionWriteMsg('Champ date Notion non configuré (Paramètres → mapping des champs).');
+      return;
+    }
     setNotionWriteStatus('saving');
     setNotionWriteMsg(null);
     patchNotionDates(taskId, cfg.fieldMap.date, startISO, endISO)
@@ -433,6 +467,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
     setData((prev) => ({ ...notionData, googleEvents: prev?.googleEvents ?? [] }));
     setDataSource('notion');
     save('dataSource', 'notion');
+    setNotionSyncError(null);
   };
 
   return (
@@ -540,6 +575,17 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               </main>
             </div>
           </div>
+          {/* Bandeau non bloquant : échec de sync Notion (affichage démo en repli) */}
+          {notionSyncError && (
+            <div
+              className="fixed top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-xs font-medium max-w-[90vw]"
+              style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid var(--color-error-deep)' }}
+            >
+              <span>⚠</span>
+              <span>Connexion Notion impossible (données démo affichées) — vérifiez la configuration dans Paramètres. {notionSyncError}</span>
+              <button onClick={() => setNotionSyncError(null)} className="ml-1 opacity-60 hover:opacity-100">✕</button>
+            </div>
+          )}
           {/* Notion write-back indicator */}
           {notionWriteStatus && (
             <div

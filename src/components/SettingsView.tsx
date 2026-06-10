@@ -972,8 +972,12 @@ export function SettingsView({
   };
 
   const [importBanner, setImportBanner] = useState<boolean>(() => {
-    const flag = localStorage.getItem('planner:_justImported');
+    // Le flag localStorage est déjà consommé dans App.tsx (one-shot) ; on lit le relais
+    // sessionStorage posé à ce moment-là. Fallback sur le flag localStorage par sécurité.
+    const flag = sessionStorage.getItem('planner:_showImportBanner')
+      || localStorage.getItem('planner:_justImported');
     if (flag) {
+      sessionStorage.removeItem('planner:_showImportBanner');
       localStorage.removeItem('planner:_justImported');
       return true;
     }

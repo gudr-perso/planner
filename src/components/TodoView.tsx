@@ -30,27 +30,23 @@ const btnStyle = (active?: boolean): React.CSSProperties => ({
   color: active ? 'var(--accent)' : 'var(--text-muted)',
 });
 
-const PRIORITE_COLORS: Record<string, { bg: string; fg: string }> = {
-  urgente: { bg: '#e53e3e22', fg: '#e53e3e' },
-  urgent:  { bg: '#e53e3e22', fg: '#e53e3e' },
-  haute:   { bg: '#e53e3e22', fg: '#e53e3e' },
-  haut:    { bg: '#e53e3e22', fg: '#e53e3e' },
-  élevée:  { bg: '#e53e3e22', fg: '#e53e3e' },
-  elevee:  { bg: '#e53e3e22', fg: '#e53e3e' },
-  élevé:   { bg: '#e53e3e22', fg: '#e53e3e' },
-  eleve:   { bg: '#e53e3e22', fg: '#e53e3e' },
-  normale: { bg: '#d9730d22', fg: '#d9730d' },
-  normal:  { bg: '#d9730d22', fg: '#d9730d' },
-  moyenne: { bg: '#d9730d22', fg: '#d9730d' },
-  medium:  { bg: '#d9730d22', fg: '#d9730d' },
-  basse:   { bg: '#0f7b6c22', fg: '#0f7b6c' },
-  bas:     { bg: '#0f7b6c22', fg: '#0f7b6c' },
-  faible:  { bg: '#0f7b6c22', fg: '#0f7b6c' },
-  low:     { bg: '#0f7b6c22', fg: '#0f7b6c' },
-};
+const PRIORITE_RED = { bg: '#e53e3e22', fg: '#e53e3e' };       // Élevée / Haute / Urgente
+const PRIORITE_ORANGE = { bg: '#d9730d22', fg: '#d9730d' };    // Normale / Moyenne
+const PRIORITE_GREEN = { bg: '#0f7b6c22', fg: '#0f7b6c' };     // Basse / Faible
+
+// Normalise (minuscules, sans accents ni emoji/espaces) pour un match tolérant : une valeur
+// Notion comme « Élevée 🔴 » ou « 🟧 Élevée » doit quand même ressortir en rouge.
+function normalizePriorite(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
+}
 
 function prioriteStyle(value: string): React.CSSProperties {
-  const c = PRIORITE_COLORS[value.toLowerCase().trim()];
+  const n = normalizePriorite(value);
+  const has = (...keys: string[]) => keys.some(k => n.includes(k));
+  let c: { bg: string; fg: string } | null = null;
+  if (has('urgent', 'haut', 'eleve', 'critique', 'high')) c = PRIORITE_RED;
+  else if (has('normal', 'moyen', 'medium')) c = PRIORITE_ORANGE;
+  else if (has('bass', 'bas', 'faible', 'low', 'mineur')) c = PRIORITE_GREEN;
   return c
     ? { background: c.bg, color: c.fg }
     : { background: 'color-mix(in srgb, var(--text-muted) 14%, transparent)', color: 'var(--text-muted)' };
@@ -114,6 +110,8 @@ export function TodoView() {
     return '';
   });
   const [filterProjet, setFilterProjet] = useState('');
+  const [filterPlanifie, setFilterPlanifie] = useState<'' | 'yes' | 'no'>('');
+  const [filterEnRetard, setFilterEnRetard] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [sortCol, setSortCol] = useState<SortCol>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -194,6 +192,16 @@ export function TodoView() {
         return p?.name === filterProjet;
       });
     }
+    // Planifié = présence d'une date de planification (start_date)
+    if (filterPlanifie === 'yes') list = list.filter(t => !!t.start_date);
+    if (filterPlanifie === 'no') list = list.filter(t => !t.start_date);
+    // Planifié non terminé : planifié avant hier (minuit) et pas dans un état terminé
+    if (filterEnRetard) {
+      const hier = new Date();
+      hier.setHours(0, 0, 0, 0);
+      hier.setDate(hier.getDate() - 1);
+      list = list.filter(t => t.start_date && new Date(t.start_date) < hier && t.status !== 'done');
+    }
 
     const compare = (a: Task, b: Task): number => {
       let va = '', vb = '';
@@ -219,7 +227,7 @@ export function TodoView() {
     };
 
     return [...list].sort(compare);
-  }, [tasks, showDone, search, filterOrigine, filterPriorite, filterStatut, filterResponsable, filterProjet, sortCol, sortDir, projectById, subprojectById]);
+  }, [tasks, showDone, search, filterOrigine, filterPriorite, filterStatut, filterResponsable, filterProjet, filterPlanifie, filterEnRetard, sortCol, sortDir, projectById, subprojectById]);
 
   // ── Grouping ──────────────────────────────────────────────────────────────
   const groups = useMemo(() => {
@@ -437,6 +445,23 @@ export function TodoView() {
         <option value="">Projet</option>
         {projetValues.map(v => <option key={v} value={v}>{v}</option>)}
       </select>
+      <select
+        value={filterPlanifie}
+        onChange={e => setFilterPlanifie(e.target.value as '' | 'yes' | 'no')}
+        style={inputStyle}
+        title="Filtrer selon la présence d'une date de planification"
+      >
+        <option value="">Planifié (tous)</option>
+        <option value="yes">Planifié : oui</option>
+        <option value="no">Planifié : non</option>
+      </select>
+      <button
+        onClick={() => setFilterEnRetard(v => !v)}
+        style={btnStyle(filterEnRetard)}
+        title="Tâches planifiées avant hier et non terminées"
+      >
+        ⏰ Planifié non terminé
+      </button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Grouper :</span>
         {(['none', 'projet', 'sousprojet'] as GroupBy[]).map(g => (

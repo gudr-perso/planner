@@ -89,6 +89,7 @@ function CalendarInstance({
   useEffect(() => { onClickRef.current = onEventClick; }, [onEventClick]);
 
   const calendar = useNextCalendarApp({
+    locale: 'fr-FR',
     views: [createViewDay(), createViewWeek(), createViewMonthGrid(), createViewMonthAgenda()],
     defaultView: 'week',
     isResponsive: false,
@@ -316,22 +317,47 @@ export function CalendarView() {
           />
         ) : (
           <>
-            {/* Cache les headers internes Schedule-X — on fournit notre propre navigation */}
-            <style>{`.sx-multi-week .sx__calendar-header { display: none !important; }`}</style>
-            <div className="sx-multi-week flex-1 min-h-0 overflow-auto flex flex-col">
-              {Array.from({ length: numWeeks }, (_, i) => (
-                <CalendarInstance
-                  key={`${baseKey}-${numWeeks}-${baseDate}-${i}`}
-                  events={events}
-                  gridHeight={gridHeight}
-                  dayStart={dayStart}
-                  dayEnd={dayEnd}
-                  showWeekends={showWeekends}
-                  selectedDate={shiftDays(baseDate, i * 7)}
-                  calendars={calendars}
-                  onEventClick={handleEventClick}
-                />
-              ))}
+            {/* schedule-x plafonne nDays à 7 : impossible de faire une « semaine de 10 jours ».
+               On place donc les N grilles-semaines CÔTE À CÔTE (flex-row) pour obtenir une bande
+               continue de 10/14/15 colonnes, au lieu de les empiler verticalement.
+               - un seul scroll vertical (overflow:visible sur les view-container internes) pour
+                 garder les blocs alignés ;
+               - semaines 2..N : gouttière d'heures (75px) supprimée + libellés d'heures masqués
+                 pour la continuité visuelle (un seul axe horaire à gauche). */}
+            <style>{`
+              .sx-multi-week-h .sx__calendar-header { display: none !important; }
+              .sx-multi-week-h .sx__view-container { overflow: visible !important; }
+              .sx-week-continued .sx__week-grid__hour-text { display: none !important; }
+            `}</style>
+            <div className="sx-multi-week-h flex-1 min-h-0 overflow-auto flex flex-row">
+              {Array.from({ length: numWeeks }, (_, i) => {
+                // i=0 garde la gouttière (axe horaire) → flex-basis 75px pour que ses colonnes
+                // de jours aient la même largeur que celles des semaines suivantes (basis 0).
+                const wrapStyle = {
+                  flex: i === 0 ? '1 1 75px' : '1 1 0',
+                  minWidth: 0,
+                  borderLeft: i > 0 ? '2px solid var(--border)' : undefined,
+                  ...(i > 0 ? { '--sx-calendar-week-grid-padding-left': '0px' } : {}),
+                } as React.CSSProperties;
+                return (
+                  <div
+                    key={`${baseKey}-${numWeeks}-${baseDate}-${i}`}
+                    className={i > 0 ? 'sx-week-continued' : undefined}
+                    style={wrapStyle}
+                  >
+                    <CalendarInstance
+                      events={events}
+                      gridHeight={gridHeight}
+                      dayStart={dayStart}
+                      dayEnd={dayEnd}
+                      showWeekends={showWeekends}
+                      selectedDate={shiftDays(baseDate, i * 7)}
+                      calendars={calendars}
+                      onEventClick={handleEventClick}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
