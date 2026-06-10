@@ -35,6 +35,10 @@ const PRIORITE_COLORS: Record<string, { bg: string; fg: string }> = {
   urgent:  { bg: '#e53e3e22', fg: '#e53e3e' },
   haute:   { bg: '#e53e3e22', fg: '#e53e3e' },
   haut:    { bg: '#e53e3e22', fg: '#e53e3e' },
+  élevée:  { bg: '#e53e3e22', fg: '#e53e3e' },
+  elevee:  { bg: '#e53e3e22', fg: '#e53e3e' },
+  élevé:   { bg: '#e53e3e22', fg: '#e53e3e' },
+  eleve:   { bg: '#e53e3e22', fg: '#e53e3e' },
   normale: { bg: '#d9730d22', fg: '#d9730d' },
   normal:  { bg: '#d9730d22', fg: '#d9730d' },
   moyenne: { bg: '#d9730d22', fg: '#d9730d' },
@@ -462,7 +466,7 @@ export function TodoView() {
 
   // ── Table ─────────────────────────────────────────────────────────────────
   const tableContent = (
-    <div style={{ flex: 1, overflow: 'auto' }}>
+    <div className="themed-scroll" style={{ flex: 1, overflow: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
           <tr>
@@ -470,8 +474,8 @@ export function TodoView() {
             <SortTh col="title"      label="Objet"       current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '26%' }} />
             <SortTh col="projet"     label="Projet"      current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '16%' }} />
             <SortTh col="sousprojet" label="Sous-projet" current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '13%' }} />
-            <SortTh col="date"       label="Date"        current={sortCol} dir={sortDir} onSort={toggleSort} />
-            <SortTh col="planifie"   label="Planifié le" current={sortCol} dir={sortDir} onSort={toggleSort} />
+            <SortTh col="date"       label="Date"        current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '90px' }} />
+            <SortTh col="planifie"   label="Planifié le" current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '90px' }} />
             <SortTh col="priorite"   label="Priorité"    current={sortCol} dir={sortDir} onSort={toggleSort} />
             <SortTh col="statut"     label="État"        current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '90px' }} />
           </tr>
