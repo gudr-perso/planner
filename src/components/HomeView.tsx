@@ -375,7 +375,7 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
             {dateLabel}
           </p>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, margin: '0 0 4px' }}>
-            Bonjour, Guillaume
+            Bonjour, {user?.name ?? 'Guillaume'}
           </h1>
           <WeatherWidget />
         </div>
@@ -433,10 +433,10 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
               {dateLabel}
             </p>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, margin: 0 }}>
-              Bonjour, Guillaume
+              Bonjour, {user?.name ?? 'Guillaume'}
             </h1>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-              Votre poste de commande. 7 espaces, tout à portée de main.
+              Votre poste de commande. Vos espaces, tout à portée de main.
             </p>
           </div>
           <QuoteWidget />
