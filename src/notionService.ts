@@ -1474,7 +1474,10 @@ export async function fetchSousTaches(
     const canalProp = props[config.canalField];
     const canal = (canalProp?.select as { name?: string } | undefined)?.name ?? '';
     const canalColor = (canalProp?.select as { color?: string } | undefined)?.color;
-    results.push({ id: page.id, nom, date, statut, statutColor, priorite, prioriteColor, canal, canalColor, tacheIds, tacheNoms, notion_url: page.url });
+    const affecteProp = config.affecteField ? props[config.affecteField] : null;
+    const affecte = assigneeList(affecteProp).map(p => p.name).join(', ');
+    const affecteColor = (affecteProp?.select as { color?: string } | undefined)?.color;
+    results.push({ id: page.id, nom, date, statut, statutColor, priorite, prioriteColor, canal, canalColor, affecte, affecteColor, tacheIds, tacheNoms, notion_url: page.url });
   }
   return results;
 }

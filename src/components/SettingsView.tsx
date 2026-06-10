@@ -364,6 +364,7 @@ function CapSousTachesSection({ sousTachesConfig, setSousTachesConfig }: {
       <FieldRow label="Statut"><PropSelect value={sousTachesConfig.statutField} onChange={v => setSousTachesConfig(p => ({ ...p, statutField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Priorité"><PropSelect value={sousTachesConfig.prioriteField} onChange={v => setSousTachesConfig(p => ({ ...p, prioriteField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Canal"><PropSelect value={sousTachesConfig.canalField} onChange={v => setSousTachesConfig(p => ({ ...p, canalField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Affecté à"><PropSelect value={sousTachesConfig.affecteField ?? ''} onChange={v => setSousTachesConfig(p => ({ ...p, affecteField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Date"><PropSelect value={sousTachesConfig.dateField} onChange={v => setSousTachesConfig(p => ({ ...p, dateField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Tâche liée (relation)"><PropCombo value={sousTachesConfig.tacheField} onChange={v => setSousTachesConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
       <FieldRow label="Filtre projet"><PropCombo value={sousTachesConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setSousTachesConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>

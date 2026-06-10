@@ -395,6 +395,7 @@ export type SousTachesConfig = {
   prioriteField: string;
   canalField: string;
   dateField: string;             // date
+  affecteField?: string;         // select / people → Affecté à
   tacheField: string;            // relation → Tâches
   statutTermineValue: string;
   projetFilterField?: string;    // champ relation/formula vers Projet (filtre direct)
@@ -410,6 +411,8 @@ export type SousTacheEntry = {
   prioriteColor?: string;
   canal: string;
   canalColor?: string;
+  affecte: string;
+  affecteColor?: string;
   date: string | null;
   tacheIds: string[];            // IDs bruts (pour filtrage par projet)
   tacheNoms: string[];           // noms résolus depuis tâches du projet

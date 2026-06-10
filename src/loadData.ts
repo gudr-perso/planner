@@ -198,6 +198,7 @@ export async function loadDemoData(url = '/demo-data.xlsx'): Promise<FullDemoDat
       statut: str(r.statut), statutColor: str(r.statutColor) || undefined,
       priorite: str(r.priorite), prioriteColor: str(r.prioriteColor) || undefined,
       canal: str(r.canal), canalColor: str(r.canalColor) || undefined,
+      affecte: str(r.affecte), affecteColor: str(r.affecteColor) || undefined,
       date: str(r.date) || null,
       tacheIds: [], tacheNoms: parseArr(r.tacheNoms),
     };

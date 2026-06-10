@@ -829,6 +829,7 @@ function SousTacheRow({ e, isClient, selectedId, onSelectRow }: {
       <td className="px-3 py-2"><Badge label={e.statut} color={e.statutColor} /></td>
       <td className="px-3 py-2"><Badge label={e.priorite} color={e.prioriteColor} /></td>
       <td className="px-3 py-2"><Badge label={e.canal} color={e.canalColor} /></td>
+      <td className="px-3 py-2"><Badge label={e.affecte} color={e.affecteColor} /></td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date)}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
       {!isClient && <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>}
@@ -862,13 +863,14 @@ function SousTachesTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showTermine, setShowTermine] = useState(false);
-  const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'priorite' | 'canal' | 'date'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
+  const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'priorite' | 'canal' | 'affecte' | 'date'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
   const [groupByTache, setGroupByTache] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filterNom, setFilterNom] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [filterPriorite, setFilterPriorite] = useState('');
   const [filterCanal, setFilterCanal] = useState('');
+  const [filterAffecte, setFilterAffecte] = useState('');
   const [filterTacheLiee, setFilterTacheLiee] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
@@ -891,17 +893,19 @@ function SousTachesTab({
   const allStatuts = useMemo(() => [...new Set(entries.map(e => e.statut).filter(Boolean))].sort(), [entries]);
   const allPriorites = useMemo(() => [...new Set(entries.map(e => e.priorite).filter(Boolean))].sort(), [entries]);
   const allCanauxST = useMemo(() => [...new Set(entries.map(e => e.canal).filter(Boolean))].sort(), [entries]);
+  const allAffectesST = useMemo(() => [...new Set(entries.map(e => e.affecte).filter(Boolean))].sort(), [entries]);
 
   const filteredByFilters = useMemo(() => entries.filter(e => {
     if (filterNom && !e.nom.toLowerCase().includes(filterNom.toLowerCase())) return false;
     if (filterStatut && e.statut !== filterStatut) return false;
     if (filterPriorite && e.priorite !== filterPriorite) return false;
     if (filterCanal && e.canal !== filterCanal) return false;
+    if (filterAffecte && e.affecte !== filterAffecte) return false;
     if (filterTacheLiee && !e.tacheNoms.some(t => t.toLowerCase().includes(filterTacheLiee.toLowerCase()))) return false;
     if (filterDateFrom && (e.date ?? '') < filterDateFrom) return false;
     if (filterDateTo && (e.date ?? '') > filterDateTo) return false;
     return true;
-  }), [entries, filterNom, filterStatut, filterPriorite, filterCanal, filterTacheLiee, filterDateFrom, filterDateTo]);
+  }), [entries, filterNom, filterStatut, filterPriorite, filterCanal, filterAffecte, filterTacheLiee, filterDateFrom, filterDateTo]);
 
   const filtered = useMemo(() =>
     showTermine ? filteredByFilters : filteredByFilters.filter(e => e.statut !== config.statutTermineValue),
@@ -938,6 +942,7 @@ function SousTachesTab({
     { key: 'statut', label: 'Statut' },
     { key: 'priorite', label: 'Priorité' },
     { key: 'canal', label: 'Canal' },
+    { key: 'affecte', label: 'Affecté à' },
     { key: 'date', label: 'Date' },
   ];
 
@@ -987,6 +992,10 @@ function SousTachesTab({
             <option value="">Canal</option>
             {allCanauxST.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
+          <select style={{ ...tabInputStyle, width: 130 }} value={filterAffecte} onChange={e => setFilterAffecte(e.target.value)}>
+            <option value="">Affecté à</option>
+            {allAffectesST.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
           <input style={{ ...tabInputStyle, width: 130 }} placeholder="Tâche liée…" value={filterTacheLiee} onChange={e => setFilterTacheLiee(e.target.value)} />
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <input id="sous-taches-date-from" type="date" style={{ ...tabInputStyle, width: 130, paddingRight: 26 }} value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
@@ -997,8 +1006,8 @@ function SousTachesTab({
             <input id="sous-taches-date-to" type="date" style={{ ...tabInputStyle, width: 130, paddingRight: 26 }} value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
             <span onClick={() => (document.getElementById('sous-taches-date-to') as HTMLInputElement)?.showPicker?.()} style={{ position: 'absolute', right: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>📅</span>
           </div>
-          {(filterNom || filterStatut || filterPriorite || filterCanal || filterTacheLiee || filterDateFrom || filterDateTo) && (
-            <button onClick={() => { setFilterNom(''); setFilterStatut(''); setFilterPriorite(''); setFilterCanal(''); setFilterTacheLiee(''); setFilterDateFrom(''); setFilterDateTo(''); }}
+          {(filterNom || filterStatut || filterPriorite || filterCanal || filterAffecte || filterTacheLiee || filterDateFrom || filterDateTo) && (
+            <button onClick={() => { setFilterNom(''); setFilterStatut(''); setFilterPriorite(''); setFilterCanal(''); setFilterAffecte(''); setFilterTacheLiee(''); setFilterDateFrom(''); setFilterDateTo(''); }}
               style={{ ...tabInputStyle, cursor: 'pointer', color: 'var(--accent)' }}>✕ Effacer</button>
           )}
         </div>
@@ -1024,7 +1033,7 @@ function SousTachesTab({
                 ? grouped.map(([tacheNom, rows]) => (
                     <React.Fragment key={`grp-${tacheNom}`}>
                       <tr>
-                        <td colSpan={isClient ? 6 : 7} style={{
+                        <td colSpan={isClient ? 7 : 8} style={{
                           padding: '4px 12px', fontWeight: 700, fontSize: 11,
                           background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
                           color: 'var(--accent)', borderTop: '1px solid var(--border)',
@@ -1042,7 +1051,7 @@ function SousTachesTab({
               }
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={isClient ? 6 : 7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={isClient ? 7 : 8} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune sous-tâche{!showTermine ? ' en cours' : ''}.
                   </td>
                 </tr>
