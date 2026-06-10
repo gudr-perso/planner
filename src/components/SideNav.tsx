@@ -178,7 +178,7 @@ export function SideNav({
           {/* Main sections */}
           <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
             {/* Accueil */}
-            {!isClientUser && HOME_ITEMS.map((item) => (
+            {HOME_ITEMS.map((item) => (
               <NavItem
                 key={item.key}
                 item={item}
@@ -306,7 +306,7 @@ export function SideNav({
       {/* Main sections */}
       <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
         {/* Accueil */}
-        {!isClientUser && HOME_ITEMS.map((item) => (
+        {HOME_ITEMS.map((item) => (
           <NavItem
             key={item.key}
             item={item}

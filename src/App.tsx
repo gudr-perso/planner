@@ -243,7 +243,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   useEffect(() => {
     const nonClientViews: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt', 'clients', 'settings', 'users', 'briefing', 'todo', 'postits', 'partenaires', 'suivis', 'temps', 'tickets'];
     if (user?.client_code && nonClientViews.includes(view)) {
-      setView('projets');
+      setView('home');
     }
   }, [user?.client_code]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { save('sidebarCollapsed', sidebarCollapsed); }, [sidebarCollapsed]);
