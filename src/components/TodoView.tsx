@@ -26,6 +26,28 @@ const btnStyle = (active?: boolean): React.CSSProperties => ({
   color: active ? 'var(--accent)' : 'var(--text-muted)',
 });
 
+const PRIORITE_COLORS: Record<string, { bg: string; fg: string }> = {
+  urgente: { bg: '#e53e3e22', fg: '#e53e3e' },
+  urgent:  { bg: '#e53e3e22', fg: '#e53e3e' },
+  haute:   { bg: '#e53e3e22', fg: '#e53e3e' },
+  haut:    { bg: '#e53e3e22', fg: '#e53e3e' },
+  normale: { bg: '#d9730d22', fg: '#d9730d' },
+  normal:  { bg: '#d9730d22', fg: '#d9730d' },
+  moyenne: { bg: '#d9730d22', fg: '#d9730d' },
+  medium:  { bg: '#d9730d22', fg: '#d9730d' },
+  basse:   { bg: '#0f7b6c22', fg: '#0f7b6c' },
+  bas:     { bg: '#0f7b6c22', fg: '#0f7b6c' },
+  faible:  { bg: '#0f7b6c22', fg: '#0f7b6c' },
+  low:     { bg: '#0f7b6c22', fg: '#0f7b6c' },
+};
+
+function prioriteStyle(value: string): React.CSSProperties {
+  const c = PRIORITE_COLORS[value.toLowerCase().trim()];
+  return c
+    ? { background: c.bg, color: c.fg }
+    : { background: 'color-mix(in srgb, var(--text-muted) 14%, transparent)', color: 'var(--text-muted)' };
+}
+
 type SortCol = 'origine' | 'title' | 'date' | 'planifie' | 'priorite' | 'statut' | 'sousprojet' | 'projet';
 type GroupBy = 'none' | 'projet' | 'sousprojet';
 
@@ -68,7 +90,12 @@ export function TodoView() {
   const [filterOrigine, setFilterOrigine] = useState('');
   const [filterPriorite, setFilterPriorite] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
-  const [filterResponsable, setFilterResponsable] = useState('Guillaume D.');
+  const [filterResponsable, setFilterResponsable] = useState<string>(() => {
+    for (const [id, p] of store.personById.entries()) {
+      if (p.name === 'Guillaume D.') return id;
+    }
+    return '';
+  });
   const [filterProjet, setFilterProjet] = useState('');
   const [showDone, setShowDone] = useState(false);
   const [sortCol, setSortCol] = useState<SortCol>('date');
@@ -217,10 +244,19 @@ export function TodoView() {
           </span>
         ) : '—'}</td>
         <td style={{ ...td, fontWeight: 500, color: 'var(--text)' }}>{task.title}</td>
+        <td style={{ ...td, color: 'var(--text-muted)' }}>
+          {projet ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: projet.color, flexShrink: 0 }} />
+              {projet.name}
+            </span>
+          ) : '—'}
+        </td>
+        <td style={{ ...td, color: 'var(--text-muted)' }}>{sousProjet?.name ?? '—'}</td>
         <td style={{ ...td, color: 'var(--text-muted)' }}>{formatDate(task.start_date)}</td>
         <td style={{ ...td, color: 'var(--text-muted)' }}>{task.extraFields?.['Planifié le'] ? formatDate(task.extraFields['Planifié le']) : '—'}</td>
         <td style={td}>{task.extraFields?.['Priorité'] ? (
-          <span style={{ fontSize: 11, borderRadius: 4, padding: '1px 6px', background: 'color-mix(in srgb, var(--text-muted) 14%, transparent)', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: 11, borderRadius: 4, padding: '1px 6px', ...prioriteStyle(task.extraFields['Priorité']) }}>
             {task.extraFields['Priorité']}
           </span>
         ) : '—'}</td>
@@ -232,15 +268,6 @@ export function TodoView() {
           }}>
             {STATUS_LABELS[task.status]}
           </span>
-        </td>
-        <td style={{ ...td, color: 'var(--text-muted)' }}>{sousProjet?.name ?? '—'}</td>
-        <td style={{ ...td, color: 'var(--text-muted)' }}>
-          {projet ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: projet.color, flexShrink: 0 }} />
-              {projet.name}
-            </span>
-          ) : '—'}
         </td>
       </tr>
     );
@@ -388,14 +415,14 @@ export function TodoView() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr>
-              <SortTh col="origine"   label="Origine"     current={sortCol} dir={sortDir} onSort={toggleSort} />
-              <SortTh col="title"     label="Objet"       current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '30%' }} />
-              <SortTh col="date"      label="Date"        current={sortCol} dir={sortDir} onSort={toggleSort} />
-              <SortTh col="planifie"  label="Planifié le" current={sortCol} dir={sortDir} onSort={toggleSort} />
-              <SortTh col="priorite"  label="Priorité"    current={sortCol} dir={sortDir} onSort={toggleSort} />
-              <SortTh col="statut"    label="État"        current={sortCol} dir={sortDir} onSort={toggleSort} />
-              <SortTh col="sousprojet" label="Sous-projet" current={sortCol} dir={sortDir} onSort={toggleSort} />
-              <SortTh col="projet"    label="Projet"      current={sortCol} dir={sortDir} onSort={toggleSort} />
+              <SortTh col="origine"    label="Origine"     current={sortCol} dir={sortDir} onSort={toggleSort} />
+              <SortTh col="title"      label="Objet"       current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '26%' }} />
+              <SortTh col="projet"     label="Projet"      current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '16%' }} />
+              <SortTh col="sousprojet" label="Sous-projet" current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '13%' }} />
+              <SortTh col="date"       label="Date"        current={sortCol} dir={sortDir} onSort={toggleSort} />
+              <SortTh col="planifie"   label="Planifié le" current={sortCol} dir={sortDir} onSort={toggleSort} />
+              <SortTh col="priorite"   label="Priorité"    current={sortCol} dir={sortDir} onSort={toggleSort} />
+              <SortTh col="statut"     label="État"        current={sortCol} dir={sortDir} onSort={toggleSort} style={{ width: '90px' }} />
             </tr>
           </thead>
           <tbody>
@@ -414,13 +441,16 @@ export function TodoView() {
                   <tr
                     key={`g-${group.label}`}
                     onClick={() => toggleCollapse(group.label)}
-                    style={{ cursor: 'pointer', background: 'color-mix(in srgb, var(--accent) 6%, transparent)' }}
+                    style={{ cursor: 'pointer', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', userSelect: 'none' }}
                   >
                     <td colSpan={8} style={{
-                      ...thStyle, position: 'static', fontSize: 12, textTransform: 'none',
-                      letterSpacing: 0, fontWeight: 700, color: 'var(--text)',
+                      padding: '6px 10px', fontSize: 12, fontWeight: 700, color: 'var(--text)',
+                      borderBottom: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                     }}>
-                      {isCollapsed ? '▶' : '▼'} {group.label}
+                      <span style={{ marginRight: 6, fontSize: 9, color: 'var(--text-muted)', display: 'inline-block', width: 10 }}>
+                        {isCollapsed ? '▶' : '▼'}
+                      </span>
+                      {group.label}
                       <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>
                         {group.items.length} tâche{group.items.length !== 1 ? 's' : ''}
                       </span>

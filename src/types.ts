@@ -86,6 +86,7 @@ export type NotionFieldMap = {
   project: string;
   subProject?: string;
   status: string;
+  origine?: string;
 };
 
 export type NotionStatusMapping = {

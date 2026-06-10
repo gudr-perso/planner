@@ -37,6 +37,13 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
   const [endVal, setEndVal] = useState(() => sxToInput(task?.end_date ?? null));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [statusEditVal, setStatusEditVal] = useState(() => {
+    const cfg = load<{ statusMappings?: Array<{ notionValue: string; internalStatus: string }> } | null>('notionConfig', null);
+    const t = store.data.tasks.find(t => t.id === taskId);
+    return cfg?.statusMappings?.find(m => m.internalStatus === t?.status)?.notionValue ?? '';
+  });
+  const [statusEditSaving, setStatusEditSaving] = useState(false);
+  const [statusEditSaved, setStatusEditSaved] = useState(false);
 
   // Extra fields editing state: label → current displayed value
   const [extraEdits, setExtraEdits] = useState<Record<string, string>>(() => task?.extraFields ?? {});
@@ -212,6 +219,44 @@ export function TaskModal({ taskId, onClose }: { taskId: string; onClose: () => 
               {task.planned ? 'Oui' : 'Non'}
             </span>
           </Row>
+
+          {/* État éditable */}
+          {notionConfig?.fieldMap?.status && (notionConfig.statusMappings ?? []).length > 0 && (
+            <div className="pt-2 pb-1" style={{ borderTop: '1px solid var(--border)' }}>
+              <Row label="État">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={statusEditVal}
+                    onChange={async e => {
+                      const val = e.target.value;
+                      setStatusEditVal(val);
+                      setStatusEditSaving(true);
+                      const schemaProp = notionSchema.find(p => p.name === notionConfig.fieldMap!.status);
+                      try {
+                        await patchNotionProperty(task.id, notionConfig.fieldMap!.status!, schemaProp?.type ?? 'status', val);
+                        setStatusEditSaved(true);
+                        setTimeout(() => setStatusEditSaved(false), 2000);
+                      } finally {
+                        setStatusEditSaving(false);
+                      }
+                    }}
+                    disabled={statusEditSaving}
+                    style={{
+                      background: 'var(--bg-deep)', color: 'var(--text)',
+                      border: '1px solid var(--border)', borderRadius: 6,
+                      padding: '2px 6px', fontSize: 11, outline: 'none',
+                    }}
+                  >
+                    {(notionConfig.statusMappings ?? []).map(m => (
+                      <option key={m.notionValue} value={m.notionValue}>{m.notionValue}</option>
+                    ))}
+                  </select>
+                  {statusEditSaving && <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>…</span>}
+                  {statusEditSaved && <span className="text-[10px]" style={{ color: 'var(--color-success)' }}>✓ Mis à jour</span>}
+                </div>
+              </Row>
+            </div>
+          )}
 
           {/* Extra fields */}
           {task.extraFields && Object.keys(task.extraFields).length > 0 && (

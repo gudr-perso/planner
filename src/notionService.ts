@@ -504,6 +504,11 @@ export async function syncFromNotion(config: NotionConfig): Promise<DataBundle> 
       const val = extractExtraValue(props[ef.notionField], relIdToTitle);
       if (val) extraFields[ef.label] = val;
     }
+    // First-class extras from fieldMap
+    if (fm.origine && !extraFields['Origine']) {
+      const val = extractExtraValue(props[fm.origine], relIdToTitle);
+      if (val) extraFields['Origine'] = val;
+    }
 
     return [{
       id: page.id,

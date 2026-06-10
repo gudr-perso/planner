@@ -1240,10 +1240,10 @@ export function SettingsView({
             </div>
           </section>
 
-          {/* ── Mapping des champs ── */}
+          {/* ── Mapping des champs - ToDo ── */}
           {(schema.length > 0 || hasConfig) && (
             <section>
-              <SectionTitle>Mapping des champs</SectionTitle>
+              <SectionTitle>Mapping des champs - ToDo</SectionTitle>
               <FieldRow label="Nom de la tâche">
                 <PropSelect value={config.fieldMap.title ?? ''} onChange={v => updateField('title', v)} schema={schema} filter={p => ['title', 'rich_text'].includes(p.type)} />
               </FieldRow>
@@ -1264,6 +1264,9 @@ export function SettingsView({
               </FieldRow>
               <FieldRow label="Statut">
                 <PropSelect value={config.fieldMap.status ?? ''} onChange={v => updateField('status', v)} schema={schema} filter={p => ['status', 'select', 'multi_select'].includes(p.type)} />
+              </FieldRow>
+              <FieldRow label="Origine">
+                <PropSelect value={config.fieldMap.origine ?? ''} onChange={v => updateField('origine', v)} schema={schema} placeholder="(optionnel)" />
               </FieldRow>
             </section>
           )}
