@@ -115,7 +115,13 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   });
   const [suivisSearch, setSuivisSearch] = useState('');
   const googleClientId = load<string>('gcalClientId', '');
-  const [dataSource, setDataSource] = useState<'demo' | 'notion'>(() => load<'demo' | 'notion'>('dataSource', 'demo'));
+  const [dataSource, setDataSource] = useState<'demo' | 'notion'>(() => {
+    const saved = load<'demo' | 'notion' | null>('dataSource', null);
+    if (saved) return saved;
+    // Auto-détection : si une config Notion est présente, démarrer en mode Notion
+    const cfg = load<{ databaseId?: string } | null>('notionConfig', null);
+    return cfg?.databaseId ? 'notion' : 'demo';
+  });
   const [theme, setTheme] = useState<'default' | 'forge'>(() => load<'default' | 'forge'>('theme', 'default'));
   const [filters, setFiltersState] = useState<StoreCtx['filters']>(() => ({
     projectIds: new Set<string>(),
