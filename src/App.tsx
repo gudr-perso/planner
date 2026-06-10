@@ -241,7 +241,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
   }, [dataSource]);
   useEffect(() => { save('view', view); }, [view]);
   useEffect(() => {
-    const nonClientViews: ViewKey[] = ['home', 'calendar', 'rolling', 'rolling2', 'gantt', 'clients', 'settings', 'users', 'briefing', 'todo', 'postits', 'partenaires', 'suivis', 'temps', 'tickets'];
+    const nonClientViews: ViewKey[] = ['calendar', 'rolling', 'rolling2', 'gantt', 'clients', 'settings', 'users', 'briefing', 'todo', 'postits', 'partenaires', 'suivis', 'temps', 'tickets'];
     if (user?.client_code && nonClientViews.includes(view)) {
       setView('projets');
     }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { AlarmClock, ArrowUpRight, CalendarDays, Clock, FileText, ListTodo, StickyNote, Ticket, Users } from 'lucide-react';
+import { AlarmClock, ArrowUpRight, Building2, CalendarDays, Clock, FileText, FolderOpen, ListTodo, StickyNote, Ticket, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { PostItsWidget } from './PostItsWidget';
 import { NewsFeedWidget } from './NewsFeedWidget';
 import { useIsMobile } from '../hooks/useBreakpoint';
+import { useAuth } from '../store/useAuthStore';
 
 // ── Weather ────────────────────────────────────────────────────────────────────
 
@@ -196,6 +197,23 @@ type CardDef = {
   color: string;
 };
 
+const CAP_CARDS: CardDef[] = [
+  {
+    viewKey: 'clients',
+    title: 'Clients',
+    description: 'Fiches clients & contacts',
+    icon: <Building2 size={20} />,
+    color: '#8B5CF6',
+  },
+  {
+    viewKey: 'projets',
+    title: 'Projets',
+    description: 'Projets CAP en cours',
+    icon: <FolderOpen size={20} />,
+    color: '#F97316',
+  },
+];
+
 const CARDS: CardDef[] = [
   {
     viewKey: 'calendar',
@@ -336,10 +354,16 @@ function HomeCard({ card, onClick }: { card: CardDef; onClick: () => void }) {
 
 export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: ViewKey) => void; postitsRefreshKey?: number }) {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  const isClientUser = Boolean(user?.client_code);
   const today = new Date();
   const dateLabel = today.toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }).toUpperCase();
+
+  const visibleCapCards = isClientUser
+    ? CAP_CARDS.filter(c => c.viewKey === 'projets')
+    : CAP_CARDS;
 
   // ── Vue mobile : empilement vertical ────────────────────────────────────
   if (isMobile) {
@@ -356,20 +380,36 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
           <WeatherWidget />
         </div>
 
-        {/* Accès rapide : grille 2 colonnes */}
+        {/* Accès rapide CUMA : grille 2 colonnes — masqué pour les clients */}
+        {!isClientUser && (
+          <>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 10, textTransform: 'uppercase' }}>
+              Accès rapide
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
+              {CARDS.map(card => (
+                <HomeCard key={card.viewKey} card={card} onClick={() => onNavigate(card.viewKey)} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Accès rapide CAP */}
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 10, textTransform: 'uppercase' }}>
-          Accès rapide
+          Accès rapide CAP
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
-          {CARDS.map(card => (
+          {visibleCapCards.map(card => (
             <HomeCard key={card.viewKey} card={card} onClick={() => onNavigate(card.viewKey)} />
           ))}
         </div>
 
-        {/* Post-its */}
-        <div style={{ marginBottom: 24 }}>
-          <PostItsWidget refreshKey={postitsRefreshKey} />
-        </div>
+        {/* Post-its — masqués pour les clients */}
+        {!isClientUser && (
+          <div style={{ marginBottom: 24 }}>
+            <PostItsWidget refreshKey={postitsRefreshKey} />
+          </div>
+        )}
 
         {/* News */}
         <NewsFeedWidget />
@@ -377,7 +417,7 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
     );
   }
 
-  // ── Vue desktop : layout original ───────────────────────────────────────
+  // ── Vue desktop ──────────────────────────────────────────────────────────
   return (
     <div style={{
       flex: 1,
@@ -408,11 +448,27 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
 
       <div style={{ display: 'flex', gap: 40, alignItems: 'stretch' }}>
         <div style={{ flex: '0 0 auto' }}>
+          {/* Accès rapide CUMA — masqué pour les clients */}
+          {!isClientUser && (
+            <>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 14, textTransform: 'uppercase' }}>
+                Accès rapide
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 180px)', gap: 14 }}>
+                {CARDS.map(card => (
+                  <HomeCard key={card.viewKey} card={card} onClick={() => onNavigate(card.viewKey)} />
+                ))}
+              </div>
+              <div style={{ height: 1, background: 'rgba(100,160,255,0.1)', margin: '24px 0' }} />
+            </>
+          )}
+
+          {/* Accès rapide CAP */}
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 14, textTransform: 'uppercase' }}>
-            Accès rapide
+            Accès rapide CAP
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 180px)', gap: 14 }}>
-            {CARDS.map(card => (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleCapCards.length}, 180px)`, gap: 14 }}>
+            {visibleCapCards.map(card => (
               <HomeCard key={card.viewKey} card={card} onClick={() => onNavigate(card.viewKey)} />
             ))}
           </div>
@@ -421,10 +477,15 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
         <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(100,160,255,0.1)', flexShrink: 0 }} />
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flexShrink: 0 }}>
-            <PostItsWidget refreshKey={postitsRefreshKey} />
-          </div>
-          <div style={{ height: 1, background: 'rgba(100,160,255,0.1)', margin: '20px 0', flexShrink: 0 }} />
+          {/* Post-its — masqués pour les clients */}
+          {!isClientUser && (
+            <>
+              <div style={{ flexShrink: 0 }}>
+                <PostItsWidget refreshKey={postitsRefreshKey} />
+              </div>
+              <div style={{ height: 1, background: 'rgba(100,160,255,0.1)', margin: '20px 0', flexShrink: 0 }} />
+            </>
+          )}
           <div style={{ flex: 1, minHeight: 280, display: 'flex', flexDirection: 'column' }}>
             <NewsFeedWidget />
           </div>

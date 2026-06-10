@@ -104,9 +104,11 @@ export function TodoView() {
   }, [tasks]);
 
   const responsableValues = useMemo(() => {
-    const s = new Set(tasks.map(t => t.extraFields?.['Responsable'] ?? '').filter(Boolean));
-    return [...s].sort();
-  }, [tasks]);
+    const ids = new Set(tasks.map(t => t.assignee_id).filter(Boolean));
+    return [...ids]
+      .map(id => ({ id, name: store.personById.get(id)?.name ?? id }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  }, [tasks, store.personById]);
 
   const projetValues = useMemo(() => projects.map(p => p.name).sort(), [projects]);
 
@@ -123,7 +125,7 @@ export function TodoView() {
     if (filterOrigine) list = list.filter(t => t.extraFields?.['Origine'] === filterOrigine);
     if (filterPriorite) list = list.filter(t => t.extraFields?.['Priorité'] === filterPriorite);
     if (filterStatut) list = list.filter(t => STATUS_LABELS[t.status] === filterStatut);
-    if (filterResponsable) list = list.filter(t => t.extraFields?.['Responsable'] === filterResponsable);
+    if (filterResponsable) list = list.filter(t => t.assignee_id === filterResponsable);
     if (filterProjet) {
       list = list.filter(t => {
         const p = projectById.get(t.project_id);
@@ -341,7 +343,7 @@ export function TodoView() {
 
         <select value={filterResponsable} onChange={e => setFilterResponsable(e.target.value)} style={inputStyle}>
           <option value="">Responsable (tous)</option>
-          {responsableValues.map(v => <option key={v} value={v}>{v}</option>)}
+          {responsableValues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
 
         <select value={filterProjet} onChange={e => setFilterProjet(e.target.value)} style={inputStyle}>
