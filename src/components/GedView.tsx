@@ -330,6 +330,18 @@ function PropertiesModal({
     });
   }
 
+  function addCode(raw: string) {
+    const code = raw.trim();
+    if (!code) return;
+    setSelected(s => new Set(s).add(code));
+  }
+
+  // Libellé d'un code sélectionné : raison sociale si trouvée, sinon le code brut.
+  function clientLabel(code: string) {
+    const c = clientsList.find(x => x.codeTiers?.trim() === code);
+    return c?.titre ? `${c.titre} (${code})` : code;
+  }
+
   async function submit() {
     setBusy(true);
     try {
@@ -434,10 +446,31 @@ function PropertiesModal({
           {visibility === 'restricted' && (
             <div className="flex flex-col gap-1">
               <span style={{ color: 'var(--text-muted)' }}>Clients autorisés ({selected.size})</span>
+
+              {/* Codes sélectionnés (puces retirables) */}
+              {selected.size > 0 && (
+                <div className="flex flex-wrap gap-1 mb-1">
+                  {[...selected].map(code => (
+                    <span key={code} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px]" style={{ background: 'var(--accent)', color: '#fff' }}>
+                      {clientLabel(code)}
+                      <button type="button" onClick={() => toggleClient(code)} title="Retirer" style={{ lineHeight: 1, fontWeight: 700 }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Filtre la liste, et permet d'ajouter un code à la main (Entrée) */}
               <input
                 value={clientSearch}
                 onChange={e => setClientSearch(e.target.value)}
-                placeholder="Filtrer les clients…"
+                onKeyDown={e => {
+                  if ((e.key === 'Enter' || e.key === ',') && clientSearch.trim()) {
+                    e.preventDefault();
+                    addCode(clientSearch);
+                    setClientSearch('');
+                  }
+                }}
+                placeholder="Filtrer la liste, ou taper un code puis Entrée…"
                 className="rounded px-2 py-1.5 mb-1"
                 style={{ background: 'var(--bg-deep)', color: 'var(--text)', border: '1px solid var(--border)' }}
               />
@@ -447,31 +480,35 @@ function PropertiesModal({
               >
                 {filteredClients.length === 0 && (
                   <p className="px-2 py-2" style={{ color: 'var(--text-muted)' }}>
-                    Aucun client (configurez la base CAP Clients dans les Paramètres).
+                    Aucun client à afficher. Tapez un code tiers puis Entrée.
                   </p>
                 )}
-                {filteredClients.map(c => (
-                  <div
-                    key={c.id}
-                    onClick={() => { if (c.codeTiers) toggleClient(c.codeTiers); }}
-                    className="flex items-center gap-2 px-2 py-1.5"
-                    style={{
-                      borderBottom: '1px solid var(--border)',
-                      cursor: c.codeTiers ? 'pointer' : 'not-allowed',
-                      opacity: c.codeTiers ? 1 : 0.5,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selected.has(c.codeTiers)}
-                      readOnly
-                      disabled={!c.codeTiers}
-                      style={{ accentColor: 'var(--accent)', pointerEvents: 'none' }}
-                    />
-                    <span className="flex-1 truncate">{c.titre || '(sans nom)'}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>{c.codeTiers || '—'}</span>
-                  </div>
-                ))}
+                {filteredClients.map(c => {
+                  const code = c.codeTiers?.trim();
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => { if (code) toggleClient(code); }}
+                      className="flex items-center gap-2 px-2 py-1.5"
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        cursor: code ? 'pointer' : 'default',
+                        opacity: code ? 1 : 0.5,
+                      }}
+                      title={code ? '' : 'Ce client n’a pas de Code tiers (mappez-le dans Paramètres, ou saisissez le code à la main)'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!code && selected.has(code)}
+                        readOnly
+                        disabled={!code}
+                        style={{ accentColor: 'var(--accent)', pointerEvents: 'none' }}
+                      />
+                      <span className="flex-1 truncate">{c.titre || '(sans nom)'}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{code || 'pas de code'}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
