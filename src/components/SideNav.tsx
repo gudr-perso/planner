@@ -366,7 +366,7 @@ export function SideNav({
               CAP Consulting
             </div>
           )}
-          {CAP_ITEMS.filter(item => !isClientUser || item.key === 'projets').map((item) => {
+          {CAP_ITEMS.filter(item => !isClientUser || item.key === 'projets' || item.key === 'ged').map((item) => {
             const isActive = view === item.key || (item.key === 'projets' && view === 'projet-detail');
             return (
               <NavItem
