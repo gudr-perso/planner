@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlarmClock, ArrowUpRight, Building2, CalendarDays, Clock, FileText, FolderOpen, ListTodo, StickyNote, Ticket, Users } from 'lucide-react';
+import { AlarmClock, ArrowUpRight, Building2, CalendarDays, Clock, FileText, FolderOpen, Library, ListTodo, StickyNote, Ticket, Users } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { PostItsWidget } from './PostItsWidget';
 import { NewsFeedWidget } from './NewsFeedWidget';
@@ -211,6 +211,13 @@ const CAP_CARDS: CardDef[] = [
     description: 'Projets CAP en cours',
     icon: <FolderOpen size={20} />,
     color: '#F97316',
+  },
+  {
+    viewKey: 'ged',
+    title: 'GED',
+    description: 'Banque de documents',
+    icon: <Library size={20} />,
+    color: '#0EA5E9',
   },
 ];
 
