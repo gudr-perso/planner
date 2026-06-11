@@ -70,13 +70,23 @@ export default function ProjetsView({ onSelectProjet }: Props) {
       .finally(() => setLoading(false));
   }, [user?.client_code]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Garde-fou d'isolation (défense en profondeur) : pour un utilisateur client, on
+  // n'affiche QUE les projets dont le code client correspond exactement au sien — même
+  // si le filtre serveur Notion est absent, mal configuré ou imparfait. Fail-closed :
+  // un projet sans code client identifiable n'est jamais montré à un client.
+  const clientScoped = useMemo(() => {
+    const code = user?.client_code?.trim().toLowerCase();
+    if (!code) return projets; // utilisateur interne : aucun filtrage par client
+    return projets.filter(p => (p.codeClient ?? '').trim().toLowerCase() === code);
+  }, [projets, user?.client_code]);
+
   const filtered = useMemo(() =>
-    projets.filter(p =>
+    clientScoped.filter(p =>
       !search ||
       p.nom.toLowerCase().includes(search.toLowerCase()) ||
       p.tiers.toLowerCase().includes(search.toLowerCase()) ||
       p.typeProjet.toLowerCase().includes(search.toLowerCase())
-    ), [projets, search]);
+    ), [clientScoped, search]);
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
     const va = String(a[sort.col] ?? '');

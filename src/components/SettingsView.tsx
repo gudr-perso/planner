@@ -313,9 +313,6 @@ function CapTachesSection({ tachesConfig, setTachesConfig }: {
       <FieldRow label="Priorité">
         <PropSelect value={tachesConfig.prioriteField} onChange={v => setTachesConfig(p => ({ ...p, prioriteField: v }))} schema={schema} />
       </FieldRow>
-      <FieldRow label="Date d'échéance">
-        <PropSelect value={tachesConfig.dateEcheanceField} onChange={v => setTachesConfig(p => ({ ...p, dateEcheanceField: v }))} schema={schema} />
-      </FieldRow>
       <FieldRow label="Projet (relation)">
         <PropCombo value={tachesConfig.projetField} onChange={v => setTachesConfig(p => ({ ...p, projetField: v }))} schema={schema} placeholder="Nom exact du champ relation…" />
       </FieldRow>
@@ -366,6 +363,7 @@ function CapSousTachesSection({ sousTachesConfig, setSousTachesConfig }: {
       <FieldRow label="Canal"><PropSelect value={sousTachesConfig.canalField} onChange={v => setSousTachesConfig(p => ({ ...p, canalField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Affecté à"><PropSelect value={sousTachesConfig.affecteField ?? ''} onChange={v => setSousTachesConfig(p => ({ ...p, affecteField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Date"><PropSelect value={sousTachesConfig.dateField} onChange={v => setSousTachesConfig(p => ({ ...p, dateField: v }))} schema={schema} /></FieldRow>
+      <FieldRow label="Date d'échéance"><PropSelect value={sousTachesConfig.dateEcheanceField ?? ''} onChange={v => setSousTachesConfig(p => ({ ...p, dateEcheanceField: v }))} schema={schema} /></FieldRow>
       <FieldRow label="Tâche liée (relation)"><PropCombo value={sousTachesConfig.tacheField} onChange={v => setSousTachesConfig(p => ({ ...p, tacheField: v }))} schema={schema} placeholder="Nom exact du champ relation…" /></FieldRow>
       <FieldRow label="Filtre projet"><PropCombo value={sousTachesConfig.projetFilterField ?? ''} onChange={v => { const t = schema.find(p => p.name === v)?.type ?? ''; setSousTachesConfig(p => ({ ...p, projetFilterField: v, projetFilterFieldType: t })); }} schema={schema} placeholder="Champ relation ou formule vers Projet…" /></FieldRow>
       <FieldRow label="Valeur Terminé">

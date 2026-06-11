@@ -445,6 +445,7 @@ interface Props {
   projetId: string;
   projetNom: string;
   projetCode?: string;
+  refreshKey?: number;
   onBack: () => void;
 }
 
@@ -452,7 +453,7 @@ type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges' | 'documents' | 'tem
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export default function ProjetDetailView({ projetId, projetNom, projetCode, onBack }: Props) {
+export default function ProjetDetailView({ projetId, projetNom, projetCode, refreshKey = 0, onBack }: Props) {
   const { user } = useAuth();
   const isClient = !!user?.client_code;
   const [activeTab, setActiveTab] = useState<TabId>('taches');
@@ -494,7 +495,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
       .then(data => { setTaches(data); })
       .catch(e => setTachesError(String(e)))
       .finally(() => setTachesLoading(false));
-  }, [projetId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projetId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tacheIdToName = useMemo(
     () => new Map(taches.map(t => [t.id, t.nom])),
@@ -598,6 +599,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               projetCode={projetCode}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
+              refreshKey={refreshKey}
               isClient={isClient}
               selectedId={selectedId}
               onSelectRow={openDetail}
@@ -609,6 +611,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               projetCode={projetCode}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
+              refreshKey={refreshKey}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -617,6 +620,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <EchangesTab
               projetId={projetId}
               projetCode={projetCode}
+              refreshKey={refreshKey}
               selectedId={selectedId}
               onSelectRow={openDetail}
             />
@@ -625,6 +629,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
             <DocumentsTab
               projetId={projetId}
               projetCode={projetCode}
+              refreshKey={refreshKey}
               isClient={isClient}
               selectedId={selectedId}
               onSelectRow={openDetail}
@@ -636,6 +641,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, onBa
               projetCode={projetCode}
               tacheIdToName={tacheIdToName}
               tachesReady={!tachesLoading}
+              refreshKey={refreshKey}
               isClient={isClient}
               selectedId={selectedId}
               onSelectRow={openDetail}
@@ -702,7 +708,7 @@ function TachesTab({
 
   const [showTermine, setShowTermine] = useState(false);
   const [sort, setSort] = useState<{
-    col: 'nom' | 'canal' | 'statut' | 'priorite' | 'dateEcheance';
+    col: 'nom' | 'canal' | 'statut' | 'priorite';
     dir: 'asc' | 'desc';
   }>({ col: 'nom', dir: 'asc' });
 
@@ -726,7 +732,6 @@ function TachesTab({
     { key: 'canal', label: 'Canal' },
     { key: 'statut', label: 'Statut' },
     { key: 'priorite', label: 'Priorité' },
-    { key: 'dateEcheance', label: 'Échéance' },
   ];
 
   return (
@@ -759,7 +764,7 @@ function TachesTab({
                     {label}{sort.col === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
                   </th>
                 ))}
-                <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Suivi</th>
+                {!isClient && <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Suivi</th>}
                 {!isClient && <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Lien</th>}
               </tr>
             </thead>
@@ -786,14 +791,13 @@ function TachesTab({
                   <td className="px-3 py-2"><Badge label={t.canal} color={t.canalColor} /></td>
                   <td className="px-3 py-2"><Badge label={t.statut} color={t.statutColor} /></td>
                   <td className="px-3 py-2"><Badge label={t.priorite} color={t.prioriteColor} /></td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(t.dateEcheance)}</td>
-                  <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{t.suivis.join(', ') || '—'}</td>
+                  {!isClient && <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{t.suivis.join(', ') || '—'}</td>}
                   {!isClient && <td className="px-3 py-2"><LienCell url={t.notion_url} /></td>}
                 </tr>
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={isClient ? 6 : 7} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={isClient ? 4 : 6} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune tâche{!showTermine ? ' en cours' : ''}.
                   </td>
                 </tr>
@@ -831,6 +835,7 @@ function SousTacheRow({ e, isClient, selectedId, onSelectRow }: {
       <td className="px-3 py-2"><Badge label={e.canal} color={e.canalColor} /></td>
       <td className="px-3 py-2"><Badge label={e.affecte} color={e.affecteColor} /></td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.date)}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDate(e.dateEcheance)}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
       {!isClient && <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>}
     </tr>
@@ -842,6 +847,7 @@ function SousTachesTab({
   projetCode,
   tacheIdToName,
   tachesReady,
+  refreshKey,
   isClient,
   selectedId,
   onSelectRow,
@@ -850,20 +856,21 @@ function SousTachesTab({
   projetCode?: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
+  refreshKey: number;
   isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
   const config = load<SousTachesConfig>('sousTachesConfig', {
     databaseId: '', nomField: 'Name', statutField: '', prioriteField: '',
-    canalField: '', dateField: '', tacheField: '', statutTermineValue: 'Terminé',
+    canalField: '', dateField: '', dateEcheanceField: '', tacheField: '', statutTermineValue: 'Terminé',
   });
 
   const [entries, setEntries] = useState<SousTacheEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showTermine, setShowTermine] = useState(false);
-  const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'priorite' | 'canal' | 'affecte' | 'date'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
+  const [sort, setSort] = useState<{ col: 'nom' | 'statut' | 'priorite' | 'canal' | 'affecte' | 'date' | 'dateEcheance'; dir: 'asc' | 'desc' }>({ col: 'nom', dir: 'asc' });
   const [groupByTache, setGroupByTache] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filterNom, setFilterNom] = useState('');
@@ -888,7 +895,7 @@ function SousTachesTab({
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [tachesReady, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tachesReady, config.databaseId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allStatuts = useMemo(() => [...new Set(entries.map(e => e.statut).filter(Boolean))].sort(), [entries]);
   const allPriorites = useMemo(() => [...new Set(entries.map(e => e.priorite).filter(Boolean))].sort(), [entries]);
@@ -913,8 +920,9 @@ function SousTachesTab({
   );
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
-    const va = sort.col === 'date' ? (a.date ?? '') : String(a[sort.col] ?? '');
-    const vb = sort.col === 'date' ? (b.date ?? '') : String(b[sort.col] ?? '');
+    const isDateCol = sort.col === 'date' || sort.col === 'dateEcheance';
+    const va = isDateCol ? (a[sort.col] ?? '') : String(a[sort.col] ?? '');
+    const vb = isDateCol ? (b[sort.col] ?? '') : String(b[sort.col] ?? '');
     return sort.dir === 'asc' ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
   }), [filtered, sort]);
 
@@ -944,6 +952,7 @@ function SousTachesTab({
     { key: 'canal', label: 'Canal' },
     { key: 'affecte', label: 'Affecté à' },
     { key: 'date', label: 'Date' },
+    { key: 'dateEcheance', label: 'Échéance' },
   ];
 
   return (
@@ -1033,7 +1042,7 @@ function SousTachesTab({
                 ? grouped.map(([tacheNom, rows]) => (
                     <React.Fragment key={`grp-${tacheNom}`}>
                       <tr>
-                        <td colSpan={isClient ? 7 : 8} style={{
+                        <td colSpan={isClient ? 8 : 9} style={{
                           padding: '4px 12px', fontWeight: 700, fontSize: 11,
                           background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
                           color: 'var(--accent)', borderTop: '1px solid var(--border)',
@@ -1051,7 +1060,7 @@ function SousTachesTab({
               }
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={isClient ? 7 : 8} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={isClient ? 8 : 9} className="px-3 py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune sous-tâche{!showTermine ? ' en cours' : ''}.
                   </td>
                 </tr>
@@ -1071,6 +1080,7 @@ function SuiviProjetTab({
   projetCode,
   tacheIdToName,
   tachesReady,
+  refreshKey,
   selectedId,
   onSelectRow,
 }: {
@@ -1078,6 +1088,7 @@ function SuiviProjetTab({
   projetCode?: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
+  refreshKey: number;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
@@ -1105,7 +1116,7 @@ function SuiviProjetTab({
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [tachesReady, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tachesReady, config.databaseId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() =>
     showTermine ? entries : entries.filter(e => e.statut !== config.statutTermineValue),
@@ -1198,11 +1209,13 @@ function SuiviProjetTab({
 function EchangesTab({
   projetId,
   projetCode,
+  refreshKey,
   selectedId,
   onSelectRow,
 }: {
   projetId: string;
   projetCode?: string;
+  refreshKey: number;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
 }) {
@@ -1236,7 +1249,7 @@ function EchangesTab({
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projetId, config.databaseId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allCanaux = useMemo(() => [...new Set(entries.map(e => e.canal).filter(Boolean))].sort(), [entries]);
 
@@ -1379,12 +1392,14 @@ function EchangesTab({
 function DocumentsTab({
   projetId,
   projetCode,
+  refreshKey,
   isClient,
   selectedId,
   onSelectRow,
 }: {
   projetId: string;
   projetCode?: string;
+  refreshKey: number;
   isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string, sharedUrl?: string, date?: string, projet?: string) => void;
@@ -1414,7 +1429,7 @@ function DocumentsTab({
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [projetId, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projetId, config.databaseId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allStatuts = useMemo(() => [...new Set(entries.map(e => e.statut).filter(Boolean))].sort(), [entries]);
   const allProjets = useMemo(() => [...new Set(entries.map(e => e.projet).filter((p): p is string => !!p))].sort(), [entries]);
@@ -1615,6 +1630,7 @@ function TempsProjetTab({
   projetCode,
   tacheIdToName,
   tachesReady,
+  refreshKey,
   isClient,
   selectedId,
   onSelectRow,
@@ -1623,6 +1639,7 @@ function TempsProjetTab({
   projetCode?: string;
   tacheIdToName: Map<string, string>;
   tachesReady: boolean;
+  refreshKey: number;
   isClient?: boolean;
   selectedId: string | null;
   onSelectRow: (id: string, title: string, url?: string) => void;
@@ -1657,7 +1674,7 @@ function TempsProjetTab({
       .then(setEntries)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [tachesReady, config.databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tachesReady, config.databaseId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() => entries.filter(e => {
     if (filterDescription && !e.description.toLowerCase().includes(filterDescription.toLowerCase())) return false;

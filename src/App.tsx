@@ -564,6 +564,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                       projetId={selectedProjetId}
                       projetNom={selectedProjetNom}
                       projetCode={selectedProjetCode}
+                      refreshKey={viewRefreshKeys['projet-detail'] ?? 0}
                       onBack={() => {
                         setSelectedProjetId('');
                         setSelectedProjetNom('');

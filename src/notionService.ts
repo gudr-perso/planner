@@ -1336,7 +1336,10 @@ export async function fetchProjets(config: ProjetsConfig, clientCode?: string | 
       const statut = config.statutField ? selectName(props[config.statutField]) : '';
       const statutColor = config.statutField ? selectColor(props[config.statutField]) : 'default';
       const codeProjet = config.codeProjetField ? readFieldAsString(props[config.codeProjetField]) : undefined;
-      results.push({ id: page.id, nom, tiers, tiersId, typeProjet, dateDebut, statut, statutColor, notion_url: page.url, codeProjet });
+      const codeClient = config.codeClientField
+        ? (readFieldAsString(props[config.codeClientField]) || uniqueIdText(props[config.codeClientField]) || undefined)
+        : undefined;
+      results.push({ id: page.id, nom, tiers, tiersId, typeProjet, dateDebut, statut, statutColor, notion_url: page.url, codeProjet, codeClient });
     }
     cursor = (data.next_cursor as string | null) ?? undefined;
   } while (cursor);
@@ -1474,6 +1477,7 @@ export async function fetchSousTaches(
 
     const nom = plainText(props[config.nomField]);
     const date = config.dateField ? (props[config.dateField]?.date as { start?: string } | null)?.start ?? null : null;
+    const dateEcheance = config.dateEcheanceField ? (props[config.dateEcheanceField]?.date as { start?: string } | null)?.start ?? null : null;
     const statutProp = props[config.statutField];
     const statut = (statutProp?.status as { name?: string } | undefined)?.name ?? selectName(statutProp);
     const statutColor = (statutProp?.status as { color?: string } | undefined)?.color ?? selectColor(statutProp);
@@ -1486,7 +1490,7 @@ export async function fetchSousTaches(
     const affecteProp = config.affecteField ? props[config.affecteField] : null;
     const affecte = assigneeList(affecteProp).map(p => p.name).join(', ');
     const affecteColor = (affecteProp?.select as { color?: string } | undefined)?.color;
-    results.push({ id: page.id, nom, date, statut, statutColor, priorite, prioriteColor, canal, canalColor, affecte, affecteColor, tacheIds, tacheNoms, notion_url: page.url });
+    results.push({ id: page.id, nom, date, dateEcheance, statut, statutColor, priorite, prioriteColor, canal, canalColor, affecte, affecteColor, tacheIds, tacheNoms, notion_url: page.url });
   }
   return results;
 }

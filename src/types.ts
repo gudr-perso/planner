@@ -354,6 +354,7 @@ export type ProjetEntry = {
   statutColor?: string;
   notion_url?: string;
   codeProjet?: string;     // code unique lu depuis codeProjetField (ex: "PJ-8")
+  codeClient?: string;     // code du client propriétaire lu depuis codeClientField (ex: "TI-17")
 };
 
 // ── Tâches (CAP Consulting) ───────────────────────────────────────────────────
@@ -395,6 +396,7 @@ export type SousTachesConfig = {
   prioriteField: string;
   canalField: string;
   dateField: string;             // date
+  dateEcheanceField?: string;    // date → Date d'échéance
   affecteField?: string;         // select / people → Affecté à
   tacheField: string;            // relation → Tâches
   statutTermineValue: string;
@@ -414,6 +416,7 @@ export type SousTacheEntry = {
   affecte: string;
   affecteColor?: string;
   date: string | null;
+  dateEcheance: string | null;
   tacheIds: string[];            // IDs bruts (pour filtrage par projet)
   tacheNoms: string[];           // noms résolus depuis tâches du projet
   notion_url?: string;

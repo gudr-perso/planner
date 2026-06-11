@@ -170,6 +170,7 @@ export async function loadDemoData(url = '/demo-data.xlsx'): Promise<FullDemoDat
     typeProjet: str(r.typeProjet), dateDebut: str(r.dateDebut) || null,
     statut: str(r.statut), statutColor: str(r.statutColor) || undefined,
     codeProjet: str(r.codeProjet) || undefined,
+    codeClient: str(r.codeClient) || undefined,
   }));
 
   // CAP sub-data grouped by projetId
@@ -200,6 +201,7 @@ export async function loadDemoData(url = '/demo-data.xlsx'): Promise<FullDemoDat
       canal: str(r.canal), canalColor: str(r.canalColor) || undefined,
       affecte: str(r.affecte), affecteColor: str(r.affecteColor) || undefined,
       date: str(r.date) || null,
+      dateEcheance: str(r.dateEcheance) || null,
       tacheIds: [], tacheNoms: parseArr(r.tacheNoms),
     };
     ensureCap(pid).sousTaches.push(entry);
