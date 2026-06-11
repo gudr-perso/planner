@@ -181,6 +181,14 @@ function plainText(prop: PropVal): string {
   return arr.map(t => t.plain_text ?? '').join('');
 }
 
+// Notion "ID unique" (unique_id) : { prefix: "TI", number: 17 } → "TI-17"
+function uniqueIdText(prop: PropVal): string {
+  const u = (prop as Record<string, unknown> | null | undefined)?.unique_id as
+    { prefix?: string | null; number?: number | null } | undefined;
+  if (!u || u.number == null) return '';
+  return u.prefix ? `${u.prefix}-${u.number}` : String(u.number);
+}
+
 function selectName(prop: PropVal): string {
   if (!prop) return '';
   return (
@@ -1271,7 +1279,8 @@ export async function fetchClients(config: ClientsConfig): Promise<ClientEntry[]
     for (const page of (data.results ?? []) as Array<{ id: string; url: string; properties: Record<string, PropVal> }>) {
       const props = page.properties ?? {};
       const titre = plainText(props[config.titreField]);
-      const codeTiers = plainText(props[config.codeTiersField]);
+      const codeP = props[config.codeTiersField];
+      const codeTiers = plainText(codeP) || uniqueIdText(codeP) || selectName(codeP);
       const lieu = plainText(props[config.lieuField]);
       results.push({ id: page.id, titre, codeTiers, lieu, notion_url: page.url });
     }
