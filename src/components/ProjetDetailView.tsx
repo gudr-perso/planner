@@ -66,6 +66,14 @@ function formatDateTime(iso: string | null): string {
   }
 }
 
+// Arrondit une valeur numérique (string brute Notion, ex: "3.666666666667") à N décimales.
+// Renvoie '—' si vide ou non numérique. decimals=2 pour les heures, 0 pour les minutes.
+function formatNum(v?: string | null, decimals = 2): string {
+  if (v == null || v === '') return '—';
+  const n = parseFloat(String(v).replace(',', '.'));
+  return isNaN(n) ? (v || '—') : n.toFixed(decimals);
+}
+
 function LienCell({ url }: { url?: string }) {
   if (!url) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
   return (
@@ -1616,9 +1624,9 @@ function TempsRow({ e, isClient, selectedId, onSelectRow }: {
       <td className="px-3 py-2 font-medium" style={{ color: 'var(--text)' }}>{e.description || '(sans titre)'}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.debut)}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatDateTime(e.fin)}</td>
-      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeMin || '—'}</td>
-      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.dureeH || '—'}</td>
-      <td className="px-3 py-2" style={{ color: 'var(--text-muted)', fontWeight: e.facturableH ? 600 : undefined }}>{e.facturableH || '—'}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatNum(e.dureeMin, 0)}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{formatNum(e.dureeH)}</td>
+      <td className="px-3 py-2" style={{ color: 'var(--text-muted)', fontWeight: e.facturableH ? 600 : undefined }}>{formatNum(e.facturableH)}</td>
       <td className="px-3 py-2" style={{ color: 'var(--text-muted)' }}>{e.tacheNoms.join(', ') || '—'}</td>
       {!isClient && <td className="px-3 py-2"><LienCell url={e.notion_url} /></td>}
     </tr>
