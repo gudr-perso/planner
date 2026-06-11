@@ -37,7 +37,19 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     return new Response(JSON.stringify({ error: 'Token Notion non configuré (demandez à l\'administrateur)' }), { status: 403, headers: h });
   }
 
-  const token = await decrypt(row.value, env.SECRETS_ENCRYPTION_KEY);
+  // Déchiffrement du token — ne doit jamais faire planter l'app (500 brut).
+  // En cas d'échec (clé manquante/incorrecte), on renvoie une erreur propre :
+  // le reste du site reste utilisable et l'admin peut re-saisir le token.
+  let token: string;
+  try {
+    token = await decrypt(row.value, env.SECRETS_ENCRYPTION_KEY);
+  } catch {
+    const h = new Headers(CORS);
+    return new Response(
+      JSON.stringify({ error: 'Token Notion illisible (clé de chiffrement indisponible). Reconfigurez le token dans les Paramètres.' }),
+      { status: 502, headers: h },
+    );
+  }
 
   const url = new URL(request.url);
   const notionPath = url.pathname.replace(/^\/notion-api/, '');
@@ -50,11 +62,20 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   const nv = request.headers.get('Notion-Version');
   upstream.set('Notion-Version', nv ?? '2022-06-28');
 
-  const res = await fetch(notionUrl, {
-    method: request.method,
-    headers: upstream,
-    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
-  });
+  let res: Response;
+  try {
+    res = await fetch(notionUrl, {
+      method: request.method,
+      headers: upstream,
+      body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
+    });
+  } catch {
+    const h = new Headers(CORS);
+    return new Response(
+      JSON.stringify({ error: 'Service Notion injoignable. Réessayez plus tard.' }),
+      { status: 502, headers: h },
+    );
+  }
 
   const responseHeaders = new Headers(res.headers);
   for (const [k, v] of Object.entries(CORS)) responseHeaders.set(k, v);
