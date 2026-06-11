@@ -1,15 +1,21 @@
 import {
   MAX_UPLOAD_BYTES, extOf, isAllowedExt, mimeFor,
   accessClause, extractText, refreshFts,
+  VISIBILITIES, isInternalUser, parseClients, setFileClients,
 } from './_helpers.js';
 
-// GET /api/ged  — liste des documents (filtrable ?projet_id=, scopé par client_code)
+function normVisibility(v) {
+  return VISIBILITIES.includes(v) ? v : 'internal';
+}
+
+// GET /api/ged  — liste des documents (filtrable ?projet_id=, scopé selon la visibilité)
 export async function onRequestGet({ request, env, data }) {
   const url = new URL(request.url);
   const projetId = url.searchParams.get('projet_id');
 
   let sql = `SELECT id, r2_key, nom, kind, url, mime, ext, taille, projet_id, projet_code,
-                    client_code, tags, description, uploaded_by, created_at, updated_at
+                    client_code, visibility, tags, description, uploaded_by, created_at, updated_at,
+                    (SELECT group_concat(client_code) FROM ged_file_clients WHERE file_id = ged_files.id) AS clients
              FROM ged_files WHERE 1=1`;
   const binds = [];
 
@@ -19,11 +25,17 @@ export async function onRequestGet({ request, env, data }) {
   sql += ' ORDER BY created_at DESC';
 
   const { results } = await env.DB.prepare(sql).bind(...binds).all();
-  return Response.json({ files: results });
+  const files = results.map(r => ({ ...r, clients: r.clients ? String(r.clients).split(',') : [] }));
+  return Response.json({ files });
 }
 
 // POST /api/ged  — upload d'un fichier (multipart/form-data) ou création d'un lien web (JSON)
+// Réservé aux internes : les clients sont en lecture seule.
 export async function onRequestPost({ request, env, data }) {
+  if (!isInternalUser(data.user)) {
+    return Response.json({ error: 'Lecture seule : ajout réservé aux administrateurs' }, { status: 403 });
+  }
+
   const contentType = request.headers.get('content-type') || '';
 
   // — Lien web externe (pas de binaire) —
@@ -33,15 +45,17 @@ export async function onRequestPost({ request, env, data }) {
       return Response.json({ error: 'Champs requis : nom, url' }, { status: 400 });
     }
     const id = crypto.randomUUID();
-    const clientCode = data.user.role === 'admin' ? (body.client_code?.trim() || null) : (data.user.client_code || null);
     const tags = (body.tags || '').trim();
+    const visibility = normVisibility(body.visibility);
+    const clients = visibility === 'restricted' ? parseClients(body.clients) : [];
     await env.DB.prepare(
-      `INSERT INTO ged_files (id, r2_key, nom, kind, url, ext, projet_id, projet_code, client_code, tags, description, uploaded_by)
-       VALUES (?, NULL, ?, 'link', ?, 'html', ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO ged_files (id, r2_key, nom, kind, url, ext, projet_id, projet_code, client_code, visibility, tags, description, uploaded_by)
+       VALUES (?, NULL, ?, 'link', ?, 'html', ?, ?, ?, ?, ?, ?, ?)`
     ).bind(id, body.nom.trim(), body.url.trim(), body.projet_id || null, body.projet_code || null,
-           clientCode, tags, body.description || null, data.user.id).run();
+           body.client_code?.trim() || null, visibility, tags, body.description || null, data.user.id).run();
+    if (clients.length) await setFileClients(env.DB, id, clients);
     await refreshFts(env.DB, { id, nom: body.nom, tags, contenu: '' });
-    return Response.json({ file: { id, nom: body.nom.trim(), kind: 'link', url: body.url.trim() } }, { status: 201 });
+    return Response.json({ file: { id, nom: body.nom.trim(), kind: 'link', url: body.url.trim(), visibility, clients } }, { status: 201 });
   }
 
   // — Fichier binaire —
@@ -74,31 +88,32 @@ export async function onRequestPost({ request, env, data }) {
 
   await env.GED.put(r2Key, bytes, { httpMetadata: { contentType: mime } });
 
-  const clientCode = data.user.role === 'admin'
-    ? (form.get('client_code')?.toString().trim() || null)
-    : (data.user.client_code || null);
   const tags = (form.get('tags')?.toString() || '').trim();
   const description = form.get('description')?.toString() || null;
   const projetId = form.get('projet_id')?.toString() || null;
   const projetCode = form.get('projet_code')?.toString() || null;
+  const clientCode = form.get('client_code')?.toString().trim() || null;
+  const visibility = normVisibility(form.get('visibility')?.toString());
+  const clients = visibility === 'restricted' ? parseClients(form.get('clients')?.toString()) : [];
 
   try {
     await env.DB.prepare(
-      `INSERT INTO ged_files (id, r2_key, nom, kind, mime, ext, taille, projet_id, projet_code, client_code, tags, description, uploaded_by)
-       VALUES (?, ?, ?, 'file', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(id, r2Key, filename, mime, ext, file.size, projetId, projetCode, clientCode, tags, description, data.user.id).run();
+      `INSERT INTO ged_files (id, r2_key, nom, kind, mime, ext, taille, projet_id, projet_code, client_code, visibility, tags, description, uploaded_by)
+       VALUES (?, ?, ?, 'file', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, r2Key, filename, mime, ext, file.size, projetId, projetCode, clientCode, visibility, tags, description, data.user.id).run();
   } catch (e) {
     // rollback R2 si l'insert D1 échoue
     await env.GED.delete(r2Key).catch(() => {});
     throw e;
   }
+  if (clients.length) await setFileClients(env.DB, id, clients);
 
   // Extraction de texte + indexation (best-effort, ne bloque pas l'upload)
   const contenu = await extractText(env, file.name, mime, bytes);
   await refreshFts(env.DB, { id, nom: filename, tags, contenu });
 
   return Response.json({
-    file: { id, nom: filename, kind: 'file', ext, mime, taille: file.size, indexed: contenu.length > 0 },
+    file: { id, nom: filename, kind: 'file', ext, mime, taille: file.size, visibility, clients, indexed: contenu.length > 0 },
   }, { status: 201 });
 }
 

@@ -369,7 +369,7 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
   }).toUpperCase();
 
   const visibleCapCards = isClientUser
-    ? CAP_CARDS.filter(c => c.viewKey === 'projets')
+    ? CAP_CARDS.filter(c => c.viewKey === 'projets' || c.viewKey === 'ged')
     : CAP_CARDS;
 
   // ── Vue mobile : empilement vertical ────────────────────────────────────
