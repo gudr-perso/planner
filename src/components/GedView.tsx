@@ -451,16 +451,26 @@ function PropertiesModal({
                   </p>
                 )}
                 {filteredClients.map(c => (
-                  <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 cursor-pointer" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div
+                    key={c.id}
+                    onClick={() => { if (c.codeTiers) toggleClient(c.codeTiers); }}
+                    className="flex items-center gap-2 px-2 py-1.5"
+                    style={{
+                      borderBottom: '1px solid var(--border)',
+                      cursor: c.codeTiers ? 'pointer' : 'not-allowed',
+                      opacity: c.codeTiers ? 1 : 0.5,
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={selected.has(c.codeTiers)}
-                      onChange={() => toggleClient(c.codeTiers)}
+                      readOnly
                       disabled={!c.codeTiers}
+                      style={{ accentColor: 'var(--accent)', pointerEvents: 'none' }}
                     />
                     <span className="flex-1 truncate">{c.titre || '(sans nom)'}</span>
                     <span style={{ color: 'var(--text-muted)' }}>{c.codeTiers || '—'}</span>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
