@@ -36,6 +36,7 @@ import { PostItsView } from './components/PostItsView';
 import ClientsView from './components/ClientsView';
 import ProjetsView from './components/ProjetsView';
 import ProjetDetailView from './components/ProjetDetailView';
+import GedView from './components/GedView';
 import type { PartenaireEntry } from './types';
 
 // Google Client ID stored in localStorage (configured via Settings), never baked into the bundle.
@@ -513,8 +514,8 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
               onOpenMobileNav={() => setMobileNavOpen(true)}
             />
             <div className="flex-1 flex min-h-0 relative">
-              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && view !== 'clients' && view !== 'projets' && view !== 'projet-detail' && <UnplannedPanel width={panelWidth} />}
-              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'clients' && view !== 'projets' && view !== 'projet-detail' && (
+              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'users' && view !== 'clients' && view !== 'projets' && view !== 'projet-detail' && view !== 'ged' && <UnplannedPanel width={panelWidth} />}
+              {!isTablet && view !== 'home' && view !== 'settings' && view !== 'briefing' && view !== 'todo' && view !== 'partenaires' && view !== 'suivis' && view !== 'temps' && view !== 'tickets' && view !== 'postits' && view !== 'clients' && view !== 'projets' && view !== 'projet-detail' && view !== 'ged' && (
                 <div
                   className="w-1 shrink-0 cursor-col-resize transition-colors"
                   style={{ background: 'var(--border)' }}
@@ -571,6 +572,7 @@ function PlannerApp({ onGcalClientIdChange, onLogout }: { onGcalClientIdChange: 
                       }}
                     />
                   ) : null)
+                  : view === 'ged' ? <GedView />
                   : (isTablet ? <MobileUnavailable viewName="Le Gantt" /> : <GanttView />)}
               </main>
             </div>

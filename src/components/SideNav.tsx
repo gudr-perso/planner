@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlarmClock, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, FolderOpen, Home, ListTodo, LogOut, Menu, Pin, Settings, TicketCheck, UserCog, Users, X } from 'lucide-react';
+import { AlarmClock, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, FolderOpen, Home, Library, ListTodo, LogOut, Menu, Pin, Settings, TicketCheck, UserCog, Users, X } from 'lucide-react';
 import type { ViewKey } from './Toolbar';
 import { useAuth } from '../store/useAuthStore';
 import { useIsTablet } from '../hooks/useBreakpoint';
@@ -27,6 +27,7 @@ const CUMA_ITEMS: NavItemDef[] = [
 const CAP_ITEMS: NavItemDef[] = [
   { key: 'clients', icon: <Building2 size={17} />, label: 'Clients' },
   { key: 'projets', icon: <FolderOpen size={17} />, label: 'Projets' },
+  { key: 'ged',     icon: <Library size={17} />,   label: 'GED' },
 ];
 
 const BOTTOM_ITEMS: NavItemDef[] = [

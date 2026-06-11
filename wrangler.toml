@@ -10,3 +10,12 @@ SESSION_DURATION_HOURS = "8"
 binding = "DB"
 database_name = "planner-users"
 database_id = "4771f99f-1643-4441-a02b-7f5ab31582a6"
+
+# GED (Gestion Électronique des Documents) — stockage des binaires
+[[r2_buckets]]
+binding = "GED"
+bucket_name = "cap-ged"
+
+# Workers AI — extraction de texte (toMarkdown) à l'upload pour l'index FTS
+[ai]
+binding = "AI"
