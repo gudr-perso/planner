@@ -3,6 +3,8 @@ import { load } from '../persistence';
 import { fetchClients } from '../notionService';
 import type { ClientsConfig, ClientEntry } from '../types';
 import { getDemoStore } from '../demoData';
+import { useIsMobile } from '../hooks/useBreakpoint';
+import { MobileListCard } from './MobileListCard';
 
 let _clientsCache: ClientEntry[] | null = null;
 let _clientsCacheKey = '';
@@ -21,6 +23,21 @@ function MapsButton({ lieu }: { lieu: string }) {
       onClick={e => e.stopPropagation()}
     >
       📍
+    </a>
+  );
+}
+
+// Lieu cliquable (ouvre Google Maps) — utilisé dans les cartes mobile.
+function MapsLink({ lieu }: { lieu: string }) {
+  return (
+    <a
+      href={`https://maps.google.com/?q=${encodeURIComponent(lieu)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ color: 'inherit' }}
+      onClick={e => e.stopPropagation()}
+    >
+      {lieu}
     </a>
   );
 }
@@ -101,6 +118,7 @@ function CardView({ clients }: { clients: ClientEntry[] }) {
 }
 
 export default function ClientsView() {
+  const isMobile = useIsMobile();
   const [clients, setClients] = useState<ClientEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -166,31 +184,47 @@ export default function ClientsView() {
           className="text-xs rounded px-2 py-1 ml-auto"
           style={{
             background: 'var(--bg-deep)', color: 'var(--text)',
-            border: '1px solid var(--border)', width: 180,
+            border: '1px solid var(--border)',
+            width: isMobile ? undefined : 180,
+            flex: isMobile ? 1 : undefined, minWidth: 0,
           }}
         />
-        <button
-          onClick={toggleViewMode}
-          className="text-xs px-3 py-1.5 rounded shrink-0"
-          style={{ background: 'var(--border)', color: 'var(--text)' }}
-        >
-          {viewMode === 'card' ? 'Liste' : 'Cartes'}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={toggleViewMode}
+            className="text-xs px-3 py-1.5 rounded shrink-0"
+            style={{ background: 'var(--border)', color: 'var(--text)' }}
+          >
+            {viewMode === 'card' ? 'Liste' : 'Cartes'}
+          </button>
+        )}
       </div>
-      <div className="flex-1 overflow-auto p-4">
+      <div className={`flex-1 overflow-auto ${isMobile ? '' : 'p-4'}`}>
         {loading && (
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Chargement…</p>
+          <p className="text-xs p-4" style={{ color: 'var(--text-muted)' }}>Chargement…</p>
         )}
         {error && (
-          <p className="text-xs" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>
+          <p className="text-xs p-4" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>
         )}
         {!loading && !error && filtered.length === 0 && (
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Aucun client trouvé.</p>
+          <p className="text-xs p-4" style={{ color: 'var(--text-muted)' }}>Aucun client trouvé.</p>
         )}
-        {!loading && !error && filtered.length > 0 && viewMode === 'list' && (
+        {!loading && !error && filtered.length > 0 && isMobile && (
+          filtered.map(c => (
+            <MobileListCard
+              key={c.id}
+              title={c.titre || '(sans nom)'}
+              meta={[
+                ...(c.codeTiers ? [{ icon: '🏷', text: c.codeTiers }] : []),
+                ...(c.lieu ? [{ icon: '📍', text: <MapsLink lieu={c.lieu} /> }] : []),
+              ]}
+            />
+          ))
+        )}
+        {!loading && !error && filtered.length > 0 && !isMobile && viewMode === 'list' && (
           <ListView clients={filtered} />
         )}
-        {!loading && !error && filtered.length > 0 && viewMode === 'card' && (
+        {!loading && !error && filtered.length > 0 && !isMobile && viewMode === 'card' && (
           <CardView clients={filtered} />
         )}
       </div>

@@ -4,6 +4,7 @@ import { load } from '../persistence';
 import { fetchClients } from '../notionService';
 import { getDemoStore } from '../demoData';
 import type { ClientsConfig, ClientEntry } from '../types';
+import { useIsMobile } from '../hooks/useBreakpoint';
 
 type Visibility = 'internal' | 'public' | 'restricted';
 
@@ -71,6 +72,7 @@ function humanSize(n?: number): string {
 let _gedClientsCache: ClientEntry[] | null = null;
 
 export default function GedView() {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const isInternal = !user?.client_code;
   const [files, setFiles] = useState<GedFile[]>([]);
@@ -166,7 +168,9 @@ export default function GedView() {
           className="text-xs rounded px-2 py-1 ml-auto"
           style={{
             background: 'var(--bg-deep)', color: 'var(--text)',
-            border: '1px solid var(--border)', width: 240,
+            border: '1px solid var(--border)',
+            width: isMobile ? undefined : 240,
+            flex: isMobile ? 1 : undefined, minWidth: 0,
           }}
         />
         {isInternal && (
@@ -194,7 +198,7 @@ export default function GedView() {
       </div>
 
       <div
-        className="flex-1 overflow-auto p-4"
+        className={`flex-1 overflow-auto ${isMobile ? '' : 'p-4'}`}
         onDragOver={isInternal ? (e => { e.preventDefault(); setDragOver(true); }) : undefined}
         onDragLeave={isInternal ? (() => setDragOver(false)) : undefined}
         onDrop={isInternal ? (e => {
@@ -204,14 +208,64 @@ export default function GedView() {
         style={dragOver ? { outline: '2px dashed var(--accent)', outlineOffset: -8 } : undefined}
       >
         {(loading || searching) && (
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          <p className={`text-xs ${isMobile ? 'p-4' : ''}`} style={{ color: 'var(--text-muted)' }}>
             {searching ? 'Recherche…' : 'Chargement…'}
           </p>
         )}
         {error && (
-          <p className="text-xs" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>
+          <p className={`text-xs ${isMobile ? 'p-4' : ''}`} style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>
         )}
-        {!loading && !searching && !error && (
+
+        {/* Vue mobile : liste de cartes */}
+        {!loading && !searching && !error && isMobile && (
+          <>
+            {files.map(f => (
+              <div key={f.id} style={{ borderBottom: '1px solid var(--border)', padding: '10px 14px' }}>
+                <div className="flex items-start gap-2">
+                  <ExtBadge ext={f.kind === 'link' ? 'html' : f.ext} />
+                  <div className="flex-1 min-w-0">
+                    <button
+                      onClick={() => openFile(f)}
+                      className="font-medium text-left hover:underline block w-full truncate"
+                      style={{ color: 'var(--accent)' }}
+                    >
+                      {f.nom || '(sans nom)'}
+                    </button>
+                    {f.description && (
+                      <div className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>{f.description}</div>
+                    )}
+                    {f.snippet && (
+                      <div className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }} dangerouslySetInnerHTML={{ __html: f.snippet }} />
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      <span>{humanSize(f.taille)}</span>
+                      <span>{f.created_at ? new Date(f.created_at.replace(' ', 'T') + 'Z').toLocaleDateString('fr-FR') : '—'}</span>
+                      {isInternal && <VisBadge visibility={f.visibility} count={f.clients?.length} />}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mt-2 text-xs">
+                  <button onClick={() => openFile(f, true)} className="hover:underline" style={{ color: 'var(--text-muted)' }}>⬇ Télécharger</button>
+                  {isInternal && (
+                    <>
+                      <button onClick={() => setModal({ mode: 'edit', file: f })} className="hover:underline" style={{ color: 'var(--text-muted)' }}>✎ Propriétés</button>
+                      <button onClick={() => handleDelete(f)} className="hover:underline" style={{ color: 'var(--color-error, #e53e3e)' }}>🗑 Supprimer</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+            {files.length === 0 && (
+              <p className="px-4 py-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                {search ? 'Aucun document trouvé.' : (isInternal
+                  ? 'Aucun document. Touchez « Ajouter » pour importer.'
+                  : 'Aucun document disponible.')}
+              </p>
+            )}
+          </>
+        )}
+
+        {!loading && !searching && !error && !isMobile && (
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
@@ -301,6 +355,7 @@ function PropertiesModal({
   onSaved: () => void;
   onError: (msg: string) => void;
 }) {
+  const isMobile = useIsMobile();
   const isCreate = modal.mode === 'create';
   const single = isCreate && modal.files.length === 1;
   const existing = modal.mode === 'edit' ? modal.file : null;
@@ -381,13 +436,13 @@ function PropertiesModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className={`fixed inset-0 z-50 flex justify-center ${isMobile ? '' : 'items-center p-4'}`}
       style={{ background: 'rgba(0,0,0,0.5)' }}
       onClick={onClose}
     >
       <div
-        className="rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[85vh]"
-        style={{ background: 'var(--bg-card, var(--bg))', border: '1px solid var(--border)' }}
+        className={`shadow-xl flex flex-col ${isMobile ? 'w-full h-full' : 'rounded-lg w-full max-w-md max-h-[85vh]'}`}
+        style={{ background: 'var(--bg-card, var(--bg))', border: isMobile ? 'none' : '1px solid var(--border)' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>

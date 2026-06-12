@@ -4,6 +4,8 @@ import { fetchProjets } from '../notionService';
 import type { ProjetsConfig, ProjetEntry } from '../types';
 import { getDemoStore } from '../demoData';
 import { useAuth } from '../store/useAuthStore';
+import { useIsMobile } from '../hooks/useBreakpoint';
+import { MobileListCard } from './MobileListCard';
 
 function notionColor(color?: string): string {
   const map: Record<string, string> = {
@@ -34,6 +36,7 @@ interface Props {
 }
 
 export default function ProjetsView({ onSelectProjet }: Props) {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const [projets, setProjets] = useState<ProjetEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -124,18 +127,40 @@ export default function ProjetsView({ onSelectProjet }: Props) {
           className="text-xs rounded px-2 py-1 ml-auto"
           style={{
             background: 'var(--bg-deep)', color: 'var(--text)',
-            border: '1px solid var(--border)', width: 180,
+            border: '1px solid var(--border)',
+            width: isMobile ? undefined : 180,
+            flex: isMobile ? 1 : undefined, minWidth: 0,
           }}
         />
       </div>
-      <div className="flex-1 overflow-auto p-4">
+      <div className={`flex-1 overflow-auto ${isMobile ? '' : 'p-4'}`}>
         {loading && (
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Chargement…</p>
+          <p className="text-xs p-4" style={{ color: 'var(--text-muted)' }}>Chargement…</p>
         )}
         {error && (
-          <p className="text-xs" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>
+          <p className="text-xs p-4" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>
         )}
-        {!loading && !error && (
+        {!loading && !error && isMobile && (
+          <>
+            {sorted.map(p => (
+              <MobileListCard
+                key={p.id}
+                title={p.nom || '(sans nom)'}
+                badges={p.statut ? [{ label: p.statut, style: { background: notionColor(p.statutColor), color: '#fff' } }] : []}
+                meta={[
+                  ...(p.tiers ? [{ icon: '👤', text: p.tiers }] : []),
+                  ...(p.typeProjet ? [{ icon: '📁', text: p.typeProjet }] : []),
+                  ...(p.dateDebut ? [{ icon: '📅', text: new Date(p.dateDebut).toLocaleDateString('fr-FR') }] : []),
+                ]}
+                onClick={() => onSelectProjet(p.id, p.nom, p.codeProjet)}
+              />
+            ))}
+            {sorted.length === 0 && (
+              <p className="text-xs p-4 text-center" style={{ color: 'var(--text-muted)' }}>Aucun projet trouvé.</p>
+            )}
+          </>
+        )}
+        {!loading && !error && !isMobile && (
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>

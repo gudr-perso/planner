@@ -21,6 +21,9 @@ import type {
 import { NotionBlockRenderer } from './NotionBlockRenderer';
 import { useResizableRightPanel } from '../hooks/useResizableRightPanel';
 import { useAuth } from '../store/useAuthStore';
+import { useIsMobile } from '../hooks/useBreakpoint';
+import { MobileListCard } from './MobileListCard';
+import type { CardBadge } from './MobileListCard';
 
 // ── Helpers partagés ──────────────────────────────────────────────────────────
 
@@ -43,6 +46,11 @@ function Badge({ label, color }: { label: string; color?: string }) {
       {label}
     </span>
   );
+}
+
+// Construit un badge de carte mobile à partir d'un label Notion coloré.
+function cardBadge(label: string | undefined, color?: string): CardBadge[] {
+  return label ? [{ label, style: { background: notionColor(color), color: '#fff' } }] : [];
 }
 
 function formatDate(iso: string | null): string {
@@ -464,6 +472,7 @@ type TabId = 'taches' | 'sousTaches' | 'suivi' | 'echanges' | 'documents' | 'tem
 export default function ProjetDetailView({ projetId, projetNom, projetCode, refreshKey = 0, onBack }: Props) {
   const { user } = useAuth();
   const isClient = !!user?.client_code;
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabId>('taches');
 
   // Tâches partagées (chargées une fois, utilisées par les sous-onglets)
@@ -572,7 +581,13 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, refr
       </div>
 
       {/* Onglets */}
-      <div className="flex gap-1 px-4 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+      <div
+        className="flex gap-1 px-4 border-b shrink-0"
+        style={{
+          borderColor: 'var(--border)',
+          ...(isMobile ? { overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' as never } : {}),
+        }}
+      >
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -581,6 +596,7 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, refr
             style={{
               color: activeTab === tab.id ? 'var(--accent)' : 'var(--text-muted)',
               borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
+              ...(isMobile ? { flexShrink: 0, whiteSpace: 'nowrap' } : {}),
             }}
           >
             {tab.label}
@@ -657,8 +673,8 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, refr
           )}
         </div>
 
-        {/* Poignée de redimensionnement */}
-        {selectedId && (
+        {/* Poignée de redimensionnement (desktop uniquement) */}
+        {selectedId && !isMobile && (
           <div
             className="w-1 shrink-0 cursor-col-resize transition-colors"
             style={{ background: 'var(--border)' }}
@@ -669,9 +685,14 @@ export default function ProjetDetailView({ projetId, projetNom, projetCode, refr
           />
         )}
 
-        {/* Panneau détail */}
+        {/* Panneau détail : latéral sur desktop, plein écran sur mobile */}
         {selectedId && (
-          <div className="flex flex-col overflow-hidden" style={{ width: detailWidth, flexShrink: 0 }}>
+          <div
+            className="flex flex-col overflow-hidden"
+            style={isMobile
+              ? { position: 'fixed', inset: 0, zIndex: 50, background: 'var(--bg)' }
+              : { width: detailWidth, flexShrink: 0 }}
+          >
             <DetailPanel
               title={selectedTitle}
               url={selectedUrl}
@@ -714,6 +735,7 @@ function TachesTab({
     projetField: '', statutTermineValue: 'Terminé', suiviField: '',
   });
 
+  const isMobile = useIsMobile();
   const [showTermine, setShowTermine] = useState(false);
   const [sort, setSort] = useState<{
     col: 'nom' | 'canal' | 'statut' | 'priorite';
@@ -759,7 +781,21 @@ function TachesTab({
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
-        {!loading && !error && (
+        {!loading && !error && isMobile && (
+          sorted.length === 0
+            ? <p className="text-xs px-4 py-4 text-center" style={{ color: 'var(--text-muted)' }}>Aucune tâche{!showTermine ? ' en cours' : ''}.</p>
+            : sorted.map(t => (
+                <MobileListCard
+                  key={t.id}
+                  selected={selectedId === t.id}
+                  title={t.nom || '(sans nom)'}
+                  badges={[...cardBadge(t.canal, t.canalColor), ...cardBadge(t.statut, t.statutColor), ...cardBadge(t.priorite, t.prioriteColor)]}
+                  meta={!isClient && t.suivis.length ? [{ icon: '📝', text: t.suivis.join(', ') }] : []}
+                  onClick={() => onSelectRow(t.id, t.nom, t.notion_url)}
+                />
+              ))
+        )}
+        {!loading && !error && !isMobile && (
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
@@ -874,6 +910,7 @@ function SousTachesTab({
     canalField: '', dateField: '', dateEcheanceField: '', tacheField: '', statutTermineValue: 'Terminé',
   });
 
+  const isMobile = useIsMobile();
   const [entries, setEntries] = useState<SousTacheEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1032,7 +1069,24 @@ function SousTachesTab({
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
-        {!loading && !error && (
+        {!loading && !error && isMobile && (
+          sorted.length === 0
+            ? <p className="text-xs px-4 py-4 text-center" style={{ color: 'var(--text-muted)' }}>Aucune sous-tâche{!showTermine ? ' en cours' : ''}.</p>
+            : sorted.map(e => (
+                <MobileListCard
+                  key={e.id}
+                  selected={selectedId === e.id}
+                  title={e.nom || '(sans nom)'}
+                  badges={[...cardBadge(e.statut, e.statutColor), ...cardBadge(e.priorite, e.prioriteColor), ...cardBadge(e.canal, e.canalColor), ...cardBadge(e.affecte, e.affecteColor)]}
+                  meta={[
+                    ...(e.dateEcheance ? [{ icon: '⏳', text: formatDate(e.dateEcheance) }] : []),
+                    ...(e.tacheNoms.length ? [{ icon: '🔗', text: e.tacheNoms.join(', ') }] : []),
+                  ]}
+                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url)}
+                />
+              ))
+        )}
+        {!loading && !error && !isMobile && (
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
@@ -1105,6 +1159,7 @@ function SuiviProjetTab({
     tacheField: '', statutTermineValue: 'Terminé',
   });
 
+  const isMobile = useIsMobile();
   const [entries, setEntries] = useState<SuiviProjetEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1164,7 +1219,24 @@ function SuiviProjetTab({
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
-        {!loading && !error && (
+        {!loading && !error && isMobile && (
+          sorted.length === 0
+            ? <p className="text-xs px-4 py-4 text-center" style={{ color: 'var(--text-muted)' }}>Aucun suivi{!showTermine ? ' en cours' : ''}.</p>
+            : sorted.map(e => (
+                <MobileListCard
+                  key={e.id}
+                  selected={selectedId === e.id}
+                  title={e.nom || '(sans nom)'}
+                  badges={cardBadge(e.statut, e.statutColor)}
+                  meta={[
+                    ...(e.date ? [{ icon: '📅', text: formatDate(e.date) }] : []),
+                    ...(e.tacheNoms.length ? [{ icon: '🔗', text: e.tacheNoms.join(', ') }] : []),
+                  ]}
+                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url)}
+                />
+              ))
+        )}
+        {!loading && !error && !isMobile && (
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
@@ -1232,6 +1304,7 @@ function EchangesTab({
     contactField: '', projetField: '', suiviField: '', tacheField: '',
   });
 
+  const isMobile = useIsMobile();
   const [entries, setEntries] = useState<EchangeEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1346,7 +1419,25 @@ function EchangesTab({
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
-        {!loading && !error && (
+        {!loading && !error && isMobile && (
+          sorted.length === 0
+            ? <p className="text-xs px-4 py-4 text-center" style={{ color: 'var(--text-muted)' }}>Aucun échange.</p>
+            : sorted.map(e => (
+                <MobileListCard
+                  key={e.id}
+                  selected={selectedId === e.id}
+                  title={e.nom || '(sans nom)'}
+                  badges={cardBadge(e.canal, e.canalColor)}
+                  meta={[
+                    ...(e.date ? [{ icon: '📅', text: formatDate(e.date) }] : []),
+                    ...(e.contact.length ? [{ icon: '👤', text: e.contact.join(', ') }] : []),
+                    ...(e.tacheNoms.length ? [{ icon: '🔗', text: e.tacheNoms.join(', ') }] : []),
+                  ]}
+                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url)}
+                />
+              ))
+        )}
+        {!loading && !error && !isMobile && (
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
@@ -1416,6 +1507,7 @@ function DocumentsTab({
     databaseId: '', nomField: 'Name', statutField: '',
   });
 
+  const isMobile = useIsMobile();
   const [entries, setEntries] = useState<DocumentEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1510,7 +1602,25 @@ function DocumentsTab({
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
-        {!loading && !error && (
+        {!loading && !error && isMobile && (
+          sorted.length === 0
+            ? <p className="text-xs px-4 py-4 text-center" style={{ color: 'var(--text-muted)' }}>Aucun document.</p>
+            : sorted.map(e => (
+                <MobileListCard
+                  key={e.id}
+                  selected={selectedId === e.id}
+                  title={e.nom || '(sans nom)'}
+                  badges={cardBadge(e.statut, e.statutColor)}
+                  meta={[
+                    ...(e.date ? [{ icon: '📅', text: formatDate(e.date) }] : []),
+                    ...(config.projetNomField && e.projet ? [{ icon: '📁', text: e.projet }] : []),
+                    ...(e.notionUrlShared ? [{ text: <a href={e.notionUrlShared} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }} onClick={ev => ev.stopPropagation()}>🔗 URL partagée</a> }] : []),
+                  ]}
+                  onClick={() => onSelectRow(e.id, e.nom, e.notion_url, e.notionUrlShared, e.date ?? undefined, e.projet)}
+                />
+              ))
+        )}
+        {!loading && !error && !isMobile && (
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
@@ -1657,6 +1767,7 @@ function TempsProjetTab({
     dureeMinField: '', dureeHField: '', tacheField: '',
   });
 
+  const isMobile = useIsMobile();
   const [entries, setEntries] = useState<TempsProjetEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1838,7 +1949,27 @@ function TempsProjetTab({
       <div className="flex-1 overflow-auto">
         {loading && <p className="text-xs px-4 py-3" style={{ color: 'var(--text-muted)' }}>Chargement…</p>}
         {error && <p className="text-xs px-4 py-3" style={{ color: 'var(--color-error, #e53e3e)' }}>{error}</p>}
-        {!loading && !error && (
+        {!loading && !error && isMobile && (
+          sorted.length === 0
+            ? <p className="text-xs px-4 py-4 text-center" style={{ color: 'var(--text-muted)' }}>Aucune session de temps.</p>
+            : sorted.map(e => (
+                <MobileListCard
+                  key={e.id}
+                  selected={selectedId === e.id}
+                  title={e.description || '(sans titre)'}
+                  badges={[
+                    ...(e.dureeH ? [{ label: `${formatNum(e.dureeH)} h`, style: { background: 'color-mix(in srgb, var(--accent) 18%, transparent)', color: 'var(--accent)' } }] : []),
+                    ...(showFacturableH && e.facturableH ? [{ label: `fact. ${formatNum(e.facturableH)} h`, style: { background: 'color-mix(in srgb, var(--accent) 30%, transparent)', color: 'var(--accent)' } }] : []),
+                  ]}
+                  meta={[
+                    ...(e.debut ? [{ icon: '🕒', text: formatDateTime(e.debut) }] : []),
+                    ...(e.tacheNoms.length ? [{ icon: '🔗', text: e.tacheNoms.join(', ') }] : []),
+                  ]}
+                  onClick={() => onSelectRow(e.id, e.description, e.notion_url)}
+                />
+              ))
+        )}
+        {!loading && !error && !isMobile && (
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>

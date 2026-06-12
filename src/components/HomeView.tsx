@@ -44,7 +44,7 @@ function getWeather(): WeatherData | null {
   } catch { return null; }
 }
 
-function WeatherWidget() {
+function WeatherWidget({ fullWidth }: { fullWidth?: boolean } = {}) {
   const [weather, setWeather] = useState<WeatherData | null>(() => getWeather());
   const [loading, setLoading] = useState(!getWeather());
   const [time, setTime] = useState(() => new Date());
@@ -84,6 +84,8 @@ function WeatherWidget() {
       background: 'linear-gradient(135deg, #0d1f45 0%, #0a2a5e 100%)',
       border: '1px solid rgba(100, 160, 255, 0.18)',
       minWidth: 180,
+      width: fullWidth ? '100%' : undefined,
+      boxSizing: 'border-box',
     }}>
       {loading ? (
         <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>— — —</span>
@@ -381,10 +383,10 @@ export function HomeView({ onNavigate, postitsRefreshKey }: { onNavigate: (v: Vi
           <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4 }}>
             {dateLabel}
           </p>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, margin: '0 0 4px' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, margin: '0 0 10px' }}>
             Bonjour, {user?.name ?? 'Guillaume'}
           </h1>
-          <WeatherWidget />
+          <WeatherWidget fullWidth />
         </div>
 
         {/* Accès rapide CUMA : grille 2 colonnes — masqué pour les clients */}
